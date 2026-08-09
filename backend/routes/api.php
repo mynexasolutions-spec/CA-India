@@ -1,0 +1,152 @@
+<?php
+
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Admin\BillingMonitorController;
+use App\Http\Controllers\Api\Admin\ClientProfileController;
+use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboard;
+use App\Http\Controllers\Api\Admin\OpsController;
+use App\Http\Controllers\Api\Admin\ResourceController;
+use App\Http\Controllers\Api\Billing\DashboardController as BillingDashboard;
+use App\Http\Controllers\Api\Billing\DocumentController;
+use App\Http\Controllers\Api\Billing\MasterController;
+use App\Http\Controllers\Api\Billing\ReportController;
+use App\Http\Controllers\Api\Client\ChangeRequestController as ClientChangeRequestController;
+use App\Http\Controllers\Api\Admin\ChangeRequestController as AdminChangeRequestController;
+use App\Http\Controllers\Api\Client\DocumentEditRequestController as ClientDocumentEditRequestController;
+use App\Http\Controllers\Api\Admin\DocumentEditRequestController as AdminDocumentEditRequestController;
+use App\Http\Controllers\Api\Admin\ClientsUnlockController;
+use App\Http\Controllers\Api\Client\DashboardController as ClientDashboard;
+use App\Http\Controllers\Api\Public\ContactController;
+use App\Http\Controllers\Api\Public\ContentController;
+use Illuminate\Support\Facades\Route;
+
+Route::post('/contact', [ContactController::class, 'contact']);
+Route::post('/newsletter', [ContactController::class, 'newsletter']);
+Route::post('/appointments', [ContactController::class, 'appointment']);
+Route::post('/consultations', [ContactController::class, 'consultation']);
+
+Route::get('/articles', [ContentController::class, 'articles']);
+Route::get('/articles/{slug}', [ContentController::class, 'article']);
+Route::get('/categories', [ContentController::class, 'categories']);
+Route::get('/due-dates', [ContentController::class, 'dueDates']);
+Route::get('/home-updates', [ContentController::class, 'homeUpdates']);
+Route::get('/testimonials', [ContentController::class, 'testimonials']);
+Route::get('/faqs', [ContentController::class, 'faqs']);
+
+Route::get('/billing/share/{token}', [DocumentController::class, 'share']);
+
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword']);
+
+    Route::middleware('role.client')->group(function () {
+        Route::prefix('client')->group(function () {
+            Route::get('/dashboard', [ClientDashboard::class, 'index']);
+            Route::get('/profile', [ClientDashboard::class, 'profile']);
+            Route::put('/profile', [ClientDashboard::class, 'updateProfile']);
+            Route::get('/change-requests/current', [ClientChangeRequestController::class, 'current']);
+            Route::post('/change-requests', [ClientChangeRequestController::class, 'store']);
+            Route::post('/change-requests/assets/{field}', [ClientChangeRequestController::class, 'uploadAsset']);
+            Route::get('/edit-requests', [ClientDocumentEditRequestController::class, 'index']);
+            Route::get('/edit-requests/lookup', [ClientDocumentEditRequestController::class, 'lookup']);
+            Route::post('/edit-requests', [ClientDocumentEditRequestController::class, 'store']);
+            Route::post('/logo', [ClientDashboard::class, 'uploadLogo']);
+            Route::post('/signature', [ClientDashboard::class, 'uploadSignature']);
+            Route::post('/seal', [ClientDashboard::class, 'uploadSeal']);
+            Route::post('/qr-code', [ClientDashboard::class, 'uploadQrCode']);
+            Route::get('/documents', [ClientDashboard::class, 'documents']);
+            Route::post('/documents', [ClientDashboard::class, 'uploadDocument']);
+            Route::get('/documents/{id}', [ClientDashboard::class, 'downloadDocument']);
+            Route::get('/compliance', [ClientDashboard::class, 'compliance']);
+        });
+
+        Route::prefix('billing')->group(function () {
+            Route::get('/dashboard', [BillingDashboard::class, 'index']);
+
+            Route::get('/parties', [MasterController::class, 'parties']);
+            Route::post('/parties', [MasterController::class, 'storeParty']);
+            Route::get('/parties/{id}', [MasterController::class, 'showParty']);
+            Route::put('/parties/{id}', [MasterController::class, 'updateParty']);
+
+            Route::get('/customers', [MasterController::class, 'customers']);
+            Route::post('/customers', [MasterController::class, 'storeCustomer']);
+            Route::put('/customers/{id}', [MasterController::class, 'updateCustomer']);
+            Route::get('/hsn-sac-codes', [MasterController::class, 'hsnSacCodes']);
+            Route::get('/hsn-sac-codes/verify', [MasterController::class, 'verifyHsnSac']);
+            Route::get('/tds-tcs-sections', [MasterController::class, 'tdsTcsSections']);
+
+            Route::get('/products', [MasterController::class, 'products']);
+            Route::post('/products', [MasterController::class, 'storeProduct']);
+            Route::put('/products/{id}', [MasterController::class, 'updateProduct']);
+
+            Route::get('/documents', [DocumentController::class, 'index']);
+            Route::post('/documents', [DocumentController::class, 'store']);
+            Route::post('/documents/preview', [DocumentController::class, 'preview']);
+            Route::get('/documents/{id}', [DocumentController::class, 'show']);
+            Route::put('/documents/{id}', [DocumentController::class, 'update']);
+            Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
+            Route::post('/documents/{id}/issue', [DocumentController::class, 'issue']);
+            Route::post('/documents/{id}/convert', [DocumentController::class, 'convert']);
+            Route::post('/documents/{id}/duplicate', [DocumentController::class, 'duplicate']);
+            Route::get('/documents/{id}/amendments', [DocumentController::class, 'amendments']);
+            Route::post('/documents/{id}/payment-status', [DocumentController::class, 'setPaymentStatus']);
+            Route::get('/documents/{id}/pdf', [DocumentController::class, 'pdf']);
+            Route::post('/documents/{id}/email', [DocumentController::class, 'emailDocument']);
+
+            Route::get('/reports', [ReportController::class, 'index']);
+            Route::get('/reports/export', [ReportController::class, 'export']);
+        });
+    });
+
+    Route::middleware('role.staff')->prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboard::class, 'index']);
+        Route::get('/clients/unlock-status', [ClientsUnlockController::class, 'status']);
+        Route::post('/clients/unlock', [ClientsUnlockController::class, 'unlock']);
+        Route::post('/clients/lock', [ClientsUnlockController::class, 'lock']);
+        Route::get('/clients', [ClientProfileController::class, 'index']);
+        Route::post('/clients', [ClientProfileController::class, 'store']);
+        Route::get('/clients/{id}', [ClientProfileController::class, 'show']);
+        Route::put('/clients/{id}', [ClientProfileController::class, 'update']);
+        Route::post('/clients/{id}', [ClientProfileController::class, 'update']);
+        Route::delete('/clients/{id}', [ClientProfileController::class, 'destroy']);
+        Route::get('/change-requests', [AdminChangeRequestController::class, 'index']);
+        Route::get('/change-requests/{id}', [AdminChangeRequestController::class, 'show']);
+        Route::post('/change-requests/{id}/approve', [AdminChangeRequestController::class, 'approve']);
+        Route::post('/change-requests/{id}/reject', [AdminChangeRequestController::class, 'reject']);
+        Route::get('/edit-requests', [AdminDocumentEditRequestController::class, 'index']);
+        Route::get('/edit-requests/{id}', [AdminDocumentEditRequestController::class, 'show']);
+        Route::post('/edit-requests/{id}/approve', [AdminDocumentEditRequestController::class, 'approve']);
+        Route::post('/edit-requests/{id}/reject', [AdminDocumentEditRequestController::class, 'reject']);
+        Route::get('/billing/clients', [ClientProfileController::class, 'billingDirectory']);
+        Route::get('/clients/{id}/billing/dashboard', [ClientProfileController::class, 'billingDashboard']);
+        Route::get('/clients/{id}/billing/export', [ClientProfileController::class, 'exportBilling']);
+        Route::get('/clients/{id}/billing/zip', [ClientProfileController::class, 'downloadZip']);
+        Route::post('/clients/{id}/active', [BillingMonitorController::class, 'setClientActive']);
+        Route::post('/clients/{id}/reset-password', [BillingMonitorController::class, 'resetClientPassword']);
+        Route::get('/clients/{id}/login-history', [BillingMonitorController::class, 'loginHistory']);
+        Route::get('/staff', [ResourceController::class, 'staff']);
+        Route::post('/staff', [ResourceController::class, 'storeStaff']);
+        Route::get('/activity', [ResourceController::class, 'activity']);
+        Route::post('/client-documents/upload', [OpsController::class, 'uploadClientDocument']);
+        Route::post('/compliance/assign', [OpsController::class, 'assignCompliance']);
+        Route::get('/backups', [OpsController::class, 'backups']);
+        Route::post('/backups/run', [OpsController::class, 'runBackup']);
+
+        Route::get('/billing/dashboard', [BillingMonitorController::class, 'dashboard']);
+        Route::get('/billing/invoices', [BillingMonitorController::class, 'invoices']);
+        Route::get('/billing/invoices/{id}', [BillingMonitorController::class, 'showInvoice']);
+        Route::get('/billing/invoices/{id}/pdf', [BillingMonitorController::class, 'pdfInvoice']);
+        Route::get('/billing/reports', [BillingMonitorController::class, 'report']);
+
+        Route::get('/{resource}', [ResourceController::class, 'index']);
+        Route::post('/{resource}', [ResourceController::class, 'store']);
+        Route::get('/{resource}/{id}', [ResourceController::class, 'show']);
+        Route::put('/{resource}/{id}', [ResourceController::class, 'update']);
+        Route::delete('/{resource}/{id}', [ResourceController::class, 'destroy']);
+    });
+});

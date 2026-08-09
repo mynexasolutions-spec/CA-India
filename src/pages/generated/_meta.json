@@ -1,0 +1,132 @@
+{
+  "about": {
+    "file": "about.html",
+    "title": "About Us | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/about"
+  },
+  "accounting-services": {
+    "file": "accounting-services.html",
+    "title": "Accounting Services | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/accounting"
+  },
+  "audit-services": {
+    "file": "audit-services.html",
+    "title": "Audit Services | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/audit"
+  },
+  "business-consultancy": {
+    "file": "business-consultancy.html",
+    "title": "Business Consultancy | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/business-consultancy"
+  },
+  "business-registration": {
+    "file": "business-registration.html",
+    "title": "Business Registration | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/business-registration"
+  },
+  "contact": {
+    "file": "contact.html",
+    "title": "Contact Us | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/contact"
+  },
+  "digital-signature-certificate": {
+    "file": "digital-signature-certificate.html",
+    "title": "Digital Signature Certificate (DSC) | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/dsc"
+  },
+  "financial-advisory": {
+    "file": "financial-advisory.html",
+    "title": "Financial Advisory | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/financial-advisory"
+  },
+  "gst-services": {
+    "file": "gst-services.html",
+    "title": "GST Services | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/gst"
+  },
+  "iec-registration": {
+    "file": "iec-registration.html",
+    "title": "IEC Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/iec"
+  },
+  "income-tax-services": {
+    "file": "income-tax-services.html",
+    "title": "Income Tax Services | A B KHAN & ASSOCIATES",
+    "route": "/services/income-tax"
+  },
+  "index": {
+    "file": "index.html",
+    "title": "A B KHAN & ASSOCIATES | Chartered Accountants, Navi Mumbai",
+    "route": "/"
+  },
+  "llp-registration": {
+    "file": "llp-registration.html",
+    "title": "LLP Registration | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/business-registration/llp"
+  },
+  "msme-registration": {
+    "file": "msme-registration.html",
+    "title": "MSME (Udyam) Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/msme"
+  },
+  "one-person-company": {
+    "file": "one-person-company.html",
+    "title": "One Person Company (OPC) Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/one-person-company"
+  },
+  "partnership-firm": {
+    "file": "partnership-firm.html",
+    "title": "Partnership Firm Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/partnership-firm"
+  },
+  "payroll-services": {
+    "file": "payroll-services.html",
+    "title": "Payroll Services | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/payroll"
+  },
+  "private-limited-company": {
+    "file": "private-limited-company.html",
+    "title": "Private Limited Company Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/private-limited"
+  },
+  "proprietorship": {
+    "file": "proprietorship.html",
+    "title": "Proprietorship Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/proprietorship"
+  },
+  "public-limited-company": {
+    "file": "public-limited-company.html",
+    "title": "Public Limited Company Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/public-limited"
+  },
+  "roc-compliance": {
+    "file": "roc-compliance.html",
+    "title": "ROC Compliance | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/roc-compliance"
+  },
+  "section-8-company": {
+    "file": "section-8-company.html",
+    "title": "Section 8 Company Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/section-8"
+  },
+  "services": {
+    "file": "services.html",
+    "title": "Our Services | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services"
+  },
+  "trademark-registration": {
+    "file": "trademark-registration.html",
+    "title": "Trademark Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/trademark"
+  },
+  "trust-registration": {
+    "file": "trust-registration.html",
+    "title": "Trust Registration | A B KHAN & ASSOCIATES",
+    "route": "/business-registration/trust"
+  },
+  "virtual-cfo-services": {
+    "file": "virtual-cfo-services.html",
+    "title": "Virtual CFO Services | A B KHAN & ASSOCIATES - Chartered Accountants",
+    "route": "/services/virtual-cfo"
+  }
+}

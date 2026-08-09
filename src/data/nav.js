@@ -1,0 +1,66 @@
+export const SERVICES = [
+  { label: 'Accounting Services', path: '/services/accounting' },
+  { label: 'Audit Services', path: '/services/audit' },
+  { label: 'Income Tax Services', path: '/services/income-tax' },
+  { label: 'GST Services', path: '/services/gst' },
+  { label: 'ROC Compliance', path: '/services/roc-compliance' },
+  { label: 'Payroll Services', path: '/services/payroll' },
+  { label: 'Financial Advisory', path: '/services/financial-advisory' },
+  { label: 'Business Consultancy', path: '/services/business-consultancy' },
+  { label: 'Virtual CFO Services', path: '/services/virtual-cfo' },
+];
+
+export const REGISTRATIONS = [
+  { label: 'Proprietorship', path: '/business-registration/proprietorship' },
+  { label: 'Partnership Firm', path: '/business-registration/partnership-firm' },
+  { label: 'LLP Registration', path: '/business-registration/llp' },
+  { label: 'Private Limited Company', path: '/business-registration/private-limited' },
+  { label: 'Public Limited Company', path: '/business-registration/public-limited' },
+  { label: 'One Person Company', path: '/business-registration/one-person-company' },
+  { label: 'Trust Registration', path: '/business-registration/trust' },
+  { label: 'Section 8 Company', path: '/business-registration/section-8' },
+  { label: 'MSME Registration', path: '/business-registration/msme' },
+  { label: 'IEC Registration', path: '/business-registration/iec' },
+  { label: 'Digital Signature Certificate', path: '/business-registration/dsc' },
+  { label: 'Trademark Registration', path: '/business-registration/trademark' },
+];
+
+export const CONTACT = {
+  phone: '+91 8286681960',
+  phoneHref: 'tel:+918286681960',
+  email: 'abkhanassociates@gmail.com',
+  emailHref: 'mailto:abkhanassociates@gmail.com',
+  whatsapp: 'https://wa.me/918286681960',
+  hours: 'Mon - Sat: 10:00 AM - 07:00 PM',
+  address:
+    'A Wing 401, Nerul Aakash Ganga CHS, Plot No. B-71, Seawoods East, Sector 23, Navi Mumbai, Maharashtra 400706',
+};
+
+export const PAGE_SLUGS = {
+  '/': 'index',
+  '/about': 'about',
+  '/services': 'services',
+  '/contact': 'contact',
+  '/business-registration': 'business-registration',
+  '/services/accounting': 'accounting-services',
+  '/services/audit': 'audit-services',
+  '/services/income-tax': 'income-tax-services',
+  '/services/gst': 'gst-services',
+  '/services/roc-compliance': 'roc-compliance',
+  '/services/payroll': 'payroll-services',
+  '/services/financial-advisory': 'financial-advisory',
+  '/services/business-consultancy': 'business-consultancy',
+  '/services/virtual-cfo': 'virtual-cfo-services',
+  '/business-registration/proprietorship': 'proprietorship',
+  '/business-registration/partnership-firm': 'partnership-firm',
+  '/business-registration/llp': 'llp-registration',
+  '/business-registration/private-limited': 'private-limited-company',
+  '/business-registration/public-limited': 'public-limited-company',
+  '/business-registration/one-person-company': 'one-person-company',
+  '/business-registration/trust': 'trust-registration',
+  '/business-registration/section-8': 'section-8-company',
+  '/business-registration/msme': 'msme-registration',
+  '/business-registration/iec': 'iec-registration',
+  '/business-registration/dsc': 'digital-signature-certificate',
+  '/business-registration/trademark': 'trademark-registration',
+};
