@@ -17,6 +17,7 @@ import ResetPasswordPage from './pages/marketing/ResetPasswordPage';
 import {
   ClientDashboard,
   ClientProfile,
+  ClientResetPassword,
 } from './pages/portal/ClientPages';
 import BillingDashboard from './pages/billing/BillingDashboard';
 import PartiesPage from './pages/billing/PartiesPage';
@@ -115,6 +116,7 @@ export default function App() {
         <Route path="/portal" element={<ClientPortalLayout />}>
           <Route index element={<ClientDashboard />} />
           <Route path="profile" element={<ClientProfile />} />
+          <Route path="profile/reset-password" element={<ClientResetPassword />} />
           <Route path="quotation">
             <Route index element={<InvoiceList type="quotation" title="Quotations" newPath="/portal/quotation/new" />} />
             <Route path="new" element={<InvoiceForm docType="quotation" title="Create Quotation" />} />

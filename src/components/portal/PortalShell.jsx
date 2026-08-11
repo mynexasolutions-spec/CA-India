@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate, Outlet, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import BillingSubNav from '../../pages/billing/BillingSubNav';
 import ReportsSubNav from '../../pages/billing/ReportsSubNav';
@@ -43,6 +43,7 @@ function PortalFrame({ brand, subtitle, title, userLabel, nav, loginPath, extraT
   usePortalStyles();
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -61,17 +62,18 @@ function PortalFrame({ brand, subtitle, title, userLabel, nav, loginPath, extraT
           {subtitle ? <div className="bp-brand-sub">{subtitle}</div> : null}
         </div>
         <nav className="bp-nav" onClick={() => setOpen(false)}>
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => (isActive ? 'active' : undefined)}
-              {...(item.isActive ? { isActive: item.isActive } : {})}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const active = item.isActive
+              ? item.isActive(null, location)
+              : item.end
+                ? location.pathname === item.to
+                : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+            return (
+              <Link key={item.to} to={item.to} className={active ? 'active' : undefined}>
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         <div className="bp-sidebar-foot">
           <button type="button" className="bp-btn bp-btn-outline" onClick={async () => { await logout(); navigate(loginPath); }}>

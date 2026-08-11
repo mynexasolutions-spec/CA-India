@@ -13,8 +13,6 @@ export default function AmendmentsPage() {
   const [q, setQ] = useState(params.get('bill') || '');
   const [type, setType] = useState('tax_invoice');
   const [rows, setRows] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [history, setHistory] = useState([]);
   const [err, setErr] = useState('');
 
   const search = () => {
@@ -27,17 +25,6 @@ export default function AmendmentsPage() {
   };
 
   useEffect(() => { search(); }, [type]);
-
-  const openHistory = async (doc) => {
-    setSelected(doc);
-    try {
-      const res = await api(`/billing/documents/${doc.id}/amendments`);
-      setHistory(res.data || []);
-    } catch (e) {
-      setHistory([]);
-      setErr(e.message);
-    }
-  };
 
   const createAmendment = (doc) => {
     navigate(`/portal/amendments/new?ref=${doc.id}`);
@@ -83,8 +70,6 @@ export default function AmendmentsPage() {
                 <td>{money(d.grand_total || d.total_amount)}</td>
                 <td>{d.status}</td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button type="button" className="bp-btn bp-btn-outline" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => openHistory(d)}>History</button>
-                  {' '}
                   <button type="button" className="bp-btn bp-btn-primary" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => createAmendment(d)}>Create Amendment</button>
                 </td>
               </tr>
@@ -93,23 +78,6 @@ export default function AmendmentsPage() {
           </tbody>
         </table>
       </div>
-
-      {selected && (
-        <div className="bp-card">
-          <h3 style={{ marginTop: 0 }}>Amendment History · {selected.number}</h3>
-          <p style={{ fontSize: 13, color: 'var(--bp-muted)' }}>Original → Amendment chain</p>
-          <ol>
-            <li><strong>Original</strong> · {selected.number} · {String(selected.document_date).slice(0, 10)}</li>
-            {history.map((a, i) => (
-              <li key={a.id}>
-                <Link to={`/portal/amendments/${a.id}`}>Amendment-{i + 1} · {a.number}</Link>
-                {' · '}{String(a.document_date).slice(0, 10)} · {money(a.grand_total || a.total_amount)}
-              </li>
-            ))}
-          </ol>
-          {!history.length && <p style={{ color: 'var(--bp-muted)' }}>No amendments yet for this bill.</p>}
-        </div>
-      )}
     </div>
   );
 }

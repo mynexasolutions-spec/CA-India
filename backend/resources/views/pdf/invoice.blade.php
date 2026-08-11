@@ -44,20 +44,25 @@ td, th { vertical-align: top; }
   display: block;
 }
 .meta-row { margin: 3.5px 0; }
-.meta-row td { padding: 0; vertical-align: top; }
-.meta-icon-cell { width: 16px; padding-top: 1px; }
+.meta-row td { padding: 0; vertical-align: middle; }
+.meta-icon-cell { width: 16px; }
 .meta-icon-cell img { width: 11px; height: 11px; display: block; }
 .meta-text { color: #475569; font-size: 9.5px; line-height: 1.4; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
 .doc-title {
-  font-size: 12px;
+  display: inline-block;
+  background: #1e40af;
+  color: #ffffff;
+  font-size: 17px;
   font-weight: bold;
-  color: #000000;
   margin: 0 0 8px;
-  letter-spacing: 0.4px;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  text-decoration: underline;
+  text-decoration: none;
+  text-align: center;
+  padding: 7px 18px;
+  border-radius: 8px;
 }
 .inv-meta { width: 100%; }
 .inv-meta td { padding: 2.5px 0; font-size: 10px; }
@@ -126,7 +131,8 @@ td, th { vertical-align: top; }
 .items tr { page-break-inside: avoid; }
 .items tr:last-child td { border-bottom: 0; }
 .items td:last-child { border-right: 0; }
-.items .amt { color: #1e40af; font-weight: bold; text-align: right; }
+.items .amt { color: #0f172a; font-weight: bold; text-align: right; }
+.items .qty-num { color: #0f172a; font-weight: bold; }
 .item-title { font-weight: bold; color: #0f172a; font-size: 10.3px; }
 .item-sub { color: #64748b; font-size: 8.3px; margin-top: 1px; }
 
@@ -142,9 +148,9 @@ td, th { vertical-align: top; }
 .card-head img { width: 14px; height: 14px; vertical-align: -2.5px; margin-right: 6px; }
 .card-sep { border-top: 1px dashed #bcd0ee; margin: 6px 0; }
 
-.words-value { display: block; font-style: italic; font-size: 10.3px; color: #0f172a; font-weight: bold; line-height: 1.4; }
+.words-value { display: block; font-style: normal; font-size: 10.3px; color: #0f172a; font-weight: bold; line-height: 1.4; }
 
-.bank-name { font-weight: bold; color: #1e40af; font-size: 11.5px; margin: 0 0 3px; }
+.bank-name { display: inline; font-weight: bold; color: #0f172a; font-size: 9.3px; margin: 0; }
 .bank-line { color: #1e293b; font-size: 9.3px; line-height: 1.55; }
 .terms-list { margin: 0; padding-left: 15px; color: #1e293b; font-size: 9.3px; line-height: 1.55; }
 .terms-list li { margin-bottom: 1px; }
@@ -159,13 +165,13 @@ td, th { vertical-align: top; }
   border-bottom: 0 !important;
   border-top: 2px solid #16a34a;
   padding: 8px 11px;
-  color: #14532d;
+  color: #0f172a;
   font-size: 12px;
   font-weight: bold;
 }
 .grand-row td:first-child { border-bottom-left-radius: 9px; }
 .grand-row td:last-child { border-bottom-right-radius: 9px; }
-.grand-row .amt { text-align: right; color: #14532d; font-size: 13px; }
+.grand-row .amt { text-align: right; color: #0f172a; font-size: 13px; }
 .tds-row .lab, .tds-row .val { color: #b91c1c; font-weight: bold; }
 .tcs-row .lab, .tcs-row .val { color: #15803d; font-weight: bold; }
 .post-gst-row .lab, .post-gst-row .val { color: #1e40af; font-weight: bold; }
@@ -311,8 +317,11 @@ td, th { vertical-align: top; }
     'amendment' => 'Amendment',
     'delivery_challan' => 'Challan',
     'bill_of_supply' => 'Bill',
-    default => 'Invoice',
+    default => 'Tax Invoice',
   };
+  if ($doc->type === 'tax_invoice' && ! $p->has_gst) {
+    $metaLabel = 'Bill';
+  }
 
   $wordsRaw = trim((string) ($doc->amount_in_words ?: ''));
   if ($wordsRaw === '') {
@@ -519,7 +528,7 @@ td, th { vertical-align: top; }
         <td class="center">{{ $item->hsn_sac ?: '—' }}</td>
         @endif
         <td class="center">
-          {{ number_format((float) $item->qty, 2) }}
+          <span class="qty-num">{{ number_format((float) $item->qty, 2) }}</span>
           <div style="font-size:8.5px;color:#64748b;">{{ strtoupper($item->unit ?: 'NOS') }}</div>
         </td>
         <td class="amt">{{ number_format((float) $item->rate, 2) }}</td>
@@ -561,8 +570,7 @@ td, th { vertical-align: top; }
             Bank Details (For RTGS/NEFT Transfers)
           </div>
           <div class="card-sep"></div>
-          <div class="bank-line"><b>Bank Name :</b></div>
-          <div class="bank-name">{{ $p->bank_name ?: '—' }}</div>
+          <div class="bank-line"><b>Bank Name :</b> <span class="bank-name">{{ $p->bank_name ?: '—' }}</span></div>
           <div class="bank-line">
             @if($p->account_holder_name)Account Name : {{ $p->account_holder_name }}<br>@endif
             Account Number : {{ $p->bank_account ?: '—' }}@if($p->bank_ifsc) &nbsp;|&nbsp; IFSC Code : {{ $p->bank_ifsc }}@endif
@@ -631,7 +639,7 @@ td, th { vertical-align: top; }
               <td class="val">{!! $roundOffDisplay !!}</td>
             </tr>
             <tr class="grand-row">
-              <td>GRAND TOTAL (POST-TAX)</td>
+              <td>GRAND TOTAL</td>
               <td class="amt">&#8377; {{ number_format((float) $grand, 2) }}</td>
             </tr>
           @endif

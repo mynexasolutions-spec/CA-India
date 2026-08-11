@@ -677,4 +677,4 @@ td, th { vertical-align: top; }
 
 </body>
 </html>
-<?php /**PATH C:\Users\KIIT\Desktop\Nexa_Soln\Project-3\abkhanassociates-full-20260805\backend\resources\views/pdf/invoice.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\Users\KIIT\Desktop\Nexa_Soln\Project-3\abkhanassociates-full-20260805\backend\resources\views\pdf\invoice.blade.php ENDPATH**/ ?>

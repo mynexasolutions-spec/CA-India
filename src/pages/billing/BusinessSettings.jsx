@@ -6,7 +6,6 @@ const ASSETS = [
   { field: 'logo', pathKey: 'logo_path', label: 'Business Logo' },
   { field: 'signature', pathKey: 'signature_path', label: 'Authorized Signature' },
   { field: 'seal', pathKey: 'seal_path', label: 'Company Seal' },
-  { field: 'qr_code', pathKey: 'qr_code_path', label: 'Bank QR Code' },
 ];
 
 const BANK_FIELDS = [
@@ -55,7 +54,6 @@ function emptyForm() {
     logo_path: '',
     signature_path: '',
     seal_path: '',
-    qr_code_path: '',
   };
 }
 
@@ -82,9 +80,11 @@ function mergeDraft(approved, pending) {
 }
 
 function AssetPreview({ path, label }) {
-  if (!path) return <span style={{ color: 'var(--bp-muted)', fontSize: 12 }}>No {label.toLowerCase()} on file</span>;
+  if (!path) return <span className="bp-asset-empty">No {label.toLowerCase()} on file</span>;
+  const isImage = /\.(png|jpe?g|gif|webp|svg)$/i.test(path);
   return (
-    <a href={`/storage/${path}`} target="_blank" rel="noreferrer" style={{ fontSize: 12 }}>
+    <a href={`/storage/${path}`} target="_blank" rel="noreferrer" className="bp-asset-preview">
+      {isImage && <img src={`/storage/${path}`} alt={label} />}
       View current
     </a>
   );
@@ -153,98 +153,114 @@ export default function BusinessSettings() {
     }
   };
 
+  let statusBadge = null;
+  if (pending?.status === 'pending') {
+    statusBadge = <span className="bp-badge bp-badge-partial">Pending approval · Request #{pending.id}</span>;
+  } else if (!pending && lastReviewed?.status === 'rejected') {
+    statusBadge = <span className="bp-badge bp-badge-cancelled">Last request rejected{lastReviewed.admin_note ? `: ${lastReviewed.admin_note}` : ''}</span>;
+  } else if (!pending && lastReviewed?.status === 'approved') {
+    statusBadge = <span className="bp-badge bp-badge-paid">Last request approved</span>;
+  }
+
   return (
-    <div>
-      <div className="bp-card" style={{ maxWidth: 820 }}>
-        <h2 style={{ marginTop: 0 }}>Billing Settings</h2>
-        <p style={{ color: 'var(--bp-muted)', fontSize: 13, marginTop: 0 }}>
-          Edit invoice branding, bank details, and prefixes here. Changes require administrator approval before they appear on invoices.
-        </p>
+    <div className="bp-section-wrap" style={{ maxWidth: 860 }}>
+      <div className="bp-section-head">
+        <div>
+          <div className="bp-section-kicker">Billing Settings</div>
+          <p className="bp-section-desc">
+            Edit invoice branding, bank details, and prefixes. Changes require administrator approval before they appear on invoices.
+          </p>
+        </div>
+        {statusBadge}
+      </div>
 
-        {pending?.status === 'pending' && (
-          <div className="bp-badge bp-badge-partial" style={{ display: 'inline-block', marginBottom: 12, padding: '6px 12px' }}>
-            Status: Pending approval (Request #{pending.id})
+      <form onSubmit={submit} style={{ display: 'grid', gap: 16 }}>
+        <div className="bp-card">
+          <h3 style={{ marginTop: 0, marginBottom: 2, color: 'var(--bp-navy)' }}>Invoice Branding</h3>
+          <p className="bp-section-desc" style={{ marginBottom: 14 }}>Logo, signature and seal used when generating invoices.</p>
+          <div className="bp-form two">
+            {ASSETS.map(({ field, pathKey, label }) => (
+              <label key={field}>
+                <strong className="bp-field-title">{label}</strong>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="bp-file-input"
+                  onChange={(e) => e.target.files?.[0] && upload(field, e.target.files[0])}
+                />
+                <div style={{ marginTop: 6 }}>
+                  <AssetPreview path={form[pathKey]} label={label} />
+                  {approved?.[pathKey] && form[pathKey] !== approved[pathKey] && (
+                    <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 4 }}>Still using previous file on invoices until admin approves</div>
+                  )}
+                </div>
+              </label>
+            ))}
           </div>
-        )}
-        {!pending && lastReviewed?.status === 'rejected' && (
-          <div className="bp-badge bp-badge-cancelled" style={{ display: 'inline-block', marginBottom: 12, padding: '6px 12px' }}>
-            Last request rejected{lastReviewed.admin_note ? `: ${lastReviewed.admin_note}` : ''}
-          </div>
-        )}
-        {!pending && lastReviewed?.status === 'approved' && (
-          <div className="bp-badge bp-badge-paid" style={{ display: 'inline-block', marginBottom: 12, padding: '6px 12px' }}>
-            Last request approved
-          </div>
-        )}
+        </div>
 
-        <form className="bp-form two" onSubmit={submit}>
-          <h3 style={{ gridColumn: '1 / -1', marginBottom: 0, color: 'var(--bp-navy)' }}>Invoice Branding</h3>
-          {ASSETS.map(({ field, pathKey, label }) => (
-            <label key={field}>
-              <strong className="bp-field-title">{label}</strong>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => e.target.files?.[0] && upload(field, e.target.files[0])}
+        <div className="bp-card">
+          <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--bp-navy)' }}>Bank Details</h3>
+          <div className="bp-form two">
+            {BANK_FIELDS.map(([k, label]) => (
+              <label key={k}>
+                <strong className="bp-field-title">{label}</strong>
+                <input className="bp-input" value={form[k] || ''} onChange={(e) => set(k, e.target.value)} />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="bp-card">
+          <h3 style={{ marginTop: 0, marginBottom: 14, color: 'var(--bp-navy)' }}>Invoice Settings</h3>
+          <div className="bp-form two">
+            <label>
+              <strong className="bp-field-title">Signatory Name</strong>
+              <input className="bp-input" value={form.signatory_name || ''} onChange={(e) => set('signatory_name', e.target.value)} />
+            </label>
+            <label style={{ gridColumn: '1 / -1' }}>
+              <strong className="bp-field-title">Terms &amp; Conditions</strong>
+              <textarea
+                className="bp-input"
+                rows={4}
+                value={form.terms_conditions || ''}
+                onChange={(e) => set('terms_conditions', e.target.value)}
               />
-              <div style={{ marginTop: 4 }}>
-                <AssetPreview path={form[pathKey]} label={label} />
-                {approved?.[pathKey] && form[pathKey] !== approved[pathKey] && (
-                  <div style={{ fontSize: 11, color: 'var(--bp-muted)' }}>Approved on invoices: still previous file until admin approves</div>
-                )}
-              </div>
             </label>
-          ))}
+          </div>
+        </div>
 
-          <h3 style={{ gridColumn: '1 / -1', marginBottom: 0, color: 'var(--bp-navy)' }}>Bank Details</h3>
-          {BANK_FIELDS.map(([k, label]) => (
-            <label key={k}>
-              <strong className="bp-field-title">{label}</strong>
-              <input className="bp-input" value={form[k] || ''} onChange={(e) => set(k, e.target.value)} />
-            </label>
-          ))}
-
-          <h3 style={{ gridColumn: '1 / -1', marginBottom: 0, color: 'var(--bp-navy)' }}>Invoice Settings</h3>
-          <label>
-            <strong className="bp-field-title">Signatory Name</strong>
-            <input className="bp-input" value={form.signatory_name || ''} onChange={(e) => set('signatory_name', e.target.value)} />
-          </label>
-          <label style={{ gridColumn: '1 / -1' }}>
-            <strong className="bp-field-title">Terms &amp; Conditions</strong>
-            <textarea
-              className="bp-input"
-              rows={4}
-              value={form.terms_conditions || ''}
-              onChange={(e) => set('terms_conditions', e.target.value)}
-            />
-          </label>
-
-          <h3 style={{ gridColumn: '1 / -1', marginBottom: 0, color: 'var(--bp-navy)' }}>Document Numbering &amp; Prefix Configuration</h3>
-          <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 13, color: 'var(--bp-muted)' }}>
+        <div className="bp-card">
+          <h3 style={{ marginTop: 0, marginBottom: 2, color: 'var(--bp-navy)' }}>Document Numbering &amp; Prefix Configuration</h3>
+          <p className="bp-section-desc" style={{ marginBottom: 14 }}>
             Set a prefix per document type (admin can also set the next starting number on the client profile).
             Example for FY {currentFyLabel()}: <code>INV/{currentFyLabel()}/</code> generates <code>INV/{currentFyLabel()}/0001</code>.
           </p>
-          {PREFIX_FIELDS.map(([k, label, short]) => {
-            const sample = form[k] || short;
-            const preview = sample.endsWith('/') || sample.endsWith('-')
-              ? `${sample}0001`
-              : `${sample}-0001`;
-            return (
-              <label key={k}>
-                <strong className="bp-field-title">{label}</strong>
-                <input className="bp-input" value={form[k] || ''} onChange={(e) => set(k, e.target.value)} placeholder={`${short}/${currentFyLabel()}/`} />
-                <span style={{ fontSize: 11, color: 'var(--bp-muted)' }}>Next number example: {preview}</span>
-              </label>
-            );
-          })}
+          <div className="bp-form two">
+            {PREFIX_FIELDS.map(([k, label, short]) => {
+              const sample = form[k] || short;
+              const preview = sample.endsWith('/') || sample.endsWith('-')
+                ? `${sample}0001`
+                : `${sample}-0001`;
+              return (
+                <label key={k}>
+                  <strong className="bp-field-title">{label}</strong>
+                  <input className="bp-input" value={form[k] || ''} onChange={(e) => set(k, e.target.value)} placeholder={`${short}/${currentFyLabel()}/`} />
+                  <span style={{ fontSize: 11, color: 'var(--bp-muted)' }}>Next number example: {preview}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
 
-          <button type="submit" className="bp-btn bp-btn-primary" style={{ gridColumn: '1 / -1' }} disabled={busy}>
+        <div className="bp-card bp-settings-submit">
+          <button type="submit" className="bp-btn bp-btn-primary" disabled={busy}>
             {busy ? 'Submitting…' : 'Submit for Approval'}
           </button>
-          {msg && <p style={{ color: 'var(--bp-green)', gridColumn: '1 / -1' }}>{msg}</p>}
-          {err && <p style={{ color: 'var(--bp-red)', gridColumn: '1 / -1' }}>{err}</p>}
-        </form>
-      </div>
+          {msg && <p className="bp-alert bp-alert-success">{msg}</p>}
+          {err && <p className="bp-alert bp-alert-error">{err}</p>}
+        </div>
+      </form>
     </div>
   );
 }

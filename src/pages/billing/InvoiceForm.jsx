@@ -68,7 +68,6 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const [partyId, setPartyId] = useState('');
   const [party, setParty] = useState(null);
   const [inter, setInter] = useState(false);
-  const [interLocked, setInterLocked] = useState(false);
   const [documentDate, setDocumentDate] = useState(new Date().toISOString().slice(0, 10));
   const [placeOfSupply, setPlaceOfSupply] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
@@ -173,7 +172,6 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     const p = await api(`/billing/parties/${pid}`);
     setParty(p);
     setPlaceOfSupply(''); // invoice-specific — do not copy from party master
-    setInterLocked(false); // only the Place of Supply dropdown locks the checkbox
     if (p.state_code && profile?.state_code) {
       setInter(p.state_code !== profile.state_code);
     }
@@ -199,6 +197,8 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       </div>
 
       <div className="bp-card" style={{ marginBottom: 14 }}>
+        <h3 style={{ marginTop: 0, marginBottom: 2, color: 'var(--bp-navy)' }}>Invoice Details</h3>
+        <p className="bp-section-desc" style={{ marginBottom: 14 }}>Party, dates and tax settings for this document.</p>
         <form className="bp-form two">
           <label>
             Party
@@ -220,14 +220,15 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
               onChange={(code, name) => {
                 setPlaceOfSupply(name);
                 if (code && profile?.state_code) {
-                  const different = code !== profile.state_code;
-                  setInter(different);
-                  setInterLocked(different);
-                } else {
-                  setInterLocked(false);
+                  setInter(code !== profile.state_code);
                 }
               }}
             />
+            {taxesEnabled && !rcm && placeOfSupply && (
+              <span className={`bp-tax-type-hint ${inter ? 'inter' : 'intra'}`}>
+                {inter ? 'Inter-state — IGST applies' : 'Intra-state — CGST + SGST applies'}
+              </span>
+            )}
           </label>
           <label>
             Payment Terms
@@ -256,66 +257,60 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
               Edit Allowed — save once to apply corrections. Unlock clears after save.
             </p>
           )}
-          {showRcmCheckbox(profile) && ['tax_invoice', 'debit_note', 'credit_note'].includes(docType) && (
-            <label style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
-              <input type="checkbox" checked={rcm} onChange={(e) => setRcm(e.target.checked)} />
-              Supply Under Reverse Charge?
-            </label>
-          )}
-          <label style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={!inter}
-              onChange={(e) => setInter(!e.target.checked)}
-              disabled={!taxesEnabled || rcm || interLocked}
-            />
-            Intra-state (SGST + CGST)
-            {interLocked && <span style={{ fontSize: 11, color: 'var(--bp-muted)' }}>(auto-detected from Place of Supply — locked, this is inter-state — IGST)</span>}
-          </label>
-          {tdsTcsApplicable && (
-            <div style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 16, marginTop: 4 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={taxDeductionType === 'tds'}
-                  onChange={(e) => { setTaxDeductionType(e.target.checked ? 'tds' : ''); setTdsTcsSectionId(''); }}
-                />
-                TDS
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={taxDeductionType === 'tcs'}
-                  onChange={(e) => { setTaxDeductionType(e.target.checked ? 'tcs' : ''); setTdsTcsSectionId(''); }}
-                />
-                TCS
-              </label>
-              {taxDeductionType && (
+          {((showRcmCheckbox(profile) && ['tax_invoice', 'debit_note', 'credit_note'].includes(docType)) || tdsTcsApplicable) && (
+            <div className="bp-tax-options" style={{ gridColumn: '1 / -1' }}>
+              {showRcmCheckbox(profile) && ['tax_invoice', 'debit_note', 'credit_note'].includes(docType) && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={rcm} onChange={(e) => setRcm(e.target.checked)} />
+                  Supply Under Reverse Charge?
+                </label>
+              )}
+              {tdsTcsApplicable && (
                 <>
-                  <label>
-                    {taxDeductionType === 'tds' ? 'TDS' : 'TCS'} Section
-                    <select
-                      className="bp-select"
-                      value={tdsTcsSectionId}
-                      onChange={(e) => setTdsTcsSectionId(e.target.value)}
-                      required
-                    >
-                      <option value="">Select section…</option>
-                      {activeSections.map((s) => (
-                        <option key={s.id} value={s.id}>{s.code} — {s.description}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Rate (%)
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <input
-                      className="bp-input"
-                      style={{ width: 90 }}
-                      value={selectedSection ? Number(selectedSection.rate).toFixed(2) : ''}
-                      readOnly
-                      disabled
+                      type="checkbox"
+                      checked={taxDeductionType === 'tds'}
+                      onChange={(e) => { setTaxDeductionType(e.target.checked ? 'tds' : ''); setTdsTcsSectionId(''); }}
                     />
+                    TDS
                   </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={taxDeductionType === 'tcs'}
+                      onChange={(e) => { setTaxDeductionType(e.target.checked ? 'tcs' : ''); setTdsTcsSectionId(''); }}
+                    />
+                    TCS
+                  </label>
+                  {taxDeductionType && (
+                    <>
+                      <label style={{ marginBottom: 0 }}>
+                        {taxDeductionType === 'tds' ? 'TDS' : 'TCS'} Section
+                        <select
+                          className="bp-select"
+                          value={tdsTcsSectionId}
+                          onChange={(e) => setTdsTcsSectionId(e.target.value)}
+                          required
+                        >
+                          <option value="">Select section…</option>
+                          {activeSections.map((s) => (
+                            <option key={s.id} value={s.id}>{s.code} — {s.description}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ marginBottom: 0 }}>
+                        Rate (%)
+                        <input
+                          className="bp-input"
+                          style={{ width: 90 }}
+                          value={selectedSection ? Number(selectedSection.rate).toFixed(2) : ''}
+                          readOnly
+                          disabled
+                        />
+                      </label>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -333,7 +328,9 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         <div className="bp-line-row" style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 700 }}>
           <span>Particulars</span>
           {hsnEnabled && <span>HSN/SAC</span>}
-          <span>Qty</span><span>Rate</span><span>Disc%</span>
+          <span>Qty <span className="bp-required">*</span></span>
+          <span>Rate <span className="bp-required">*</span></span>
+          <span>Disc% <span className="bp-required">*</span></span>
           {taxesEnabled && <span>GST%</span>}
           <span>Unit</span><span />
         </div>
@@ -347,9 +344,9 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                 placeholder="Search HSN / SAC"
               />
             )}
-            <input className="bp-input" type="number" value={l.qty} onChange={(e) => setLine(idx, 'qty', +e.target.value)} />
-            <input className="bp-input" type="number" value={l.rate} onChange={(e) => setLine(idx, 'rate', +e.target.value)} />
-            <input className="bp-input" type="number" value={l.discount_percent} onChange={(e) => setLine(idx, 'discount_percent', +e.target.value)} />
+            <input className="bp-input" type="number" required value={l.qty} onChange={(e) => setLine(idx, 'qty', +e.target.value)} />
+            <input className="bp-input" type="number" required value={l.rate} onChange={(e) => setLine(idx, 'rate', +e.target.value)} />
+            <input className="bp-input" type="number" required value={l.discount_percent} onChange={(e) => setLine(idx, 'discount_percent', +e.target.value)} />
             {taxesEnabled && (
               <GstRateSelect
                 value={l.gst_rate}
@@ -358,7 +355,20 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
               />
             )}
             <input className="bp-input" value={l.unit} onChange={(e) => setLine(idx, 'unit', e.target.value)} />
-            <button type="button" className="bp-btn bp-btn-danger" style={{ padding: '6px 8px' }} onClick={() => setLines((L) => L.filter((_, i) => i !== idx) || [emptyLine()])}>×</button>
+            <button
+              type="button"
+              className="bp-line-remove"
+              aria-label="Remove item"
+              title="Remove item"
+              onClick={() => setLines((L) => (L.length > 1 ? L.filter((_, i) => i !== idx) : [emptyLine()]))}
+            >
+              <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 6h12" />
+                <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6" />
+                <path d="M5.5 6l.6 9.2A1.5 1.5 0 0 0 7.6 16.5h4.8a1.5 1.5 0 0 0 1.5-1.3L14.5 6" />
+                <path d="M8.3 9v4.5M11.7 9v4.5" />
+              </svg>
+            </button>
           </div>
         ))}
         <button type="button" className="bp-btn bp-btn-outline" onClick={() => setLines((L) => [...L, emptyLine()])}>+ Add Item</button>
