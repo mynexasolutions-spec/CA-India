@@ -9,8 +9,15 @@ export default function MobileDrawer({ open, onClose }) {
 
   return (
     <>
-      <div className={`scrim ${open ? 'open' : ''}`} onClick={onClose} />
-      <div className={`mobile-drawer ${open ? 'open' : ''}`} id="mobileDrawer">
+      <div className={`scrim ${open ? 'open' : ''}`} onClick={onClose} aria-hidden="true" />
+      <div
+        className={`mobile-drawer ${open ? 'open' : ''}`}
+        id="mobileDrawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile navigation"
+        aria-hidden={!open}
+      >
         <div className="mobile-drawer-head">
           <div className="mobile-drawer-brand">
             <img src="/assets/ca-india-logo.png" alt="CA India logo" />
@@ -20,7 +27,7 @@ export default function MobileDrawer({ open, onClose }) {
             </div>
           </div>
           <button className="mobile-close" aria-label="Close menu" onClick={onClose}>
-            ✕
+            &times;
           </button>
         </div>
         <ul>
@@ -36,7 +43,7 @@ export default function MobileDrawer({ open, onClose }) {
           </li>
           <li>
             <button className="mobile-acc-trigger" type="button" onClick={() => toggle('services')}>
-              Our Services <span className="plus">{openSub === 'services' ? '−' : '+'}</span>
+              Our Services <span className="plus">{openSub === 'services' ? '-' : '+'}</span>
             </button>
             <ul className={`mobile-sub ${openSub === 'services' ? 'open' : ''}`}>
               {SERVICES.map((item) => (
@@ -50,7 +57,7 @@ export default function MobileDrawer({ open, onClose }) {
           </li>
           <li>
             <button className="mobile-acc-trigger" type="button" onClick={() => toggle('reg')}>
-              Business Registration <span className="plus">{openSub === 'reg' ? '−' : '+'}</span>
+              Business Registration <span className="plus">{openSub === 'reg' ? '-' : '+'}</span>
             </button>
             <ul className={`mobile-sub ${openSub === 'reg' ? 'open' : ''}`}>
               {REGISTRATIONS.map((item) => (
@@ -79,11 +86,8 @@ export default function MobileDrawer({ open, onClose }) {
           </li>
         </ul>
         <div className="mobile-cta">
-          <Link to="/admin/login" className="btn btn-navy" onClick={onClose}>
-            Admin Login
-          </Link>
-          <Link to="/portal/login" className="btn btn-gold" onClick={onClose}>
-            Client Login
+          <Link to="/login" className="btn btn-gold" onClick={onClose}>
+            Login
           </Link>
         </div>
       </div>

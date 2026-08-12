@@ -88,13 +88,11 @@ export default function Header({ onOpenMenu }) {
         </nav>
 
         <div className="header-cta">
-          <Link to="/admin/login" className="btn btn-navy">
-            <span className="txt">Admin Login</span>
-            <span className="mobile-icon-only">🛡️</span>
-          </Link>
-          <Link to="/portal/login" className="btn btn-gold">
-            <span className="txt">Client Login</span>
-            <span className="mobile-icon-only">👤</span>
+          <Link to="/login" className="btn btn-gold">
+            <span className="txt">Login</span>
+            <svg className="mobile-icon-only" aria-hidden="true" viewBox="0 0 24 24" width="17" height="17">
+              <path d="M7 10V7a5 5 0 0 1 10 0v3m-9 0h8a2 2 0 0 1 2 2v7H6v-7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </Link>
           <button className="menu-toggle" aria-label="Open menu" aria-expanded="false" onClick={onOpenMenu}>
             <span />

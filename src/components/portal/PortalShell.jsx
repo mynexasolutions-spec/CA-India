@@ -26,11 +26,9 @@ const ADMIN_BILLING_NAV = [
 
 export function RequireAuth({ roles }) {
   const { user, loading } = useAuth();
-  const loc = window.location.pathname;
   if (loading) return <div className="section container">Loading…</div>;
   if (!user) {
-    const login = loc.startsWith('/admin') ? '/admin/login' : '/portal/login';
-    return <Navigate to={login} replace />;
+    return <Navigate to="/login" replace />;
   }
   if (roles && !roles.includes(user.role)) {
     if (['super_admin', 'admin', 'staff'].includes(user.role)) return <Navigate to="/admin" replace />;
@@ -136,7 +134,7 @@ export function ClientPortalLayout() {
       brand="CLIENT PORTAL"
       title="Client Portal"
       userLabel={user?.client_profile?.business_name || user?.name}
-      loginPath="/portal/login"
+      loginPath="/login"
       nav={nav}
       extraTopRight={
         isDashboard ? null : (
@@ -198,7 +196,7 @@ export function AdminPortalLayout() {
       brand=""
       title="Admin Portal"
       userLabel={`${user?.name || ''} · ${user?.role || ''}`}
-      loginPath="/admin/login"
+      loginPath="/login"
       nav={[
         { to: '/admin', label: 'Overview', end: true },
         { to: '/admin/clients', label: 'Clients' },
@@ -225,7 +223,7 @@ export function AdminBillingLayout() {
       brand="BILLING SECTION"
       title="Billing"
       userLabel={`${user?.name || ''} · ${user?.role || ''}`}
-      loginPath="/admin/login"
+      loginPath="/login"
       nav={ADMIN_BILLING_NAV}
       footLinks={[{ to: '/admin', label: '← Back to Admin' }]}
     />

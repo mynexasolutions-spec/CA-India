@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
     timer.current = setTimeout(() => {
       logout().then(() => {
         if (window.location.pathname.startsWith('/portal') || window.location.pathname.startsWith('/admin')) {
-          window.location.href = '/portal/login?timeout=1';
+          window.location.href = '/login?timeout=1';
         }
       });
     }, IDLE_MS);
@@ -66,10 +66,10 @@ export function AuthProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  const login = useCallback(async (email, password, portal = 'admin') => {
+  const login = useCallback(async (email, password, portal = null) => {
     const data = await api('/auth/login', {
       method: 'POST',
-      body: { email, password, portal },
+      body: portal ? { email, password, portal } : { email, password },
     });
     setAuthToken(data.token);
     setUser(data.user);

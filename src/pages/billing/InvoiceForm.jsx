@@ -88,6 +88,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const activeSections = taxDeductionType === 'tds' ? tdsSections : taxDeductionType === 'tcs' ? tcsSections : [];
   const selectedSection = activeSections.find((s) => String(s.id) === String(tdsTcsSectionId));
   const tdsTcsRate = selectedSection ? Number(selectedSection.rate) : 0;
+  const requireHsn = hsnEnabled;
 
   const totals = useMemo(
     () => calcLocal(lines, inter, taxesEnabled && !rcm, tdsTcsApplicable && taxDeductionType ? { type: taxDeductionType, rate: tdsTcsRate } : null),
@@ -179,6 +180,38 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
 
   const setLine = (idx, key, val) => setLines((L) => L.map((x, i) => (i === idx ? { ...x, [key]: val } : x)));
 
+  const validateBeforeSave = () => {
+    if (!partyId) return 'Please select a party.';
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      const rowNo = i + 1;
+
+      if (!String(line.description || '').trim()) {
+        return `Line ${rowNo}: Particulars is required.`;
+      }
+
+      if (requireHsn && !String(line.hsn_sac || '').trim()) {
+        return `Line ${rowNo}: HSN/SAC is required.`;
+      }
+
+      if (Number(line.qty) <= 0) {
+        return `Line ${rowNo}: Qty must be greater than 0.`;
+      }
+
+      if (Number(line.rate) < 0) {
+        return `Line ${rowNo}: Rate cannot be negative.`;
+      }
+
+      const discount = Number(line.discount_percent || 0);
+      if (Number.isNaN(discount) || discount < 0 || discount > 100) {
+        return `Line ${rowNo}: Discount must be between 0 and 100.`;
+      }
+    }
+
+    return '';
+  };
+
   if (isDocTypeDisabled(profile, docType)) {
     return (
       <div className="bp-card">
@@ -201,7 +234,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         <p className="bp-section-desc" style={{ marginBottom: 14 }}>Party, dates and tax settings for this document.</p>
         <form className="bp-form two">
           <label>
-            Party
+            Party <span className="bp-required">*</span>
             <select className="bp-select" value={partyId} onChange={(e) => onParty(e.target.value)} required>
               <option value="">Select party…</option>
               {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -326,8 +359,8 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       <div className="bp-card bp-line-grid">
         <h3 style={{ marginTop: 0 }}>Item Details</h3>
         <div className="bp-line-row" style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 700 }}>
-          <span>Particulars</span>
-          {hsnEnabled && <span>HSN/SAC</span>}
+          <span>Particulars <span className="bp-required">*</span></span>
+          {hsnEnabled && <span>HSN/SAC <span className="bp-required">*</span></span>}
           <span>Qty <span className="bp-required">*</span></span>
           <span>Rate <span className="bp-required">*</span></span>
           <span>Disc% <span className="bp-required">*</span></span>
@@ -336,12 +369,13 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         </div>
         {lines.map((l, idx) => (
           <div className="bp-line-row" key={idx}>
-            <input className="bp-input" value={l.description} onChange={(e) => setLine(idx, 'description', e.target.value)} placeholder="Description" />
+            <input className="bp-input" value={l.description} onChange={(e) => setLine(idx, 'description', e.target.value)} placeholder="Description" required />
             {hsnEnabled && (
               <HsnSacSelect
                 value={l.hsn_sac}
                 onChange={(code) => setLine(idx, 'hsn_sac', code)}
                 placeholder="Search HSN / SAC"
+                required
               />
             )}
             <input className="bp-input" type="number" required value={l.qty} onChange={(e) => setLine(idx, 'qty', +e.target.value)} />
@@ -381,6 +415,11 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             className="bp-btn bp-btn-outline"
             disabled={busy}
             onClick={async () => {
+              const validationError = validateBeforeSave();
+              if (validationError) {
+                setMsg(validationError);
+                return;
+              }
               setBusy(true); setMsg('');
               try {
                 const body = { ...payload(), status: unlockedEdit ? docStatus : 'draft' };
@@ -404,6 +443,11 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             className="bp-btn bp-btn-green"
             disabled={busy}
             onClick={async () => {
+              const validationError = validateBeforeSave();
+              if (validationError) {
+                setMsg(validationError);
+                return;
+              }
               setBusy(true); setMsg('');
               try {
                 let doc;
@@ -429,8 +473,10 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
           {[
             ['Discount', totals.discount],
             ['Taxable', totals.taxable],
-            ...(taxesEnabled && !rcm
-              ? [['GST', inter ? totals.igst : totals.cgst + totals.sgst]]
+            ...(taxesEnabled
+              ? (inter
+                ? [['IGST', rcm ? 0 : totals.igst]]
+                : [['CGST', rcm ? 0 : totals.cgst], ['SGST', rcm ? 0 : totals.sgst]])
               : []),
             ...(tdsTcsApplicable && taxDeductionType
               ? [

@@ -105,7 +105,7 @@ td, th { vertical-align: top; }
 
 /* ===== Line items ===== */
 .items-wrap { margin-top: 14px; border: 1.5px solid #1e40af; border-radius: 10px; }
-.items { width: 100%; }
+.items { width: 100%; table-layout: fixed; }
 .items th {
   background: #1e40af;
   color: #ffffff;
@@ -127,14 +127,16 @@ td, th { vertical-align: top; }
   font-size: 9.8px;
   color: #334155;
   vertical-align: top;
+  text-align: center;
+  word-break: break-word;
 }
 .items tr { page-break-inside: avoid; }
 .items tr:last-child td { border-bottom: 0; }
 .items td:last-child { border-right: 0; }
-.items .amt { color: #0f172a; font-weight: bold; text-align: right; }
+.items .amt { color: #0f172a; font-weight: bold; text-align: center; }
 .items .qty-num { color: #0f172a; font-weight: bold; }
-.item-title { font-weight: bold; color: #0f172a; font-size: 10.3px; }
-.item-sub { color: #64748b; font-size: 8.3px; margin-top: 1px; }
+.item-title { font-weight: bold; color: #0f172a; font-size: 10.3px; text-align: center; }
+.item-sub { color: #64748b; font-size: 8.3px; margin-top: 1px; text-align: center; }
 
 /* ===== Summary: floated columns so cards can flow page by page ===== */
 .summary-flow { margin-top: 14px; }
@@ -156,9 +158,9 @@ td, th { vertical-align: top; }
 .terms-list li { margin-bottom: 1px; }
 
 .totals-cell { border: 1.2px solid #1e40af; border-radius: 11px; padding: 0; vertical-align: top; page-break-inside: avoid; }
-.totals td { padding: 7px 11px; font-size: 10.3px; border-bottom: 1px solid #e2e8f0; }
+.totals td { padding: 7px 11px; font-size: 10.3px; border-bottom: 1px solid #e2e8f0; font-weight: normal; }
 .totals .lab { color: #475569; }
-.totals .val { text-align: right; font-weight: bold; color: #0f172a; white-space: nowrap; }
+.totals .val { text-align: right; color: #0f172a; white-space: nowrap; }
 .totals tr:last-child td { border-bottom: 0; }
 .grand-row td {
   background: #dcfce7;
@@ -172,9 +174,9 @@ td, th { vertical-align: top; }
 .grand-row td:first-child { border-bottom-left-radius: 9px; }
 .grand-row td:last-child { border-bottom-right-radius: 9px; }
 .grand-row .amt { text-align: right; color: #0f172a; font-size: 13px; }
-.tds-row .lab, .tds-row .val { color: #b91c1c; font-weight: bold; }
-.tcs-row .lab, .tcs-row .val { color: #15803d; font-weight: bold; }
-.post-gst-row .lab, .post-gst-row .val { color: #1e40af; font-weight: bold; }
+.tds-row .lab, .tds-row .val { color: #b91c1c; }
+.tcs-row .lab, .tcs-row .val { color: #15803d; }
+.post-gst-row .lab, .post-gst-row .val { color: #1e40af; }
 
 .rcm-stamp {
   margin-top: 12px;
@@ -220,7 +222,7 @@ td, th { vertical-align: top; }
   if ($doc->type === 'tax_invoice' && ! $p->has_gst) {
     $docTitle = 'BILL / RECEIPT';
   }
-  $showTax = $p->has_gst && $p->dealer_type !== 'composition' && ! $doc->is_reverse_charge;
+  $showTax = $p->has_gst && $p->dealer_type !== 'composition';
   $isRcm = (bool) $doc->is_reverse_charge;
   $grand = $doc->grand_total ?: $doc->total_amount;
   $cgstRate = null;
@@ -251,6 +253,10 @@ td, th { vertical-align: top; }
     if ($code) return 'State Code: '.$code;
     return '';
   };
+  $billStateLine = $stateLine($c?->state, $c?->state_code);
+  $shipStateLine = $doc->is_inter_state && filled($doc->place_of_supply)
+    ? $doc->place_of_supply
+    : $billStateLine;
   $pos = trim((string) ($doc->place_of_supply ?: ''));
   if ($pos === '') {
     $posLine = '—';
@@ -333,23 +339,21 @@ td, th { vertical-align: top; }
     $wordsDisplay = 'Rupees '.$core.' Only.';
   }
 
-  $colSno = 5;
+  $colSno = 6;
   $colHsn = ($showTax || $p->has_gst) ? 8 : 0;
-  $colQty = 7;
-  $colRate = 10;
+  $colQty = 8;
+  $colRate = 9;
   $colDisc = 9;
-  $colTaxable = 11;
-  // Budget for the tax column(s): CGST+SGST split this in half each; a single IGST
-  // column only needs half the budget, with the rest handed back to Description.
-  $colTaxBudget = $showTax ? 18 : 0;
-  $colTax = ($showTax && $doc->is_inter_state) ? $colTaxBudget / 2 : $colTaxBudget;
-  $colTotal = 11;
+  $colTaxable = 12;
+  $colTax = $showTax ? 10 : 0;
+  $colTotal = 10;
   $colDesc = 100 - $colSno - $colHsn - $colQty - $colRate - $colDisc - $colTaxable - $colTax - $colTotal;
+  $showSplitTax = $showTax && ! $doc->is_inter_state;
 
   $roundOffVal = (float) $doc->round_off;
   $roundOffDisplay = ($roundOffVal < 0 ? '- ' : '').'&#8377; '.number_format(abs($roundOffVal), 2);
 
-  $totalCols = 6 + ($colHsn ? 1 : 0) + ($showTax ? ($doc->is_inter_state ? 1 : 2) : 0);
+  $totalCols = 6 + ($colHsn ? 1 : 0) + ($showTax ? 1 : 0);
 ?>
 
 <div class="frame">
@@ -458,7 +462,7 @@ td, th { vertical-align: top; }
             <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($c->name ?: '—'); ?></td></tr>
             <?php if($billAddr): ?><tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($billAddr); ?></td></tr><?php endif; ?>
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($c->gstin ?: 'NO GSTIN'); ?></td></tr>
-            <?php if($c->state || $c->state_code): ?><tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($stateLine($c->state, $c->state_code)); ?></td></tr><?php endif; ?>
+            <?php if($billStateLine): ?><tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($billStateLine); ?></td></tr><?php endif; ?>
             <?php if($c->phone): ?><tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($c->phone); ?></td></tr><?php endif; ?>
           </table>
         <?php else: ?>
@@ -478,7 +482,7 @@ td, th { vertical-align: top; }
             <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($c->name ?: '—'); ?></td></tr>
             <?php if($shipAddr): ?><tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($shipAddr); ?></td></tr><?php endif; ?>
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($c->gstin ?: 'NO GSTIN'); ?></td></tr>
-            <?php if($c->state || $c->state_code): ?><tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($stateLine($c->state, $c->state_code)); ?></td></tr><?php endif; ?>
+            <?php if($shipStateLine): ?><tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($shipStateLine); ?></td></tr><?php endif; ?>
             <?php if($c->phone): ?><tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val"><?php echo e($c->phone); ?></td></tr><?php endif; ?>
           </table>
         <?php else: ?>
@@ -505,11 +509,11 @@ td, th { vertical-align: top; }
       <th style="width:<?php echo e($colDisc); ?>%;">Discount<br>(&#8377;)</th>
       <th style="width:<?php echo e($colTaxable); ?>%;">Taxable Value<br>(&#8377;)</th>
       <?php if($showTax): ?>
-        <?php if($doc->is_inter_state): ?>
-        <th style="width:<?php echo e($colTax); ?>%;">IGST<br>(&#8377;)</th>
+        <?php if($showSplitTax): ?>
+      <th style="width:<?php echo e($colTax / 2); ?>%;">CGST<br>(&#8377;)</th>
+      <th style="width:<?php echo e($colTax / 2); ?>%;">SGST<br>(&#8377;)</th>
         <?php else: ?>
-        <th style="width:<?php echo e($colTax / 2); ?>%;">CGST<br>(&#8377;)</th>
-        <th style="width:<?php echo e($colTax / 2); ?>%;">SGST<br>(&#8377;)</th>
+      <th style="width:<?php echo e($colTax); ?>%;">IGST<br>(&#8377;)</th>
         <?php endif; ?>
       <?php endif; ?>
       <th style="width:<?php echo e($colTotal); ?>%;">Total<br>(&#8377;)</th>
@@ -519,13 +523,13 @@ td, th { vertical-align: top; }
     <?php $__empty_1 = true; $__currentLoopData = $doc->lineItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
       <?php [$title, $sub] = $splitDesc($item->description); ?>
       <tr>
-        <td class="center"><?php echo e($i + 1); ?></td>
+        <td class="center"><strong><?php echo e($i + 1); ?></strong></td>
         <td>
           <div class="item-title"><?php echo e($title); ?></div>
           <?php if($sub): ?><div class="item-sub"><?php echo e($sub); ?></div><?php endif; ?>
         </td>
         <?php if($colHsn): ?>
-        <td class="center"><?php echo e($item->hsn_sac ?: '—'); ?></td>
+        <td class="center"><strong><?php echo e($item->hsn_sac ?: '—'); ?></strong></td>
         <?php endif; ?>
         <td class="center">
           <span class="qty-num"><?php echo e(number_format((float) $item->qty, 2)); ?></span>
@@ -535,11 +539,11 @@ td, th { vertical-align: top; }
         <td class="amt"><?php echo e(number_format((float) $item->discount_amount, 2)); ?></td>
         <td class="amt"><?php echo e(number_format((float) $item->taxable_amount, 2)); ?></td>
         <?php if($showTax): ?>
-          <?php if($doc->is_inter_state): ?>
-          <td class="amt"><?php echo e(number_format((float) $item->igst_amount, 2)); ?></td>
+          <?php if($showSplitTax): ?>
+        <td class="amt"><?php echo e(number_format((float) $item->cgst_amount, 2)); ?></td>
+        <td class="amt"><?php echo e(number_format((float) $item->sgst_amount, 2)); ?></td>
           <?php else: ?>
-          <td class="amt"><?php echo e(number_format((float) $item->cgst_amount, 2)); ?></td>
-          <td class="amt"><?php echo e(number_format((float) $item->sgst_amount, 2)); ?></td>
+        <td class="amt"><?php echo e(number_format((float) $item->igst_amount, 2)); ?></td>
           <?php endif; ?>
         <?php endif; ?>
         <td class="amt"><?php echo e(number_format((float) $item->total_amount, 2)); ?></td>
@@ -601,23 +605,23 @@ td, th { vertical-align: top; }
             <td class="val">&#8377; <?php echo e(number_format((float) $doc->taxable_amount, 2)); ?></td>
           </tr>
           <?php if($showTax): ?>
-            <?php if($doc->is_inter_state): ?>
+            <?php if($showSplitTax): ?>
             <tr>
-              <td class="lab">GST<?php echo e($igstRate ? ' ('.$fmtRate($igstRate).'%)' : ''); ?></td>
-              <td class="val">&#8377; <?php echo e(number_format((float) $doc->igst_amount, 2)); ?></td>
+              <td class="lab">CGST<?php echo e($cgstRate ? ' ('. $fmtRate($cgstRate).'%)' : ''); ?></td>
+              <td class="val">&#8377; <?php echo e(number_format((float) $doc->cgst_amount, 2)); ?></td>
+            </tr>
+            <tr>
+              <td class="lab">SGST<?php echo e($sgstRate ? ' ('. $fmtRate($sgstRate).'%)' : ''); ?></td>
+              <td class="val">&#8377; <?php echo e(number_format((float) $doc->sgst_amount, 2)); ?></td>
             </tr>
             <?php else: ?>
             <tr>
-              <td class="lab">GST<?php echo e(($cgstRate || $sgstRate) ? ' ('.$fmtRate((float) $cgstRate + (float) $sgstRate).'%)' : ''); ?></td>
-              <td class="val">&#8377; <?php echo e(number_format((float) $doc->cgst_amount + (float) $doc->sgst_amount, 2)); ?></td>
+              <td class="lab">IGST<?php echo e($igstRate ? ' ('.$fmtRate($igstRate).'%)' : ''); ?></td>
+              <td class="val">&#8377; <?php echo e(number_format((float) $doc->igst_amount, 2)); ?></td>
             </tr>
             <?php endif; ?>
           <?php endif; ?>
           <?php if($doc->tax_deduction_type === 'tds' || $doc->tax_deduction_type === 'tcs'): ?>
-            <tr class="post-gst-row">
-              <td class="lab">Total Value (Post GST)</td>
-              <td class="val">&#8377; <?php echo e(number_format((float) $doc->total_amount, 2)); ?></td>
-            </tr>
             <?php if($doc->tax_deduction_type === 'tds'): ?>
             <tr class="tds-row">
               <td class="lab">Less: TDS<?php echo e($doc->tds_tcs_rate ? ' ('.$fmtRate($doc->tds_tcs_rate).'% u/s '.$doc->tdsTcsSection?->code.')' : ''); ?></td>

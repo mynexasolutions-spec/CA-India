@@ -27,12 +27,15 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['email' => ['Invalid credentials.']]);
         }
 
-        $portal = $data['portal'] ?? 'admin';
-        if ($portal === 'admin' && !$user->isStaff()) {
-            throw ValidationException::withMessages(['email' => ['Not authorized for admin portal.']]);
+        $portal = $data['portal'] ?? null;
+        if (! $portal) {
+            $portal = $user->isClient() ? 'client' : 'admin';
+        }
+        if ($portal === 'admin' && ! $user->isStaff()) {
+            throw ValidationException::withMessages(['email' => ['This account is not authorized for the admin portal.']]);
         }
         if ($portal === 'client' && ! $user->isClient()) {
-            throw ValidationException::withMessages(['email' => ['Not authorized for client portal.']]);
+            throw ValidationException::withMessages(['email' => ['This account is not authorized for the client portal.']]);
         }
 
         $user->update(['last_login_at' => now()]);

@@ -37,3 +37,14 @@
   .cp-form-shell { grid-template-columns: 1fr; }
   .cp-grid { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 640px) {
+  .ao-title { font-size: 19px; }
+  .ao-stat { padding: 18px 14px; }
+  .ao-stat-num { font-size: 34px; }
+  .ao-add-card { align-items: flex-start; gap: 14px; padding: 18px; }
+  .ao-add-icon { font-size: 28px; }
+  .cp-tabs { flex-direction: row; overflow-x: auto; padding-bottom: 4px; }
+  .cp-tabs button { flex: 0 0 auto; }
+  .cp-panel { padding: 14px; }
+}

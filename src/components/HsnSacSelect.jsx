@@ -13,6 +13,8 @@ export default function HsnSacSelect({
   placeholder = 'Search code or description…',
   disabled = false,
   className = 'bp-input',
+  required = false,
+  name,
 }) {
   const [query, setQuery] = useState(value || '');
   const [options, setOptions] = useState([]);
@@ -84,8 +86,11 @@ export default function HsnSacSelect({
     <div className="hsn-select" ref={wrapRef}>
       <input
         className={className}
+        name={name}
         value={query}
         disabled={disabled}
+        required={required}
+        aria-required={required || undefined}
         placeholder={placeholder}
         autoComplete="off"
         onFocus={() => setOpen(true)}
@@ -104,7 +109,10 @@ export default function HsnSacSelect({
               key={`${row.type}-${row.code}`}
               className={`hsn-select-item${i === highlight ? ' active' : ''}`}
               onMouseEnter={() => setHighlight(i)}
-              onClick={() => pick(row)}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                pick(row);
+              }}
             >
               <span className="hsn-select-code">{row.code}</span>
               <span className="hsn-select-tag">{row.type === 'sac' ? 'SAC' : 'HSN'}</span>

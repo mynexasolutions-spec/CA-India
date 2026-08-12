@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(TdsTcsSectionSeeder::class);
+        $this->call(HsnSacCodeSeeder::class);
 
         $admin = User::create([
             'name' => 'A B Khan',
@@ -139,7 +140,7 @@ class DatabaseSeeder extends Seeder
         Faq::insert([
             ['question' => 'Where is your office located?', 'answer' => 'We are based in Nerul, Navi Mumbai (Sector 23).', 'page' => 'home', 'sort_order' => 1, 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()],
             ['question' => 'Do you handle GST registration and returns?', 'answer' => 'Yes — registration, monthly/quarterly returns, and advisory.', 'page' => 'home', 'sort_order' => 2, 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()],
-            ['question' => 'How do I access the Client Portal?', 'answer' => 'Use Client Login from the header. Credentials are issued after onboarding.', 'page' => 'home', 'sort_order' => 3, 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['question' => 'How do I access the Client Portal?', 'answer' => 'Use the Login button in the header. Your account role will open the correct dashboard automatically. Credentials are issued after onboarding.', 'page' => 'home', 'sort_order' => 3, 'is_active' => 1, 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }

@@ -31,8 +31,8 @@ export default function BillingManagement() {
             Portal. Designed for SMEs in Navi Mumbai and beyond.
           </p>
           <div className="hero-actions">
-            <Link to="/portal/login" className="btn btn-gold">
-              Client Login
+            <Link to="/login" className="btn btn-gold">
+              Login
             </Link>
             <Link to="/contact" className="btn btn-outline">
               Book a Demo
@@ -66,7 +66,7 @@ export default function BillingManagement() {
               <li>Proforma Invoice</li>
               <li>Delivery Challan</li>
             </ol>
-            <Link to="/portal/login" className="btn btn-navy" style={{ marginTop: 16 }}>
+            <Link to="/login" className="btn btn-navy" style={{ marginTop: 16 }}>
               Access Billing Workspace
             </Link>
           </div>

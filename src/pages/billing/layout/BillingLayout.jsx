@@ -39,7 +39,7 @@ export default function BillingLayout({ title = 'Client Billing Portal' }) {
           style={{ margin: 12 }}
           onClick={async () => {
             await logout();
-            navigate('/portal/login');
+            navigate('/login');
           }}
         >
           Logout

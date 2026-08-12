@@ -271,10 +271,14 @@ export default function InvoiceDetail() {
       <div className="bp-gst-box" style={{ maxWidth: 360, marginTop: 16, marginLeft: 'auto' }}>
         <div className="bp-gst-row"><span>Discount</span><strong>{money(doc.discount_total)}</strong></div>
         <div className="bp-gst-row"><span>Taxable</span><strong>{money(doc.taxable_amount)}</strong></div>
-        <div className="bp-gst-row">
-          <span>GST</span>
-          <strong>{money(doc.is_inter_state ? doc.igst_amount : Number(doc.cgst_amount) + Number(doc.sgst_amount))}</strong>
-        </div>
+        {doc.is_inter_state ? (
+          <div className="bp-gst-row"><span>IGST</span><strong>{money(doc.igst_amount)}</strong></div>
+        ) : (
+          <>
+            <div className="bp-gst-row"><span>CGST</span><strong>{money(doc.cgst_amount)}</strong></div>
+            <div className="bp-gst-row"><span>SGST</span><strong>{money(doc.sgst_amount)}</strong></div>
+          </>
+        )}
         {doc.tax_deduction_type ? (
           <>
             <div className="bp-gst-row"><span>Total Value (Post GST)</span><strong>{money(doc.total_amount)}</strong></div>

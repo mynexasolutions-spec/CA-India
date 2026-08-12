@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import PasswordField from '../../components/PasswordField';
 import Seo from '../../components/seo/Seo';
 
-export default function LoginPage({ portal = 'client' }) {
-  const isAdmin = portal === 'admin';
-  const { login } = useAuth();
+export default function LoginPage() {
+  const { login, user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [info, setInfo] = useState('');
+  const [info, setInfo] = useState(() => (
+    searchParams.get('timeout') === '1' ? 'Your session expired due to inactivity. Please sign in again.' : ''
+  ));
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState('login'); // login | forgot
 
@@ -26,8 +28,8 @@ export default function LoginPage({ portal = 'client' }) {
         const res = await api('/auth/forgot-password', { method: 'POST', body: { email } });
         setInfo(res.message || 'Check your email for reset instructions.');
       } else {
-        await login(email, password, portal);
-        if (isAdmin) navigate('/admin');
+        const user = await login(email, password);
+        if (['super_admin', 'admin', 'staff'].includes(user.role)) navigate('/admin');
         else navigate('/portal');
       }
     } catch (err) {
@@ -37,61 +39,82 @@ export default function LoginPage({ portal = 'client' }) {
     }
   };
 
+  if (!loading && user) {
+    const destination = ['super_admin', 'admin', 'staff'].includes(user.role) ? '/admin' : '/portal';
+    return <Navigate to={destination} replace />;
+  }
+
   return (
     <>
       <Seo
-        title={`${isAdmin ? 'Admin' : 'Client'} Login | A B KHAN & ASSOCIATES`}
-        path={isAdmin ? '/admin/login' : '/portal/login'}
+        title="Login | A B KHAN & ASSOCIATES"
+        path="/login"
       />
-      <section className="section" style={{ minHeight: '70vh', display: 'grid', placeItems: 'center' }}>
-        <div className="feature-card" style={{ width: '100%', maxWidth: 420, padding: 32 }}>
-          <p className="eyebrow">{isAdmin ? 'Admin Portal' : 'Client Portal'}</p>
-          <h1 style={{ fontSize: 26, marginTop: 0 }}>
-            {mode === 'forgot' ? 'Reset Password' : isAdmin ? 'Admin Login' : 'Client Login'}
-          </h1>
-          <p style={{ opacity: 0.8 }}>
-            {mode === 'forgot'
-              ? 'Enter your account email. We will send reset instructions.'
-              : 'Sign in with your credentials to continue.'}
-          </p>
-          <form onSubmit={onSubmit} style={{ display: 'grid', gap: 12 }}>
-            <label>
-              Email
-              <input
-                className="form-control"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="username"
-              />
-            </label>
-            {mode === 'login' && (
-              <PasswordField
-                label="Password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            )}
-            {error && <p style={{ color: 'crimson', margin: 0 }}>{error}</p>}
-            {info && <p style={{ color: 'green', margin: 0 }}>{info}</p>}
-            <button type="submit" className={`btn ${isAdmin ? 'btn-navy' : 'btn-gold'}`} disabled={busy}>
-              {busy ? 'Please wait…' : mode === 'forgot' ? 'Send Reset Link' : 'Sign In'}
-            </button>
-          </form>
-          <p style={{ marginTop: 16, fontSize: 14 }}>
-            <button type="button" style={{ color: 'inherit', textDecoration: 'underline' }} onClick={() => setMode(mode === 'forgot' ? 'login' : 'forgot')}>
-              {mode === 'forgot' ? 'Back to sign in' : 'Forgot password?'}
-            </button>
-            {' · '}
-            <Link to="/portal/reset-password">Have a reset token?</Link>
-            {' · '}
-            <Link to="/">Website</Link>
-            {' · '}
-            <Link to={isAdmin ? '/portal/login' : '/admin/login'}>{isAdmin ? 'Client Login' : 'Admin Login'}</Link>
-          </p>
+      <section className="login-page">
+        <div className="login-page__shell">
+          <div className="login-page__hero">
+            <div className="login-page__brand">
+              <img src="/assets/ca-india-logo.png" alt="CA India - A B KHAN & ASSOCIATES logo" />
+              <div>
+                <strong>A B KHAN &amp; ASSOCIATES</strong>
+                <span>Chartered Accountants</span>
+              </div>
+            </div>
+            <p className="eyebrow">Secure Access</p>
+            <h1>One login for client and admin access.</h1>
+            <p>
+              Sign in with your email and password. The portal detects your role automatically and sends you to the right dashboard.
+            </p>
+            <ul className="login-page__features">
+              <li>Role-aware routing to the correct dashboard</li>
+              <li>Encrypted, secure sign-in session</li>
+              <li>Billing, invoices, reports &amp; compliance records</li>
+            </ul>
+          </div>
+          <div className="login-page__card">
+            <p className="eyebrow">Account Login</p>
+            <h2>{mode === 'forgot' ? 'Reset Password' : 'Sign in'}</h2>
+            <p className="login-page__copy">
+              {mode === 'forgot'
+                ? 'Enter your account email and we will send reset instructions.'
+                : 'Client and admin accounts share this single sign-in form.'}
+            </p>
+            <form onSubmit={onSubmit} className="login-page__form">
+              <label>
+                Email
+                <input
+                  className="form-control"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                />
+              </label>
+              {mode === 'login' && (
+                <PasswordField
+                  label="Password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+              )}
+              {error && <p className="login-page__error" role="alert">{error}</p>}
+              {info && <p className="login-page__info">{info}</p>}
+              <button type="submit" className="btn btn-gold login-page__submit" disabled={busy}>
+                {busy ? 'Please wait…' : mode === 'forgot' ? 'Send Reset Link' : 'Sign In'}
+              </button>
+            </form>
+            <p className="login-page__links">
+              <button type="button" onClick={() => setMode(mode === 'forgot' ? 'login' : 'forgot')}>
+                {mode === 'forgot' ? 'Back to sign in' : 'Forgot password?'}
+              </button>
+              <Link to="/portal/reset-password">Have a reset token?</Link>
+              <Link to="/">Website</Link>
+            </p>
+          </div>
         </div>
       </section>
     </>

@@ -82,8 +82,9 @@ export default function App() {
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/cookie-policy" element={<CookiePolicy />} />
-        <Route path="/portal/login" element={<LoginPage portal="client" />} />
-        <Route path="/admin/login" element={<LoginPage portal="admin" />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/portal/login" element={<Navigate to="/login" replace />} />
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
         <Route path="/portal/reset-password" element={<ResetPasswordPage />} />
 
         <Route path="/services/accounting" element={<Page path="/services/accounting" />} />

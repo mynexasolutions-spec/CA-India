@@ -73,8 +73,8 @@ class DocumentController extends Controller
 
     public function store(Request $request)
     {
-        $data = $this->validated($request);
         $profile = $this->profile($request);
+        $data = $this->validated($request, true, BillingPolicy::mode($profile) !== 'retail');
         $this->assertOwnedRelations($profile, $data, $data['type'] ?? 'tax_invoice');
         BillingPolicy::assertReferenceDocument($profile, $data['type'] ?? 'tax_invoice', $data['reference_document_id'] ?? null);
         $doc = $this->invoices->create($profile, $data);
@@ -92,7 +92,7 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
-        $data = $this->validated($request, false);
+        $data = $this->validated($request, false, BillingPolicy::mode($profile) !== 'retail');
         $this->assertOwnedRelations($profile, $data, $doc->type);
         $doc = $this->invoices->updateDraft($doc, $profile, $data);
 
@@ -171,8 +171,8 @@ class DocumentController extends Controller
 
     public function preview(Request $request)
     {
-        $data = $this->validated($request, false);
         $profile = $this->profile($request);
+        $data = $this->validated($request, false, BillingPolicy::mode($profile) !== 'retail');
         $this->assertOwnedRelations($profile, $data, $data['type'] ?? 'tax_invoice');
         $preview = $this->invoices->preview($profile, $data);
         if (! empty($data['customer_id'])) {
@@ -252,7 +252,7 @@ class DocumentController extends Controller
         ]);
     }
 
-    private function validated(Request $request, bool $requireLines = true): array
+    private function validated(Request $request, bool $requireLines = true, bool $requireHsn = true): array
     {
         $rules = [
             'type' => 'nullable|in:tax_invoice,bill_of_supply,credit_note,debit_note,quotation,amendment,proforma,delivery_challan',
@@ -271,11 +271,14 @@ class DocumentController extends Controller
             'tax_deduction_type' => 'nullable|in:tds,tcs',
             'tds_tcs_section_id' => 'nullable|integer|exists:tds_tcs_sections,id',
             'lines' => ($requireLines ? 'required|' : 'nullable|').'array|min:1',
-            'lines.*.description' => 'required_with:lines|string',
+            'lines.*.description' => 'required_with:lines|string|max:255',
             'lines.*.qty' => 'required_with:lines|numeric',
             'lines.*.rate' => 'required_with:lines|numeric',
             'lines.*.gst_rate' => ['nullable', 'numeric', Rule::in(BillingPolicy::GST_RATES)],
-            'lines.*.hsn_sac' => ['nullable', 'string', Rule::exists('hsn_sac_codes', 'code')],
+            'lines.*.hsn_sac' => array_merge(
+                [$requireHsn ? 'required' : 'nullable', 'string'],
+                [Rule::exists('hsn_sac_codes', 'code')]
+            ),
             'lines.*.unit' => 'nullable|string',
             'lines.*.discount_percent' => 'nullable|numeric',
             'lines.*.discount_amount' => 'nullable|numeric',

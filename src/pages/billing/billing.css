@@ -971,4 +971,93 @@ select.bp-filter-control {
   .bp-grid-4 {
     grid-template-columns: 1fr 1fr;
   }
+
+  .bp-table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 640px) {
+  .bp-content {
+    padding: 12px;
+  }
+
+  .bp-topbar {
+    min-height: 62px;
+    padding: 10px 12px 10px 8px;
+  }
+
+  .bp-topbar h1 {
+    font-size: 16px;
+  }
+
+  .bp-grid-4,
+  .bp-report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-card {
+    padding: 14px;
+  }
+
+  .bp-kpi .value {
+    font-size: 23px;
+  }
+
+  .bp-section-nav {
+    flex-wrap: nowrap;
+    margin-inline: -12px;
+    padding: 0 12px 10px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .bp-section-nav-link {
+    flex: 0 0 auto;
+  }
+
+  .bp-filters {
+    align-items: stretch;
+  }
+
+  .bp-filter-field,
+  .bp-filter-item,
+  .bp-filter-control[type="month"],
+  .bp-filter-control[type="date"] {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bp-actions .bp-btn,
+  .bp-toolbar .bp-btn {
+    flex: 1 1 auto;
+  }
+
+  .bp-party-modal-card {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 12px;
+  }
+
+  .hsn-select-menu {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    max-height: min(60vh, 420px);
+  }
+
+  .hsn-select-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .hsn-select-desc {
+    grid-column: 1 / -1;
+    white-space: normal;
+  }
 }

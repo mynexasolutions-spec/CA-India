@@ -61,7 +61,7 @@ export default function ResetPasswordPage() {
             {msg && <p style={{ color: 'green' }}>{msg}</p>}
             <button type="submit" className="btn btn-navy">Update Password</button>
           </form>
-          <p style={{ marginTop: 12 }}><Link to="/portal/login">Back to login</Link></p>
+          <p style={{ marginTop: 12 }}><Link to="/login">Back to login</Link></p>
         </div>
       </section>
     </>
