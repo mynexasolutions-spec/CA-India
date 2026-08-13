@@ -351,7 +351,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         </form>
         {party && (
           <p style={{ marginTop: 10, fontSize: 13, color: 'var(--bp-muted)' }}>
-            GSTIN: {party.gstin || '—'} · {party.billing_address} · {party.phone}
+            GSTIN: {party.gstin_display || party.gstin || 'Unregistered'} · {party.billing_address} · {party.phone}
           </p>
         )}
       </div>

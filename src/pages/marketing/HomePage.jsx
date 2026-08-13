@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo, { firmJsonLd } from '../../components/seo/Seo';
 import { CONTACT, REGISTRATIONS, SERVICES } from '../../data/nav';
+import { api } from '../../api/client';
 
 const practiceHighlights = [
   { value: '9', label: 'Professional service areas' },
@@ -54,6 +56,149 @@ const assurancePoints = [
   'Secure online access for clients and staff',
 ];
 
+const networkHighlights = ['Trusted Relationships', 'Global Compliance', 'Cross-Border Expertise', 'Business Growth'];
+
+const globalNetwork = [
+  {
+    code: 'IN',
+    flag: '/assets/flags/in.png',
+    name: 'India',
+    text: 'Strong local presence across key cities with in-depth expertise and timely solutions.',
+  },
+  {
+    code: 'AE',
+    flag: '/assets/flags/ae.png',
+    name: 'UAE',
+    text: 'Strategic partners delivering end-to-end tax, VAT & advisory services.',
+  },
+  {
+    code: 'SA',
+    flag: '/assets/flags/sa.png',
+    name: 'Saudi Arabia',
+    text: 'Experienced associates offering ZATCA, tax & compliance advisory across industries.',
+  },
+  {
+    code: 'KW',
+    flag: '/assets/flags/kw.png',
+    name: 'Kuwait',
+    text: 'Trusted advisors providing tax, audit & business consultation services.',
+  },
+];
+
+const billingFeatures = [
+  'GST Invoices',
+  'Credit & Debit Notes',
+  'Quotation & Proforma Invoice',
+  'Customer Management',
+  'Product Management',
+  'GST Reports',
+  'PDF & Excel Export',
+  'WhatsApp & Email Sharing',
+];
+
+const testimonials = [
+  {
+    name: 'S. K. Traders',
+    role: 'Business Client',
+    initials: 'SK',
+    review:
+      'I am getting my work done from CA Abdul Basit and everything is completed on time. He resolves all my queries quickly. I also got my brand registration done through him, and everything was done perfectly. Always recommended.',
+  },
+  {
+    name: 'Salman Khan',
+    role: 'Trademark Client',
+    initials: 'S',
+    review:
+      'Excellent CA service for brand patent and trademark registration. Very professional, knowledgeable, and supportive throughout the complete process. They explained everything clearly and handled all documentation smoothly.',
+  },
+  {
+    name: 'Dk Shaikh',
+    role: 'Accounting & Tax',
+    initials: 'DS',
+    review:
+      'Excellent service by the CA. Very professional, knowledgeable, and supportive. All work was completed on time with clear guidance. Highly recommended for accounting and tax-related services.',
+  },
+  {
+    name: 'Chabi Shaikh',
+    role: 'Income Tax & GST',
+    initials: 'CS',
+    review:
+      'Since I started working with this firm, all my work has been managed properly and in sequence. All my Income Tax and GST work is completed on time. I will always recommend this firm.',
+  },
+  {
+    name: 'Ramiz Khan',
+    role: 'Taxation & Planning',
+    initials: 'RK',
+    review: 'Professional, knowledgeable, and very supportive. Excellent guidance in taxation and financial planning. Definitely recommend this firm!',
+  },
+  {
+    name: 'A1 Enterprises',
+    role: 'Compliance Client',
+    initials: 'A1',
+    review: 'Perfect advice, all compliance done in a timely manner. Best service — highly recommended for anyone looking for reliable CA support.',
+  },
+];
+
+const contactServices = ['General Enquiry', 'Accounting', 'Taxation', 'GST', 'Audit', 'Business Registration', 'Billing Software'];
+
+function HomeContactForm() {
+  const [form, setForm] = useState({ name: '', phone: '', email: '', service: contactServices[0], message: '' });
+  const [status, setStatus] = useState({ state: 'idle', message: '' });
+
+  const update = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setStatus({ state: 'sending', message: '' });
+    try {
+      await api('/contact', { method: 'POST', body: form });
+      setStatus({ state: 'success', message: "Thank you! We've received your message and will respond shortly." });
+      setForm({ name: '', phone: '', email: '', service: contactServices[0], message: '' });
+    } catch (err) {
+      setStatus({ state: 'error', message: err.message || 'Something went wrong. Please try again.' });
+    }
+  };
+
+  return (
+    <form className="home-page__contact-form" onSubmit={onSubmit} noValidate>
+      <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="hp-name">Name *</label>
+          <input id="hp-name" className="form-control" required value={form.name} onChange={update('name')} />
+        </div>
+        <div className="form-group">
+          <label htmlFor="hp-phone">Phone Number *</label>
+          <input id="hp-phone" type="tel" className="form-control" required value={form.phone} onChange={update('phone')} />
+        </div>
+      </div>
+      <div className="form-group full">
+        <label htmlFor="hp-email">Email Address *</label>
+        <input id="hp-email" type="email" className="form-control" required value={form.email} onChange={update('email')} />
+      </div>
+      <div className="form-group full">
+        <label htmlFor="hp-service">Service Required</label>
+        <select id="hp-service" className="form-control" value={form.service} onChange={update('service')}>
+          {contactServices.map((service) => (
+            <option key={service}>{service}</option>
+          ))}
+        </select>
+      </div>
+      <div className="form-group full">
+        <label htmlFor="hp-message">Message *</label>
+        <textarea id="hp-message" className="form-control" rows="4" required value={form.message} onChange={update('message')} />
+      </div>
+      <button type="submit" className="btn btn-navy home-page__contact-submit" disabled={status.state === 'sending'}>
+        {status.state === 'sending' ? 'Sending…' : 'Send Message'}
+      </button>
+      <p className="form-note">We typically respond within one business day.</p>
+      {status.state === 'success' && <p className="form-success" style={{ display: 'block' }}>{status.message}</p>}
+      {status.state === 'error' && (
+        <p className="form-note" role="alert" style={{ color: '#c0392b' }}>{status.message}</p>
+      )}
+    </form>
+  );
+}
+
 export default function HomePage() {
   return (
     <>
@@ -63,10 +208,9 @@ export default function HomePage() {
         <div className="container home-page__hero-grid">
           <div className="home-page__hero-copy">
             <p className="eyebrow">Chartered Accountants &amp; Business Advisors</p>
-            <h1>Financial clarity for confident business decisions.</h1>
+            <h1>Your Trusted Chartered Accountant for Business Growth.</h1>
             <p className="home-page__lead">
-              Accounting, audit, taxation, GST, registrations, and compliance support delivered with accuracy,
-              responsiveness, and a clear understanding of your business.
+              We provide comprehensive solutions for Accounting, Taxation, Audit, GST, Business Registration and Corporate Compliance.
             </p>
             <div className="home-page__hero-actions">
               <Link to="/contact" className="btn btn-gold">Book a Consultation</Link>
@@ -89,26 +233,13 @@ export default function HomePage() {
           <div className="home-page__hero-visual" aria-label="Overview of the firm's digital services">
             <div className="home-page__visual-orbit home-page__visual-orbit--one" />
             <div className="home-page__visual-orbit home-page__visual-orbit--two" />
-            <div className="home-page__dashboard-card">
-              <div className="home-page__dashboard-head">
-                <div>
-                  <span>Business overview</span>
-                  <strong>Compliance at a glance</strong>
-                </div>
-                <span className="home-page__status">Up to date</span>
-              </div>
-              <div className="home-page__chart" aria-hidden="true">
-                <span style={{ height: '42%' }} />
-                <span style={{ height: '64%' }} />
-                <span style={{ height: '50%' }} />
-                <span style={{ height: '82%' }} />
-                <span style={{ height: '70%' }} />
-                <span style={{ height: '94%' }} />
-              </div>
-              <div className="home-page__dashboard-metrics">
-                <div><span>Tax &amp; GST</span><strong>Organised</strong></div>
-                <div><span>Documents</span><strong>Accessible</strong></div>
-              </div>
+            <div className="home-page__dashboard-card home-page__dashboard-card--photo">
+              <p className="home-page__dashboard-photo-heading">Compliance at a Glance</p>
+              <img
+                src="/assets/compliance.png"
+                alt="Accountant reviewing compliance and financial reports"
+                className="home-page__dashboard-photo"
+              />
             </div>
             <div className="home-page__floating-card home-page__floating-card--top">
               <span className="home-page__floating-icon">01</span>
@@ -188,6 +319,82 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="section home-page__network" aria-label="Global associates network">
+        <div className="container">
+          <div className="section-head center home-page__center-heading">
+            <p className="eyebrow">International Reach</p>
+            <h2>Global Associates Network</h2>
+            <p>
+              Supported by a trusted network of associate partners across <strong>India</strong> and key
+              international jurisdictions including the <strong>UAE, Saudi Arabia &amp; Kuwait</strong>.
+            </p>
+          </div>
+          <ul className="home-page__network-points">
+            {networkHighlights.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <div className="home-page__network-grid">
+            {globalNetwork.map((region) => (
+              <article key={region.code} className="home-page__network-card">
+                <span className="home-page__network-flag">
+                  <img src={region.flag} alt="" width="64" height="64" loading="lazy" />
+                </span>
+                <h3>{region.name}</h3>
+                <p>{region.text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section billing-showcase" id="billing">
+        <div className="container billing-grid">
+          <div>
+            <p className="eyebrow" style={{ color: 'var(--gold-light)' }}>Client Portal Add-on</p>
+            <h2>Powerful Billing &amp; GST Invoice Management Software</h2>
+            <p>
+              Create GST-compliant invoices, manage customers, products, reports and business finances from one
+              secure platform, included with your Client Portal access.
+            </p>
+            <ul className="feat-list">
+              {billingFeatures.map((feature) => (
+                <li key={feature}>{feature}</li>
+              ))}
+            </ul>
+            <div className="billing-actions">
+              <Link to="/billing-management" className="btn btn-gold">Explore Billing Software</Link>
+              <Link to="/login" className="btn btn-outline">Login to Portal</Link>
+            </div>
+          </div>
+          <div className="billing-mock">
+            <div className="home-page__invoice-mock">
+              <div className="home-page__invoice-mock-head">
+                <div>
+                  <span>Tax Invoice</span>
+                  <strong>INV-2026-0143</strong>
+                </div>
+                <span className="home-page__invoice-badge">GST Ready</span>
+              </div>
+              <div className="home-page__invoice-mock-rows">
+                <div><span>Professional Fees</span><span>₹18,000</span></div>
+                <div><span>GST @ 18%</span><span>₹3,240</span></div>
+                <div><span>Round Off</span><span>₹0</span></div>
+              </div>
+              <div className="home-page__invoice-mock-total">
+                <span>Total Payable</span>
+                <strong>₹21,240</strong>
+              </div>
+              <div className="home-page__invoice-mock-actions">
+                <span>PDF</span>
+                <span>WhatsApp</span>
+                <span>Email</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="section home-page__process-section">
         <div className="container">
           <div className="section-head center home-page__center-heading">
@@ -235,6 +442,74 @@ export default function HomePage() {
             <Link to="/business-registration" className="home-page__text-link">
               Explore registration services <span aria-hidden="true">&rarr;</span>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="section testimonials">
+        <div className="container">
+          <div className="section-head center">
+            <p className="eyebrow" style={{ justifyContent: 'center' }}>Client Testimonials</p>
+            <h2>What Our Clients Say About Us</h2>
+            <p>
+              Trusted by businesses and professionals across Navi Mumbai for reliable accounting, taxation, audit,
+              compliance, and business advisory services.
+            </p>
+          </div>
+          <div className="testimonials-grid">
+            {testimonials.map((item) => (
+              <article key={item.name} className="test-card">
+                <div className="test-stars" aria-label="5 out of 5 stars">★★★★★</div>
+                <div className="test-quote-icon" aria-hidden="true">&ldquo;</div>
+                <p className="review">{item.review}</p>
+                <div className="test-person">
+                  <div className="test-avatar">{item.initials}</div>
+                  <div>
+                    <h5>{item.name}</h5>
+                    <span>{item.role}</span>
+                  </div>
+                  <span className="verified-badge">Google Review</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section home-page__contact-details" id="contact">
+        <div className="container contact-grid">
+          <div>
+            <p className="eyebrow">Get In Touch</p>
+            <h2 className="home-page__contact-details-heading">Contact Us</h2>
+            <p className="home-page__contact-details-lead">
+              Tell us what you need and our team will help you identify the right next step.
+            </p>
+            <div className="contact-info-item">
+              <div className="ci-icon home-page__ci-icon" aria-hidden="true">AD</div>
+              <div><h4>Office Address</h4><p>{CONTACT.address}</p></div>
+            </div>
+            <div className="contact-info-item">
+              <div className="ci-icon home-page__ci-icon" aria-hidden="true">PH</div>
+              <div><h4>Phone</h4><p><a href={CONTACT.phoneHref}>{CONTACT.phone}</a></p></div>
+            </div>
+            <div className="contact-info-item">
+              <div className="ci-icon home-page__ci-icon" aria-hidden="true">EM</div>
+              <div><h4>Email</h4><p><a href={CONTACT.emailHref}>{CONTACT.email}</a></p></div>
+            </div>
+            <div className="contact-info-item">
+              <div className="ci-icon home-page__ci-icon" aria-hidden="true">HR</div>
+              <div><h4>Business Hours</h4><p>{CONTACT.hours}</p></div>
+            </div>
+            <div className="map-embed">
+              <iframe
+                title="A B Khan & Associates office location"
+                loading="lazy"
+                src="https://maps.google.com/maps?q=Seawoods%20East%20Sector%2023%20Navi%20Mumbai&t=&z=14&output=embed"
+              />
+            </div>
+          </div>
+          <div className="home-page__contact-form-card">
+            <HomeContactForm />
           </div>
         </div>
       </section>

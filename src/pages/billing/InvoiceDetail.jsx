@@ -204,7 +204,7 @@ export default function InvoiceDetail() {
           <h3 style={{ marginTop: 0 }}>Party</h3>
           <p style={{ margin: '4px 0' }}><strong>{doc.customer?.name || '—'}</strong></p>
           <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--bp-muted)' }}>
-            GSTIN: {doc.customer?.gstin || '—'} · State: {doc.customer?.state || doc.customer?.state_code || '—'}
+            GSTIN: {doc.customer?.gstin_display || doc.customer?.gstin || 'Unregistered'} · State: {doc.customer?.state || doc.customer?.state_code || '—'}
           </p>
           <p style={{ margin: '4px 0', fontSize: 13 }}>
             {doc.customer?.email || ''}{doc.customer?.phone ? ` · ${doc.customer.phone}` : ''}

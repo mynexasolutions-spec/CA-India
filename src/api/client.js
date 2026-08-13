@@ -1,7 +1,8 @@
 const API = '/api';
+const TOKEN_KEY = 'abkhan_token';
 
 export async function api(path, opts = {}) {
-  const token = localStorage.getItem('abkhan_token');
+  const token = getAuthToken();
   const method = opts.method || (opts.body !== undefined ? 'POST' : 'GET');
   const isFormData = opts.body instanceof FormData;
 
@@ -34,11 +35,13 @@ export async function api(path, opts = {}) {
   return data;
 }
 
-export function setAuthToken(token) {
-  if (token) localStorage.setItem('abkhan_token', token);
-  else localStorage.removeItem('abkhan_token');
+export function setAuthToken(token, remember = true) {
+  localStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  if (!token) return;
+  (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
 }
 
 export function getAuthToken() {
-  return localStorage.getItem('abkhan_token');
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
 }

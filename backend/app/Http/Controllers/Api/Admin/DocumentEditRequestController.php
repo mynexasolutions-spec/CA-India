@@ -35,7 +35,7 @@ class DocumentEditRequestController extends Controller
     {
         $req = DocumentEditRequest::with([
             'clientProfile:id,business_name,client_name,client_code',
-            'document.customer:id,name,gstin',
+            'document.customer:id,name,gstin,gst_status',
             'submitter:id,name,email',
             'reviewer:id,name',
         ])->findOrFail($id);

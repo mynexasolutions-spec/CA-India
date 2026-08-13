@@ -64,7 +64,7 @@ export function ClientDashboard() {
       <div style={{ ...card, marginTop: 20, maxWidth: 480 }}>
         <h3 style={{ marginTop: 0 }}>Billing workspace</h3>
         <p style={{ opacity: 0.75, marginBottom: 16 }}>
-          Create invoices, filter by date, and open reports.
+          Create and Manage Invoices, Filter Transactions by Date, and Access Summary Reports. .
         </p>
         <Link to="/portal/billing" className="btn btn-gold">Open Billing</Link>
         {' '}
@@ -119,7 +119,7 @@ export function ClientProfile() {
             </p>
           </div>
           <Link to="/portal/profile/reset-password" className="bp-btn bp-btn-primary">
-            Reset Client Password
+            Change Password 
           </Link>
         </div>
         <div

@@ -21,6 +21,8 @@ class MasterController extends Controller
         return $profile->id;
     }
 
+    private const GSTIN_REGEX = '/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/';
+
     public function parties(Request $request)
     {
         $q = Customer::where('client_profile_id', $this->profileId($request))->latest();
@@ -32,23 +34,44 @@ class MasterController extends Controller
                     ->orWhere('phone', 'like', "%{$s}%");
             });
         }
+        if ($request->filled('state')) {
+            $q->where('state', $request->state);
+        }
+        if ($request->filled('gst_status')) {
+            $q->where('gst_status', $request->gst_status);
+        }
 
-        return response()->json($q->paginate(50));
+        return response()->json($q->paginate((int) $request->input('per_page', 10)));
     }
 
-    public function storeParty(Request $request)
+    private function partyRules(): array
     {
-        $data = $request->validate([
+        return [
             'name' => 'required|string|max:200',
             'contact_person' => 'nullable|string|max:120',
             'email' => 'nullable|email',
             'phone' => 'nullable|string|max:20',
-            'gstin' => 'nullable|string|max:20',
+            'gst_status' => 'required|in:registered,unregistered',
+            'gstin' => ['required_if:gst_status,registered', 'nullable', 'string', 'regex:'.self::GSTIN_REGEX],
             'state_code' => 'nullable|string|max:2',
             'state' => 'nullable|string|max:80',
             'billing_address' => 'nullable|string',
             'shipping_address' => 'nullable|string',
-        ]);
+        ];
+    }
+
+    private function normalizeGstFields(array $data): array
+    {
+        if (($data['gst_status'] ?? null) === 'unregistered') {
+            $data['gstin'] = null;
+        }
+
+        return $data;
+    }
+
+    public function storeParty(Request $request)
+    {
+        $data = $this->normalizeGstFields($request->validate($this->partyRules()));
         $data['client_profile_id'] = $this->profileId($request);
 
         return response()->json(Customer::create($data), 201);
@@ -57,10 +80,8 @@ class MasterController extends Controller
     public function updateParty(Request $request, int $id)
     {
         $c = Customer::where('client_profile_id', $this->profileId($request))->findOrFail($id);
-        $c->update($request->only([
-            'name', 'contact_person', 'email', 'phone', 'gstin', 'state_code', 'state',
-            'billing_address', 'shipping_address', 'is_active',
-        ]));
+        $data = $this->normalizeGstFields($request->validate($this->partyRules()));
+        $c->update($data + $request->only(['is_active']));
 
         return response()->json($c);
     }

@@ -1,9 +1,111 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { api } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
+import ForgotPasswordModal from '../../components/ForgotPasswordModal';
 import PasswordField from '../../components/PasswordField';
 import Seo from '../../components/seo/Seo';
+
+function Icon({ children, size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {children}
+    </svg>
+  );
+}
+
+const IconInvoice = (p) => (
+  <Icon {...p}>
+    <path d="M5 2.5h7l3 3v12a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-14a.5.5 0 0 1 .5-.5Z" />
+    <path d="M12 2.5V5.5a.5.5 0 0 0 .5.5H15.5" />
+    <path d="M7 10.5h6M7 13h6M7 8h3" />
+  </Icon>
+);
+
+const IconChart = (p) => (
+  <Icon {...p}>
+    <path d="M3 17V3" />
+    <path d="M3 17h14" />
+    <rect x="5.5" y="11" width="2.4" height="6" rx="0.4" />
+    <rect x="10" y="7.5" width="2.4" height="9.5" rx="0.4" />
+    <rect x="14.5" y="4" width="2.4" height="13" rx="0.4" />
+  </Icon>
+);
+
+const IconDownload = (p) => (
+  <Icon {...p}>
+    <path d="M14.5 12.5v2a1.5 1.5 0 0 1-1.5 1.5H7a1.5 1.5 0 0 1-1.5-1.5v-2" />
+    <path d="M10 2.5v9.5" />
+    <path d="M6.8 9.3 10 12.5l3.2-3.2" />
+  </Icon>
+);
+
+const IconClipboard = (p) => (
+  <Icon {...p}>
+    <path d="M7 3.5h6a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" />
+    <path d="M8 3a2 2 0 0 1 4 0" />
+    <path d="M7.3 10 9 11.7l3.7-3.7" />
+  </Icon>
+);
+
+const IconShield = (p) => (
+  <Icon {...p}>
+    <path d="M10 2.5 16 5v5c0 4.2-2.8 6.7-6 8-3.2-1.3-6-3.8-6-8V5l6-2.5Z" />
+    <path d="M7.3 9.7 9.2 11.6l3.5-4" />
+  </Icon>
+);
+
+const IconUser = (p) => (
+  <Icon {...p}>
+    <circle cx="10" cy="7" r="3.2" />
+    <path d="M3.8 17c.9-3.2 3.4-5 6.2-5s5.3 1.8 6.2 5" />
+  </Icon>
+);
+
+const IconMail = (p) => (
+  <Icon {...p}>
+    <rect x="2.5" y="4.5" width="15" height="11" rx="1.5" />
+    <path d="m3.5 5.8 6.5 5 6.5-5" />
+  </Icon>
+);
+
+const IconLock = (p) => (
+  <Icon {...p}>
+    <rect x="4" y="9" width="12" height="8" rx="1.5" />
+    <path d="M6.5 9V6.3a3.5 3.5 0 0 1 7 0V9" />
+  </Icon>
+);
+
+const IconHeadset = (p) => (
+  <Icon {...p}>
+    <path d="M3.5 11v-1a6.5 6.5 0 0 1 13 0v1" />
+    <rect x="2.5" y="11" width="3" height="4.5" rx="1" />
+    <rect x="14.5" y="11" width="3" height="4.5" rx="1" />
+    <path d="M16 15.5v.5a2.5 2.5 0 0 1-2.5 2.5H11" />
+  </Icon>
+);
+
+const gstFeatures = [
+  {
+    icon: IconInvoice,
+    title: 'View & Manage GST Invoices & Billing',
+    text: 'Create, view and manage all your GST invoices and billing in one place.',
+  },
+  {
+    icon: IconChart,
+    title: 'Check GST Summaries Period-wise',
+    text: 'Get a clear overview of your GST summary with period-wise insights.',
+  },
+  {
+    icon: IconDownload,
+    title: 'Download Detailed Reports',
+    text: 'Download accurate and detailed reports anytime, in just a click.',
+  },
+  {
+    icon: IconClipboard,
+    title: 'Track GST Return Filing Status',
+    text: 'Stay updated with the real-time status of your GST return filings.',
+  },
+];
 
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
@@ -11,12 +113,13 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState('');
   const [info, setInfo] = useState(() => (
     searchParams.get('timeout') === '1' ? 'Your session expired due to inactivity. Please sign in again.' : ''
   ));
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState('login'); // login | forgot
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -24,14 +127,9 @@ export default function LoginPage() {
     setError('');
     setInfo('');
     try {
-      if (mode === 'forgot') {
-        const res = await api('/auth/forgot-password', { method: 'POST', body: { email } });
-        setInfo(res.message || 'Check your email for reset instructions.');
-      } else {
-        const user = await login(email, password);
-        if (['super_admin', 'admin', 'staff'].includes(user.role)) navigate('/admin');
-        else navigate('/portal');
-      }
+      const user = await login(email, password, null, remember);
+      if (['super_admin', 'admin', 'staff'].includes(user.role)) navigate('/admin');
+      else navigate('/portal');
     } catch (err) {
       setError(err.message || 'Request failed');
     } finally {
@@ -53,70 +151,101 @@ export default function LoginPage() {
       <section className="login-page">
         <div className="login-page__shell">
           <div className="login-page__hero">
-            <div className="login-page__brand">
-              <img src="/assets/ca-india-logo.png" alt="CA India - A B KHAN & ASSOCIATES logo" />
-              <div>
-                <strong>A B KHAN &amp; ASSOCIATES</strong>
-                <span>Chartered Accountants</span>
+            <div className="login-page__hero-bg" aria-hidden="true">
+              <img src="/assets/compliance.png" alt="" />
+            </div>
+            <div className="login-page__hero-content">
+              <h1 className="login-page__hero-title">
+                Your Business.
+                <br />
+                Your Compliance.
+                <br />
+                <span>One Secure Portal.</span>
+              </h1>
+              <p className="login-page__hero-lead">
+                Access your GST Invoices, Billing, GST Summaries, Period-wise Reports, and Return Filing Status
+                &mdash; all in one secure portal.
+              </p>
+              <span className="login-page__hero-badge">Sign in securely to:</span>
+              <ul className="login-page__feature-list">
+                {gstFeatures.map((feature) => (
+                  <li key={feature.title}>
+                    <span className="login-page__feature-icon"><feature.icon /></span>
+                    <div>
+                      <strong>{feature.title}</strong>
+                      <p>{feature.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <div className="login-page__trust">
+                <span className="login-page__trust-icon"><IconShield /></span>
+                <div>
+                  <strong>Safe. Secure. Reliable.</strong>
+                  <p>Your data is protected with enterprise-grade security.</p>
+                </div>
               </div>
             </div>
-            <p className="eyebrow">Secure Access</p>
-            <h1>One login for client and admin access.</h1>
-            <p>
-              Sign in with your email and password. The portal detects your role automatically and sends you to the right dashboard.
-            </p>
-            <ul className="login-page__features">
-              <li>Role-aware routing to the correct dashboard</li>
-              <li>Encrypted, secure sign-in session</li>
-              <li>Billing, invoices, reports &amp; compliance records</li>
-            </ul>
           </div>
           <div className="login-page__card">
-            <p className="eyebrow">Account Login</p>
-            <h2>{mode === 'forgot' ? 'Reset Password' : 'Sign in'}</h2>
+            <span className="login-page__card-badge" aria-hidden="true"><IconUser size={26} /></span>
+            <p className="login-page__card-eyebrow">Account Login</p>
+            <p className="login-page__card-welcome">Welcome Back!</p>
             <p className="login-page__copy">
-              {mode === 'forgot'
-                ? 'Enter your account email and we will send reset instructions.'
-                : 'Client and admin accounts share this single sign-in form.'}
+              Sign in securely to access your Billing Dashboard, Invoices, and Financial Summaries.
             </p>
             <form onSubmit={onSubmit} className="login-page__form">
-              <label>
-                Email
-                <input
-                  className="form-control"
-                  type="email"
-                  required
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="username"
-                />
+              <label className="login-page__field">
+                <span>Email Address</span>
+                <div className="login-page__input-wrap">
+                  <span className="login-page__input-icon" aria-hidden="true"><IconMail /></span>
+                  <input
+                    className="form-control"
+                    type="email"
+                    required
+                    placeholder="Enter your registered email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="username"
+                  />
+                </div>
               </label>
-              {mode === 'login' && (
-                <PasswordField
-                  label="Password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-              )}
+              <PasswordField
+                label="Password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="Enter your password"
+                icon={<IconLock size={17} />}
+              />
+              <label className="login-page__remember">
+                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                <span>Remember me</span>
+              </label>
               {error && <p className="login-page__error" role="alert">{error}</p>}
               {info && <p className="login-page__info">{info}</p>}
-              <button type="submit" className="btn btn-gold login-page__submit" disabled={busy}>
-                {busy ? 'Please wait…' : mode === 'forgot' ? 'Send Reset Link' : 'Sign In'}
+              <button type="submit" className="btn btn-navy login-page__submit" disabled={busy}>
+                <IconLock size={16} />
+                {busy ? 'Please wait…' : 'Sign In'}
               </button>
             </form>
-            <p className="login-page__links">
-              <button type="button" onClick={() => setMode(mode === 'forgot' ? 'login' : 'forgot')}>
-                {mode === 'forgot' ? 'Back to sign in' : 'Forgot password?'}
+            <div className="login-page__divider"><span>or</span></div>
+            <div className="login-page__support-row">
+              <button type="button" onClick={() => setForgotOpen(true)}>
+                <IconLock size={16} />
+                Forgot Password?
               </button>
-              <Link to="/portal/reset-password">Have a reset token?</Link>
-              <Link to="/">Website</Link>
-            </p>
+              <span className="login-page__support-sep" aria-hidden="true" />
+              <Link to="/contact">
+                <IconHeadset size={16} />
+                <span>Need Help?<br />Contact Support</span>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
+      <ForgotPasswordModal open={forgotOpen} onClose={() => setForgotOpen(false)} />
     </>
   );
 }

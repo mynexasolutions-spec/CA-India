@@ -28,7 +28,7 @@ class DocumentController extends Controller
     public function index(Request $request)
     {
         $q = CommercialDocument::where('client_profile_id', $this->profile($request)->id)
-            ->with('customer:id,name,gstin')
+            ->with('customer:id,name,gstin,gst_status')
             ->latest('document_date')
             ->latest('id');
 
@@ -137,7 +137,7 @@ class DocumentController extends Controller
         $rows = CommercialDocument::where('client_profile_id', $profile->id)
             ->where('type', 'amendment')
             ->where('reference_document_id', $doc->id)
-            ->with('customer:id,name,gstin')
+            ->with('customer:id,name,gstin,gst_status')
             ->latest('id')
             ->get();
 

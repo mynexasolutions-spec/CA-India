@@ -14,7 +14,7 @@ const REASONS = [
 ];
 
 const DOC_TYPES = [
-  { value: 'tax_invoice', label: 'Tax Invoice/Bill of Supply', retailLabel: 'Invoice' },
+  { value: 'tax_invoice', label: 'Tax Invoice', retailLabel: 'Invoice' },
   { value: 'bill_of_supply', label: 'Bill of Supply' },
   { value: 'debit_note', label: 'Debit Note' },
   { value: 'credit_note', label: 'Credit Note' },

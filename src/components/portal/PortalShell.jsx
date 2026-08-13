@@ -73,14 +73,13 @@ function PortalFrame({ brand, subtitle, title, userLabel, nav, loginPath, extraT
             );
           })}
         </nav>
-        <div className="bp-sidebar-foot">
-          <button type="button" className="bp-btn bp-btn-outline" onClick={async () => { await logout(); navigate(loginPath); }}>
-            Logout
-          </button>
-          {footLinks.map((link) => (
-            <Link key={link.to} to={link.to} className="bp-btn bp-btn-outline bp-back-site">{link.label}</Link>
-          ))}
-        </div>
+        {footLinks.length > 0 && (
+          <div className="bp-sidebar-foot">
+            {footLinks.map((link) => (
+              <Link key={link.to} to={link.to} className="bp-btn bp-btn-outline bp-back-site">{link.label}</Link>
+            ))}
+          </div>
+        )}
       </aside>
       <div className="bp-main">
         <header className="bp-topbar">
@@ -91,7 +90,12 @@ function PortalFrame({ brand, subtitle, title, userLabel, nav, loginPath, extraT
               <div style={{ fontSize: 12, color: 'var(--bp-muted)' }}>{userLabel}</div>
             </div>
           </div>
-          {extraTopRight}
+          <div className="bp-topbar-right">
+            {extraTopRight}
+            <button type="button" className="bp-btn bp-btn-outline bp-logout-btn" onClick={async () => { await logout(); navigate(loginPath); }}>
+              Logout
+            </button>
+          </div>
         </header>
         <div className="bp-content"><Outlet /></div>
       </div>
@@ -101,22 +105,11 @@ function PortalFrame({ brand, subtitle, title, userLabel, nav, loginPath, extraT
 
 export function ClientPortalLayout() {
   const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isDashboard = location.pathname === '/portal' || location.pathname === '/portal/';
-
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate('/portal');
-  };
 
   const nav = [
     { to: '/portal', label: 'Dashboard', end: true },
     { to: '/portal/profile', label: 'Profile' },
-    { to: '/portal/billing/parties', label: 'Parties' },
+    { to: '/portal/billing/parties', label: 'Manage Billing Parties' },
     {
       to: '/portal/billing',
       label: 'Billing',
@@ -131,18 +124,10 @@ export function ClientPortalLayout() {
 
   return (
     <PortalFrame
-      brand="CLIENT PORTAL"
       title="Client Portal"
       userLabel={user?.client_profile?.business_name || user?.name}
       loginPath="/login"
       nav={nav}
-      extraTopRight={
-        isDashboard ? null : (
-          <button type="button" className="bp-back-arrow" onClick={goBack} aria-label="Go back" title="Back">
-            ←
-          </button>
-        )
-      }
     />
   );
 }

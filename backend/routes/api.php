@@ -38,6 +38,9 @@ Route::get('/billing/share/{token}', [DocumentController::class, 'share']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+Route::post('/auth/otp/request', [AuthController::class, 'otpRequest'])->middleware('throttle:6,1');
+Route::post('/auth/otp/verify', [AuthController::class, 'otpVerify'])->middleware('throttle:10,1');
+Route::post('/auth/otp/reset-password', [AuthController::class, 'otpResetPassword'])->middleware('throttle:10,1');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);

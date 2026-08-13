@@ -66,12 +66,12 @@ export function AuthProvider({ children }) {
     refresh();
   }, [refresh]);
 
-  const login = useCallback(async (email, password, portal = null) => {
+  const login = useCallback(async (email, password, portal = null, remember = true) => {
     const data = await api('/auth/login', {
       method: 'POST',
       body: portal ? { email, password, portal } : { email, password },
     });
-    setAuthToken(data.token);
+    setAuthToken(data.token, remember);
     setUser(data.user);
     bump();
     return data.user;

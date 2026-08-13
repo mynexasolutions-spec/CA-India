@@ -133,8 +133,8 @@ td, th { vertical-align: top; }
 .items tr { page-break-inside: avoid; }
 .items tr:last-child td { border-bottom: 0; }
 .items td:last-child { border-right: 0; }
-.items .amt { color: #0f172a; font-weight: bold; text-align: center; }
-.items .qty-num { color: #0f172a; font-weight: bold; }
+.items .amt { color: #0f172a; font-weight: bold; text-align: center; white-space: nowrap; }
+.items .qty-num { color: #0f172a; font-weight: bold; white-space: nowrap; }
 .item-title { font-weight: bold; color: #0f172a; font-size: 10.3px; text-align: center; }
 .item-sub { color: #64748b; font-size: 8.3px; margin-top: 1px; text-align: center; }
 
@@ -351,7 +351,7 @@ td, th { vertical-align: top; }
   $showSplitTax = $showTax && ! $doc->is_inter_state;
 
   $roundOffVal = (float) $doc->round_off;
-  $roundOffDisplay = ($roundOffVal < 0 ? '- ' : '').'&#8377; '.number_format(abs($roundOffVal), 2);
+  $roundOffDisplay = ($roundOffVal < 0 ? '- ' : '').'&#8377; '.number_format(abs($roundOffVal), 0);
 
   $totalCols = 6 + ($colHsn ? 1 : 0) + ($showTax ? 1 : 0);
 @endphp
@@ -461,7 +461,7 @@ td, th { vertical-align: top; }
           <table class="party-fields">
             <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->name ?: '—' }}</td></tr>
             @if($billAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $billAddr }}</td></tr>@endif
-            <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin ?: 'NO GSTIN' }}</td></tr>
+            <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($billStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $billStateLine }}</td></tr>@endif
             @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
@@ -481,7 +481,7 @@ td, th { vertical-align: top; }
           <table class="party-fields">
             <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->name ?: '—' }}</td></tr>
             @if($shipAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>@endif
-            <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin ?: 'NO GSTIN' }}</td></tr>
+            <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($shipStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipStateLine }}</td></tr>@endif
             @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
@@ -500,13 +500,13 @@ td, th { vertical-align: top; }
   <thead>
     <tr>
       <th style="width:{{ $colSno }}%;">S.No.</th>
-      <th style="width:{{ $colDesc }}%;">Product / Service<br>Description</th>
+      <th style="width:{{ $colDesc }}%;">Product / Service<br>Dis.</th>
       @if($colHsn)
       <th style="width:{{ $colHsn }}%;">HSN /<br>SAC</th>
       @endif
       <th style="width:{{ $colQty }}%;">Qty</th>
       <th style="width:{{ $colRate }}%;">Rate<br>(&#8377;)</th>
-      <th style="width:{{ $colDisc }}%;">Discount<br>(&#8377;)</th>
+      <th style="width:{{ $colDisc }}%;">Disc<br>(&#8377;)</th>
       <th style="width:{{ $colTaxable }}%;">Taxable Value<br>(&#8377;)</th>
       @if($showTax)
         @if($showSplitTax)
@@ -532,21 +532,21 @@ td, th { vertical-align: top; }
         <td class="center"><strong>{{ $item->hsn_sac ?: '—' }}</strong></td>
         @endif
         <td class="center">
-          <span class="qty-num">{{ number_format((float) $item->qty, 2) }}</span>
+          <span class="qty-num">{{ number_format((float) $item->qty, 0) }}</span>
           <div style="font-size:8.5px;color:#64748b;">{{ strtoupper($item->unit ?: 'NOS') }}</div>
         </td>
-        <td class="amt">{{ number_format((float) $item->rate, 2) }}</td>
-        <td class="amt">{{ number_format((float) $item->discount_amount, 2) }}</td>
-        <td class="amt">{{ number_format((float) $item->taxable_amount, 2) }}</td>
+        <td class="amt">{{ number_format((float) $item->rate, 0) }}</td>
+        <td class="amt">{{ number_format((float) $item->discount_amount, 0) }}</td>
+        <td class="amt">{{ number_format((float) $item->taxable_amount, 0) }}</td>
         @if($showTax)
           @if($showSplitTax)
-        <td class="amt">{{ number_format((float) $item->cgst_amount, 2) }}</td>
-        <td class="amt">{{ number_format((float) $item->sgst_amount, 2) }}</td>
+        <td class="amt">{{ number_format((float) $item->cgst_amount, 0) }}</td>
+        <td class="amt">{{ number_format((float) $item->sgst_amount, 0) }}</td>
           @else
-        <td class="amt">{{ number_format((float) $item->igst_amount, 2) }}</td>
+        <td class="amt">{{ number_format((float) $item->igst_amount, 0) }}</td>
           @endif
         @endif
-        <td class="amt">{{ number_format((float) $item->total_amount, 2) }}</td>
+        <td class="amt">{{ number_format((float) $item->total_amount, 0) }}</td>
       </tr>
     @empty
       <tr><td colspan="{{ $totalCols }}" class="center" style="color:#94a3b8;">No line items</td></tr>
@@ -602,22 +602,22 @@ td, th { vertical-align: top; }
         <table class="totals">
           <tr>
             <td class="lab">Total Taxable Value</td>
-            <td class="val">&#8377; {{ number_format((float) $doc->taxable_amount, 2) }}</td>
+            <td class="val">&#8377; {{ number_format((float) $doc->taxable_amount, 0) }}</td>
           </tr>
           @if($showTax)
             @if($showSplitTax)
             <tr>
               <td class="lab">CGST{{ $cgstRate ? ' ('. $fmtRate($cgstRate).'%)' : '' }}</td>
-              <td class="val">&#8377; {{ number_format((float) $doc->cgst_amount, 2) }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->cgst_amount, 0) }}</td>
             </tr>
             <tr>
               <td class="lab">SGST{{ $sgstRate ? ' ('. $fmtRate($sgstRate).'%)' : '' }}</td>
-              <td class="val">&#8377; {{ number_format((float) $doc->sgst_amount, 2) }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->sgst_amount, 0) }}</td>
             </tr>
             @else
             <tr>
               <td class="lab">IGST{{ $igstRate ? ' ('.$fmtRate($igstRate).'%)' : '' }}</td>
-              <td class="val">&#8377; {{ number_format((float) $doc->igst_amount, 2) }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->igst_amount, 0) }}</td>
             </tr>
             @endif
           @endif
@@ -625,17 +625,17 @@ td, th { vertical-align: top; }
             @if($doc->tax_deduction_type === 'tds')
             <tr class="tds-row">
               <td class="lab">Less: TDS{{ $doc->tds_tcs_rate ? ' ('.$fmtRate($doc->tds_tcs_rate).'% u/s '.$doc->tdsTcsSection?->code.')' : '' }}</td>
-              <td class="val">&#8377; {{ number_format((float) $doc->tds_tcs_amount, 2) }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->tds_tcs_amount, 0) }}</td>
             </tr>
             @else
             <tr class="tcs-row">
               <td class="lab">Add: TCS{{ $doc->tds_tcs_rate ? ' ('.$fmtRate($doc->tds_tcs_rate).'% u/s '.$doc->tdsTcsSection?->code.')' : '' }}</td>
-              <td class="val">&#8377; {{ number_format((float) $doc->tds_tcs_amount, 2) }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->tds_tcs_amount, 0) }}</td>
             </tr>
             @endif
             <tr class="grand-row">
               <td>GRAND TOTAL</td>
-              <td class="amt">&#8377; {{ number_format((float) $grand, 2) }}</td>
+              <td class="amt">&#8377; {{ number_format((float) $grand, 0) }}</td>
             </tr>
           @else
             <tr>
@@ -644,7 +644,7 @@ td, th { vertical-align: top; }
             </tr>
             <tr class="grand-row">
               <td>GRAND TOTAL</td>
-              <td class="amt">&#8377; {{ number_format((float) $grand, 2) }}</td>
+              <td class="amt">&#8377; {{ number_format((float) $grand, 0) }}</td>
             </tr>
           @endif
         </table>

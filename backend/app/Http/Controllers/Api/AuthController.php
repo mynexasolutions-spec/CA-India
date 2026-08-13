@@ -14,6 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private const OTP_TTL_MINUTES = 10;
+    private const OTP_MAX_ATTEMPTS = 5;
+    private const OTP_RESET_TOKEN_TTL_MINUTES = 10;
+
     public function login(Request $request)
     {
         $data = $request->validate([
@@ -101,6 +105,105 @@ class AuthController extends Controller
         $user->update(['password' => Hash::make($data['password'])]);
         DB::table('password_reset_tokens')->where('email', $data['email'])->delete();
         return response()->json(['message' => 'Password updated. You can sign in now.']);
+    }
+
+    /** Step 1: email submitted, generate + email a 6-digit OTP. */
+    public function otpRequest(Request $request)
+    {
+        $data = $request->validate(['email' => 'required|email']);
+        $user = User::where('email', $data['email'])->first();
+        if ($user) {
+            $otp = (string) random_int(100000, 999999);
+            DB::table('password_reset_otps')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'otp_hash' => Hash::make($otp),
+                    'attempts' => 0,
+                    'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
+                    'reset_token_hash' => null,
+                    'reset_token_expires_at' => null,
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+            try {
+                Mail::raw(
+                    "Your A B KHAN & ASSOCIATES password reset OTP is: {$otp}\n\n".
+                    'This code is valid for '.self::OTP_TTL_MINUTES." minutes.\n\n".
+                    "If you did not request this, you can safely ignore this email.",
+                    function ($m) use ($user) {
+                        $m->to($user->email)->subject('Your password reset OTP - A B KHAN & ASSOCIATES');
+                    }
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('OTP mail failed: '.$e->getMessage());
+            }
+        }
+
+        // Same response whether or not the account exists, so we never leak which emails are registered.
+        return response()->json([
+            'message' => 'If an account exists for this email, a verification OTP has been sent.',
+            'ttl_minutes' => self::OTP_TTL_MINUTES,
+        ]);
+    }
+
+    /** Step 3: verify the OTP, issue a short-lived reset token for the final step. */
+    public function otpVerify(Request $request)
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|string',
+        ]);
+
+        $row = DB::table('password_reset_otps')->where('email', $data['email'])->first();
+        if (!$row || now()->gt($row->expires_at)) {
+            throw ValidationException::withMessages(['otp' => ['This OTP has expired. Please request a new one.']]);
+        }
+        if ($row->attempts >= self::OTP_MAX_ATTEMPTS) {
+            throw ValidationException::withMessages(['otp' => ['Too many incorrect attempts. Please request a new OTP.']]);
+        }
+        if (!Hash::check($data['otp'], $row->otp_hash)) {
+            DB::table('password_reset_otps')->where('email', $data['email'])->increment('attempts');
+            throw ValidationException::withMessages(['otp' => ['The OTP you entered is incorrect.']]);
+        }
+
+        $resetToken = Str::random(48);
+        DB::table('password_reset_otps')->where('email', $data['email'])->update([
+            'reset_token_hash' => Hash::make($resetToken),
+            'reset_token_expires_at' => now()->addMinutes(self::OTP_RESET_TOKEN_TTL_MINUTES),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json(['message' => 'OTP verified.', 'reset_token' => $resetToken]);
+    }
+
+    /** Step 4: set the new password using the token issued after OTP verification. */
+    public function otpResetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'email' => 'required|email',
+            'reset_token' => 'required|string',
+            'password' => [
+                'required', 'string', 'min:8', 'confirmed',
+                'regex:/[a-z]/', 'regex:/[A-Z]/', 'regex:/[0-9]/', 'regex:/[^a-zA-Z0-9]/',
+            ],
+        ]);
+
+        $row = DB::table('password_reset_otps')->where('email', $data['email'])->first();
+        $tokenValid = $row
+            && $row->reset_token_hash
+            && now()->lte($row->reset_token_expires_at)
+            && Hash::check($data['reset_token'], $row->reset_token_hash);
+
+        if (!$tokenValid) {
+            throw ValidationException::withMessages(['reset_token' => ['This session has expired. Please start the reset process again.']]);
+        }
+
+        $user = User::where('email', $data['email'])->firstOrFail();
+        $user->update(['password' => Hash::make($data['password'])]);
+        DB::table('password_reset_otps')->where('email', $data['email'])->delete();
+
+        return response()->json(['message' => 'Your password has been reset successfully.']);
     }
 
     /** Change password while logged in (Admin or Client portal). */

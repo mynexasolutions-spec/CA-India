@@ -21,7 +21,7 @@ class DocumentEditRequestController extends Controller
     {
         $status = $request->input('status', 'all');
         $q = DocumentEditRequest::where('client_profile_id', $this->profile($request)->id)
-            ->with(['document:id,number,type,status,document_date,grand_total,customer_id,edit_allowed', 'document.customer:id,name,gstin'])
+            ->with(['document:id,number,type,status,document_date,grand_total,customer_id,edit_allowed', 'document.customer:id,name,gstin,gst_status'])
             ->latest('id');
 
         if ($status && $status !== 'all') {
@@ -41,7 +41,7 @@ class DocumentEditRequestController extends Controller
         $doc = CommercialDocument::where('client_profile_id', $profile->id)
             ->where('type', $data['document_type'])
             ->where('number', $data['bill_number'])
-            ->with('customer:id,name,gstin')
+            ->with('customer:id,name,gstin,gst_status')
             ->first();
 
         abort_unless($doc, 404, 'Document not found.');
@@ -52,7 +52,7 @@ class DocumentEditRequestController extends Controller
             'bill_number' => $doc->number,
             'document_date' => $doc->document_date,
             'customer_name' => $doc->customer?->name,
-            'gstin' => $doc->customer?->gstin,
+            'gstin' => $doc->customer?->gstin_display,
             'amount' => $doc->grand_total ?: $doc->total_amount,
             'status' => $doc->status,
             'type' => $doc->type,
