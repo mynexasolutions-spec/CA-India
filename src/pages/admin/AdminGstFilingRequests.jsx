@@ -32,6 +32,7 @@ export default function AdminGstFilingRequests() {
     }
   };
 
+  return (
     <div className="bp-content" style={{ maxWidth: '1100px', margin: '0 auto' }}>
       <div className="bp-toolbar">
         <div>

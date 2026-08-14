@@ -51,7 +51,7 @@ export default function AdminGstFilingReview() {
           &larr; Back to Requests
         </Link>
       </div>
-      
+
       <div className="bp-toolbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '22px', color: 'var(--bp-navy)' }}>Request: REQ-{req.id.toString().padStart(4, '0')}</h1>
@@ -60,7 +60,7 @@ export default function AdminGstFilingReview() {
         <div style={{ display: 'flex', gap: '10px' }}>
           {req.status === 'Pending CA Review' || req.status === 'Correction Required' ? (
             <>
-              <button 
+              <button
                 onClick={() => handleUpdateStatus('Correction Required')}
                 disabled={updating}
                 className="bp-btn bp-btn-outline"
@@ -68,7 +68,7 @@ export default function AdminGstFilingReview() {
               >
                 Send Back for Correction
               </button>
-              <button 
+              <button
                 onClick={() => handleUpdateStatus('Approved for Filing')}
                 disabled={updating}
                 className="bp-btn bp-btn-primary"
@@ -77,7 +77,7 @@ export default function AdminGstFilingReview() {
               </button>
             </>
           ) : req.status === 'Approved for Filing' ? (
-            <button 
+            <button
               onClick={() => handleUpdateStatus('GST Filed')}
               disabled={updating}
               className="bp-btn bp-btn-green"
