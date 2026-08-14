@@ -234,7 +234,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         <p className="bp-section-desc" style={{ marginBottom: 14 }}>Party, dates and tax settings for this document.</p>
         <form className="bp-form two">
           <label>
-            Party <span className="bp-required">*</span>
+            <span>Party <span className="bp-required">*</span></span>
             <select className="bp-select" value={partyId} onChange={(e) => onParty(e.target.value)} required>
               <option value="">Select party…</option>
               {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}

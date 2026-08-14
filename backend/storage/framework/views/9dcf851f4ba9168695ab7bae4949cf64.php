@@ -105,7 +105,7 @@ td, th { vertical-align: top; }
 
 /* ===== Line items ===== */
 .items-wrap { margin-top: 14px; border: 1.5px solid #1e40af; border-radius: 10px; }
-.items { width: 100%; table-layout: fixed; }
+.items { width: 100%; }
 .items th {
   background: #1e40af;
   color: #ffffff;
@@ -123,7 +123,7 @@ td, th { vertical-align: top; }
 .items td {
   border-bottom: 1px solid #e2e8f0;
   border-right: 1px solid #eef2f7;
-  padding: 7px 6px;
+  padding: 7px 4px;
   font-size: 9.8px;
   color: #334155;
   vertical-align: top;
@@ -339,14 +339,14 @@ td, th { vertical-align: top; }
     $wordsDisplay = 'Rupees '.$core.' Only.';
   }
 
-  $colSno = 6;
+  $colSno = 5;
   $colHsn = ($showTax || $p->has_gst) ? 8 : 0;
-  $colQty = 6;
-  $colRate = 7;
-  $colDisc = 6;
+  $colQty = 8;
+  $colRate = 10;
+  $colDisc = 4;
   $colTaxable = 12;
-  $colTax = $showTax ? 17 : 0;
-  $colTotal = 10;
+  $colTax = $showTax ? 20 : 0;
+  $colTotal = 11;
   $colDesc = 100 - $colSno - $colHsn - $colQty - $colRate - $colDisc - $colTaxable - $colTax - $colTotal;
   $showSplitTax = $showTax && ! $doc->is_inter_state;
 
@@ -423,7 +423,7 @@ td, th { vertical-align: top; }
         <tr>
           <td class="lab"><?php echo e($metaLabel); ?> Date</td>
           <td class="colon">:</td>
-          <td class="val-plain"><?php echo e($doc->document_date?->format('d-m-Y')); ?></td>
+          <td class="val-plain"><?php echo e($doc->document_date?->format('d/m/Y')); ?></td>
         </tr>
         <tr>
           <td class="lab">Place of Supply</td>
@@ -531,9 +531,9 @@ td, th { vertical-align: top; }
         <?php if($colHsn): ?>
         <td class="center"><strong><?php echo e($item->hsn_sac ?: '—'); ?></strong></td>
         <?php endif; ?>
-        <td class="center">
+        <td class="center" style="white-space: nowrap;">
           <span class="qty-num"><?php echo e(number_format((float) $item->qty, 0)); ?></span>
-          <div style="font-size:8.5px;color:#64748b;"><?php echo e(strtoupper($item->unit ?: 'NOS')); ?></div>
+          <span class="qty-num" style="margin-left:3px;"><?php echo e(strtoupper($item->unit ?: 'NOS')); ?></span>
         </td>
         <td class="amt"><?php echo e(number_format((float) $item->rate, 0)); ?></td>
         <td class="amt"><?php echo e(number_format((float) $item->discount_amount, 0)); ?></td>

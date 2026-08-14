@@ -13,7 +13,7 @@ export default function ClientGstDashboard() {
 
   if (err) {
     return (
-      <div className="bp-container">
+      <div className="bp-content">
         <div className="bp-card" style={{ padding: '30px', textAlign: 'center' }}>
           <h3 style={{ color: '#e74c3c' }}>Notice</h3>
           <p>{err}</p>
@@ -22,10 +22,10 @@ export default function ClientGstDashboard() {
     );
   }
 
-  if (!data) return <div className="bp-container">Loading...</div>;
+  if (!data) return <div className="bp-content">Loading...</div>;
 
   return (
-    <div className="bp-container">
+    <div className="bp-content" style={{ maxWidth: '1100px', margin: '0 auto' }}>
       <div className="bp-toolbar">
         <h2 style={{ margin: 0 }}>My GST Returns</h2>
       </div>

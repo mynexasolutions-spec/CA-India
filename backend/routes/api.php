@@ -75,6 +75,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/gstr2b/export', [ClientGstr2bController::class, 'export']);
             Route::patch('/gstr2b/invoices/{invoiceId}/match-status', [ClientGstr2bController::class, 'updateMatchStatus']);
             Route::get('/gst-returns', [ClientGstReturnController::class, 'index']);
+
+            Route::get('/gst-filing/preview', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'preview']);
+            Route::post('/gst-filing/request', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'store']);
+            Route::get('/gst-filing/requests', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'index']);
+            Route::get('/gst-filing/requests/{id}', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'show']);
         });
 
         Route::prefix('billing')->group(function () {
@@ -129,6 +134,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/clients/{id}', [ClientProfileController::class, 'update']);
         Route::post('/clients/{id}', [ClientProfileController::class, 'update']);
         Route::delete('/clients/{id}', [ClientProfileController::class, 'destroy']);
+        
+        Route::get('/gst-filing/requests', [\App\Http\Controllers\Api\Admin\GstFilingController::class, 'index']);
+        Route::get('/gst-filing/requests/{id}', [\App\Http\Controllers\Api\Admin\GstFilingController::class, 'show']);
+        Route::put('/gst-filing/requests/{id}/status', [\App\Http\Controllers\Api\Admin\GstFilingController::class, 'updateStatus']);
+
         Route::get('/change-requests', [AdminChangeRequestController::class, 'index']);
         Route::get('/change-requests/{id}', [AdminChangeRequestController::class, 'show']);
         Route::post('/change-requests/{id}/approve', [AdminChangeRequestController::class, 'approve']);

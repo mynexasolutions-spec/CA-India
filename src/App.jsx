@@ -36,8 +36,11 @@ const EditRequestPage = lazy(() => import('./pages/portal/EditRequestPage'));
 const AmendmentsPage = lazy(() => import('./pages/portal/AmendmentsPage'));
 const ClientGstr2b = lazy(() => import('./pages/portal/ClientGstr2b'));
 const ClientGstDashboard = lazy(() => import('./pages/client/ClientGstDashboard'));
+const GstFilingConfirmation = lazy(() => import('./pages/portal/GstFilingConfirmation'));
 
 /* ── Admin pages (lazy-loaded — only fetched when admin logs in) ── */
+const AdminGstFilingRequests = lazy(() => import('./pages/admin/AdminGstFilingRequests'));
+const AdminGstFilingReview = lazy(() => import('./pages/admin/AdminGstFilingReview'));
 const AdminEditRequests = lazy(() => import('./pages/admin/AdminEditRequests'));
 const AdminEditRequestList = lazy(() => import('./pages/admin/AdminEditRequests').then(m => ({ default: m.AdminEditRequestList })));
 const AdminEditRequestDetail = lazy(() => import('./pages/admin/AdminEditRequests').then(m => ({ default: m.AdminEditRequestDetail })));
@@ -162,6 +165,7 @@ export default function App() {
           <Route path="billing/parties" element={<PartiesPage />} />
           <Route path="gstr-2b" element={<ClientGstr2b />} />
           <Route path="gst-returns" element={<ClientGstDashboard />} />
+          <Route path="gst-filing" element={<GstFilingConfirmation />} />
           <Route path="billing" element={<ClientBillingLayout />}>
             <Route index element={<BillingDashboard />} />
             <Route path="quotations" element={<Navigate to="/portal/quotation" replace />} />
@@ -211,6 +215,8 @@ export default function App() {
           <Route path="clients/:id/gstr-2b" element={<AdminClientGstr2b />} />
           <Route path="gstr-2b" element={<AdminGstr2bClientPicker />} />
           <Route path="gst-returns" element={<AdminGstReturns />} />
+          <Route path="gst-filing-requests" element={<AdminGstFilingRequests />} />
+          <Route path="gst-filing-requests/:id" element={<AdminGstFilingReview />} />
           <Route path="edit-requests" element={<AdminEditRequestList />} />
           <Route path="edit-requests/:id" element={<AdminEditRequestDetail />} />
           <Route path="pending-approval" element={<AdminChangeRequestList />} />
