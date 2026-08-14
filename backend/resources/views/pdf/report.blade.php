@@ -13,7 +13,7 @@ th{background:#e8f1f8}
 </head>
 <body>
 <h1>{{ $title }}</h1>
-<div class="meta">Period: {{ $from }} to {{ $to }} · A B KHAN & ASSOCIATES</div>
+<div class="meta">Period: {{ $periodLabel ?? ($from.' to '.$to) }} · A B KHAN & ASSOCIATES</div>
 <table>
 @php $headers = count($rows) ? array_keys((array)$rows[0]) : []; @endphp
 <thead><tr>@foreach($headers as $h)<th>{{ $h }}</th>@endforeach</tr></thead>

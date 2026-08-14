@@ -2,8 +2,10 @@
 
 namespace App\Services\Billing;
 
+use App\Models\ClientGstReturn;
 use App\Models\ClientProfile;
 use App\Models\CommercialDocument;
+use Carbon\Carbon;
 
 class BillingPolicy
 {
@@ -137,5 +139,31 @@ class BillingPolicy
             ->exists();
 
         abort_if($exists, 422, 'Invoice number already exists for this client.');
+    }
+
+    public static function assertNotLocked(ClientProfile $profile, ?string $documentDate): void
+    {
+        if (!$documentDate || !$profile->has_gst) {
+            return;
+        }
+
+        $date = Carbon::parse($documentDate);
+        $period = null;
+
+        if ($profile->gst_filing_frequency === 'quarterly') {
+            $quarter = ceil($date->month / 3);
+            $period = $date->year . '-Q' . $quarter;
+        } else {
+            $period = $date->format('Y-m');
+        }
+
+        $isFiled = ClientGstReturn::where('client_profile_id', $profile->id)
+            ->where('tax_period', $period)
+            ->where('status', 'filed')
+            ->exists();
+
+        if ($isFiled) {
+            abort(403, 'GST Return for this period has already been filed. This invoice cannot be edited. Please submit an Edit Request or issue an Amendment Invoice (Credit Note, Debit Note, or Revised Invoice), as applicable.');
+        }
     }
 }

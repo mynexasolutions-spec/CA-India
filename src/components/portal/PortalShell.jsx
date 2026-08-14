@@ -116,6 +116,8 @@ export function ClientPortalLayout() {
       isActive: (_, { pathname }) =>
         pathname.startsWith('/portal/billing') && !pathname.startsWith('/portal/billing/parties'),
     },
+    { to: '/portal/gstr-2b', label: 'GSTR-2B' },
+    { to: '/portal/gst-returns', label: 'GST Returns' },
     { to: '/portal/edit-requests', label: 'Edit Request' },
     { to: '/portal/amendments', label: 'Amendments' },
     { to: '/portal/reports', label: 'Reports' },
@@ -164,17 +166,6 @@ export function ClientReportsLayout() {
 
 export function AdminPortalLayout() {
   const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isOverview = location.pathname === '/admin' || location.pathname === '/admin/';
-
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate('/admin');
-  };
 
   return (
     <PortalFrame
@@ -186,17 +177,13 @@ export function AdminPortalLayout() {
         { to: '/admin', label: 'Overview', end: true },
         { to: '/admin/clients', label: 'Clients' },
         { to: '/admin/billing', label: 'Billing' },
+        { to: '/admin/gstr-2b', label: 'GSTR-2B' },
+        { to: '/admin/gst-returns', label: 'GST Returns' },
         { to: '/admin/edit-requests', label: 'Edit Requests' },
         { to: '/admin/pending-approval', label: 'Pending Approval' },
+        { to: '/admin/configuration', label: 'Configuration' },
         { to: '/admin/settings', label: 'Settings' },
       ]}
-      extraTopRight={
-        isOverview ? null : (
-          <button type="button" className="bp-back-arrow" onClick={goBack} aria-label="Go back" title="Back">
-            ←
-          </button>
-        )
-      }
     />
   );
 }

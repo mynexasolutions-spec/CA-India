@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { isRetail } from './billingProfile';
+import { billingMode } from './billingProfile';
 
 const ALL_LINKS = [
   { to: '/portal/reports/gst-summary', label: 'GST Summary', gstOnly: true },
+  { to: '/portal/reports/gst-liability', label: 'GST Liability', regularOnly: true },
   { to: '/portal/reports/hsn-summary', label: 'HSN / SAC Summary', gstOnly: true },
   { to: '/portal/reports/party-wise', label: 'Party-wise Detail', gstOnly: false },
   { to: '/portal/reports/outstanding', label: 'Outstanding', gstOnly: false },
@@ -11,8 +12,12 @@ const ALL_LINKS = [
 
 export default function ReportsSubNav() {
   const { user } = useAuth();
-  const retail = isRetail(user?.client_profile);
-  const links = ALL_LINKS.filter((l) => !(retail && l.gstOnly));
+  const mode = billingMode(user?.client_profile);
+  const links = ALL_LINKS.filter((link) => {
+    if (mode === 'retail' && link.gstOnly) return false;
+    if (mode !== 'regular' && link.regularOnly) return false;
+    return true;
+  });
 
   if (!links.length) return null;
 

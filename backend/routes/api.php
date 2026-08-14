@@ -4,7 +4,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Admin\BillingMonitorController;
 use App\Http\Controllers\Api\Admin\ClientProfileController;
 use App\Http\Controllers\Api\Admin\DashboardController as AdminDashboard;
+use App\Http\Controllers\Api\Admin\GstReturnController;
+use App\Http\Controllers\Api\Admin\Gstr2bController;
 use App\Http\Controllers\Api\Admin\OpsController;
+use App\Http\Controllers\Api\Client\GstReturnController as ClientGstReturnController;
+use App\Http\Controllers\Api\Client\Gstr2bController as ClientGstr2bController;
 use App\Http\Controllers\Api\Admin\ResourceController;
 use App\Http\Controllers\Api\Billing\DashboardController as BillingDashboard;
 use App\Http\Controllers\Api\Billing\DocumentController;
@@ -14,6 +18,7 @@ use App\Http\Controllers\Api\Client\ChangeRequestController as ClientChangeReque
 use App\Http\Controllers\Api\Admin\ChangeRequestController as AdminChangeRequestController;
 use App\Http\Controllers\Api\Client\DocumentEditRequestController as ClientDocumentEditRequestController;
 use App\Http\Controllers\Api\Admin\DocumentEditRequestController as AdminDocumentEditRequestController;
+use App\Http\Controllers\Api\Admin\MasterConfigController;
 use App\Http\Controllers\Api\Admin\ClientsUnlockController;
 use App\Http\Controllers\Api\Client\DashboardController as ClientDashboard;
 use App\Http\Controllers\Api\Public\ContactController;
@@ -66,6 +71,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/documents', [ClientDashboard::class, 'uploadDocument']);
             Route::get('/documents/{id}', [ClientDashboard::class, 'downloadDocument']);
             Route::get('/compliance', [ClientDashboard::class, 'compliance']);
+            Route::get('/gstr2b', [ClientGstr2bController::class, 'index']);
+            Route::get('/gstr2b/export', [ClientGstr2bController::class, 'export']);
+            Route::patch('/gstr2b/invoices/{invoiceId}/match-status', [ClientGstr2bController::class, 'updateMatchStatus']);
+            Route::get('/gst-returns', [ClientGstReturnController::class, 'index']);
         });
 
         Route::prefix('billing')->group(function () {
@@ -106,13 +115,16 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    Route::middleware('role.staff')->prefix('admin')->group(function () {
+    Route::middleware(['role.staff', 'audit'])->prefix('admin')->group(function () {
         Route::get('/dashboard', [AdminDashboard::class, 'index']);
         Route::get('/clients/unlock-status', [ClientsUnlockController::class, 'status']);
         Route::post('/clients/unlock', [ClientsUnlockController::class, 'unlock']);
         Route::post('/clients/lock', [ClientsUnlockController::class, 'lock']);
         Route::get('/clients', [ClientProfileController::class, 'index']);
         Route::post('/clients', [ClientProfileController::class, 'store']);
+        Route::get('/gst-returns/dashboard', [GstReturnController::class, 'dashboard']);
+        Route::get('/gst-returns/clients', [GstReturnController::class, 'index']);
+        Route::post('/gst-returns/{clientId}', [GstReturnController::class, 'store']);
         Route::get('/clients/{id}', [ClientProfileController::class, 'show']);
         Route::put('/clients/{id}', [ClientProfileController::class, 'update']);
         Route::post('/clients/{id}', [ClientProfileController::class, 'update']);
@@ -132,6 +144,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/clients/{id}/active', [BillingMonitorController::class, 'setClientActive']);
         Route::post('/clients/{id}/reset-password', [BillingMonitorController::class, 'resetClientPassword']);
         Route::get('/clients/{id}/login-history', [BillingMonitorController::class, 'loginHistory']);
+        Route::get('/clients/{id}/gstr2b', [Gstr2bController::class, 'index']);
+        Route::post('/clients/{id}/gstr2b', [Gstr2bController::class, 'upload']);
+        Route::delete('/clients/{id}/gstr2b/{recordId}', [Gstr2bController::class, 'destroy']);
         Route::get('/staff', [ResourceController::class, 'staff']);
         Route::post('/staff', [ResourceController::class, 'storeStaff']);
         Route::get('/activity', [ResourceController::class, 'activity']);
@@ -145,6 +160,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/billing/invoices/{id}', [BillingMonitorController::class, 'showInvoice']);
         Route::get('/billing/invoices/{id}/pdf', [BillingMonitorController::class, 'pdfInvoice']);
         Route::get('/billing/reports', [BillingMonitorController::class, 'report']);
+
+        Route::get('/master-config/hsn-sac', [MasterConfigController::class, 'hsnSacList']);
+        Route::post('/master-config/hsn-sac', [MasterConfigController::class, 'hsnSacStore']);
+        Route::put('/master-config/hsn-sac/{id}', [MasterConfigController::class, 'hsnSacUpdate']);
+        Route::delete('/master-config/hsn-sac/{id}', [MasterConfigController::class, 'hsnSacDestroy']);
+
+        Route::get('/master-config/tds-tcs', [MasterConfigController::class, 'tdsTcsList']);
+        Route::post('/master-config/tds-tcs', [MasterConfigController::class, 'tdsTcsStore']);
+        Route::put('/master-config/tds-tcs/{id}', [MasterConfigController::class, 'tdsTcsUpdate']);
+        Route::delete('/master-config/tds-tcs/{id}', [MasterConfigController::class, 'tdsTcsDestroy']);
 
         Route::get('/{resource}', [ResourceController::class, 'index']);
         Route::post('/{resource}', [ResourceController::class, 'store']);

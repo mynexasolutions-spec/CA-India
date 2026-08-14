@@ -4,13 +4,6 @@ import Seo, { firmJsonLd } from '../../components/seo/Seo';
 import { CONTACT, REGISTRATIONS, SERVICES } from '../../data/nav';
 import { api } from '../../api/client';
 
-const practiceHighlights = [
-  { value: '9', label: 'Professional service areas' },
-  { value: '12', label: 'Business registration options' },
-  { value: '4', label: 'Regions in our associate network' },
-  { value: '24/7', label: 'Secure portal access' },
-];
-
 const serviceDescriptions = {
   '/services/accounting': 'Bookkeeping, management reporting, and outsourced accounting support.',
   '/services/audit': 'Independent assurance, internal controls, and statutory audit support.',
@@ -253,17 +246,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="home-page__metrics" aria-label="Firm capabilities">
-        <div className="container home-page__metric-grid">
-          {practiceHighlights.map((item) => (
-            <div key={item.label} className="home-page__metric">
-              <strong>{item.value}</strong>
-              <span>{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="section home-page__services" id="services">
         <div className="container">
           <div className="home-page__section-heading">
@@ -295,7 +277,7 @@ export default function HomePage() {
       <section className="section home-page__about">
         <div className="container home-page__about-grid">
           <div className="home-page__about-visual" aria-hidden="true">
-            <div className="home-page__monogram">ABK</div>
+            <img src="/assets/ABK.png" alt="" className="home-page__about-photo" />
             <div className="home-page__about-label">
               <strong>Structured advice.</strong>
               <span>Practical outcomes.</span>

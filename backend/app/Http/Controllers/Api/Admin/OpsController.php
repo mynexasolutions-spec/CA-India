@@ -17,7 +17,7 @@ class OpsController extends Controller
         $data = $request->validate([
             'client_profile_id' => 'required|exists:client_profiles,id',
             'title' => 'required|string|max:200',
-            'file' => 'required|file|max:10240',
+            'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,gif,webp,doc,docx,xls,xlsx,csv,txt,zip',
             'visibility' => 'nullable|in:client,internal',
         ]);
         $file = $request->file('file');

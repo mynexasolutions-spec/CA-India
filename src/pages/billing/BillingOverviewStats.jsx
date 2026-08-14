@@ -22,21 +22,26 @@ export default function BillingOverviewStats({
 
   return (
     <>
-      <div className="bp-grid-4">
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         {[
-          ['Tax Invoice/Bill of Supply', `${s.tax_invoices ?? 0} · ${money(s.tax_invoices_value)}`],
-          ['Debit Notes', `${s.debit_notes ?? 0} · ${money(s.debit_notes_value)}`],
-          ['Credit Notes', `${s.credit_notes ?? 0} · ${money(s.credit_notes_value)}`],
-          ['Cancelled Invoices', s.cancelled_invoices ?? 0],
-        ].map(([label, val]) => (
-          <div key={label} className="bp-card bp-kpi">
-            <div className="label">{label}</div>
-            <div className="value">{val ?? 0}</div>
+          ['Tax Invoice / Bill of Supply', `${s.tax_invoices ?? 0}`, money(s.tax_invoices_value), '#2563eb', 'rgba(37, 99, 235, 0.08)'],
+          ['Debit Notes', `${s.debit_notes ?? 0}`, money(s.debit_notes_value), '#d97706', 'rgba(217, 119, 6, 0.08)'],
+          ['Credit Notes', `${s.credit_notes ?? 0}`, money(s.credit_notes_value), '#059669', 'rgba(5, 150, 105, 0.08)'],
+          ['Cancelled Invoices', `${s.cancelled_invoices ?? 0}`, null, '#dc2626', 'rgba(220, 38, 38, 0.08)'],
+        ].map(([label, count, val, color, bg]) => (
+          <div key={label} style={{ background: '#fff', borderRadius: 16, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16 }}>{label}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 'auto', flexWrap: 'wrap' }}>
+              <span style={{ background: bg, color: color, padding: '4px 12px', borderRadius: 20, fontSize: 14, fontWeight: 700 }}>
+                {count} {count === '1' ? 'Doc' : 'Docs'}
+              </span>
+              {val && <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--bp-navy)' }}>{val}</span>}
+            </div>
           </div>
         ))}
       </div>
 
-      <div className="bp-card" style={{ marginTop: 14 }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: '24px 32px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.04)', marginTop: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
           <h3 style={{ margin: 0, color: 'var(--bp-navy)' }}>GST Summary</h3>
           {showFilters && (

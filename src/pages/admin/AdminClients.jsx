@@ -114,6 +114,8 @@ export default function AdminClients() {
                   {' · '}
                   <Link to={`/admin/clients/${c.id}/billing`}>Billing</Link>
                   {' · '}
+                  <Link to={`/admin/clients/${c.id}/gstr-2b`}>GSTR-2B</Link>
+                  {' · '}
                   <Link to={`/admin/clients/${c.id}/edit`}>Edit</Link>
                   {' · '}
                   <button type="button" className="bp-btn bp-btn-outline" style={{ padding: '2px 8px', fontSize: 11 }} onClick={() => toggleStatus(c)}>

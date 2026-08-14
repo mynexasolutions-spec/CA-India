@@ -12,6 +12,7 @@
     --shadow:0 10px 30px rgba(23,88,136,0.08);
     --shadow-lg:0 20px 50px rgba(23,88,136,0.14);
   }
+  
   *{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
   body{font-family:'Inter',sans-serif;color:var(--text);background:var(--white);line-height:1.6;overflow-x:hidden;}
@@ -1074,35 +1075,22 @@ a.feature-card {
 
 .home-page__about-visual {
   position: relative;
-  min-height: 470px;
+  aspect-ratio: 1171 / 689;
   overflow: hidden;
   display: grid;
   place-items: center;
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent),
-    var(--navy-deep);
+  border: 6px solid var(--gold);
+  background: var(--navy-deep);
   box-shadow: 0 24px 50px rgba(23, 88, 136, 0.18);
 }
 
-.home-page__about-visual::before,
-.home-page__about-visual::after {
-  content: "";
+.home-page__about-photo {
   position: absolute;
-  width: 310px;
-  height: 310px;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  transform: rotate(45deg);
-}
-
-.home-page__about-visual::before {
-  top: -170px;
-  right: -110px;
-}
-
-.home-page__about-visual::after {
-  bottom: -190px;
-  left: -100px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .home-page__monogram {
@@ -1115,14 +1103,17 @@ a.feature-card {
 
 .home-page__about-label {
   position: absolute;
-  right: 0;
-  bottom: 32px;
-  width: 75%;
+  left: 0;
+  top: 20px;
+  width: fit-content;
   display: grid;
-  padding: 18px 22px;
+  padding: 10px 16px;
+  border-radius: 10%;
   border-left: 4px solid var(--gold);
-  background: #fff;
-  box-shadow: 0 12px 30px rgba(3, 31, 60, 0.2);
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 12px 30px rgba(3, 31, 60, 0.12);
 }
 
 .home-page__about-label strong {
@@ -2288,7 +2279,6 @@ button {
 
   .home-page__about-visual {
     width: min(100%, 600px);
-    min-height: 380px;
   }
 
   .home-page__portal-grid {
@@ -2457,9 +2447,6 @@ button {
     display: none;
   }
 
-  .home-page__about-visual {
-    min-height: 320px;
-  }
 
   .home-page__registration-card {
     padding: 26px 22px;

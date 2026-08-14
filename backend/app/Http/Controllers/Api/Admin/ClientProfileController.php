@@ -606,6 +606,7 @@ class ClientProfileController extends Controller
             'gstin' => 'nullable|string',
             'has_gst' => 'nullable|boolean',
             'dealer_type' => 'nullable|in:regular,composition',
+            'gst_filing_frequency' => 'nullable|in:monthly,quarterly',
             'pan' => 'nullable|string',
             'aadhaar' => 'nullable|string',
             'gst_portal_username' => 'nullable|string',
@@ -654,8 +655,16 @@ class ClientProfileController extends Controller
         $data['has_gst'] = $hasGst;
         if (! $hasGst) {
             $data['dealer_type'] = null;
-        } elseif (empty($data['dealer_type'])) {
-            $data['dealer_type'] = 'regular';
+            $data['gst_filing_frequency'] = null;
+        } else {
+            if (empty($data['dealer_type'])) {
+                $data['dealer_type'] = 'regular';
+            }
+            if ($data['dealer_type'] === 'composition') {
+                $data['gst_filing_frequency'] = 'quarterly';
+            } elseif (empty($data['gst_filing_frequency'])) {
+                $data['gst_filing_frequency'] = 'monthly'; // default for regular if omitted
+            }
         }
 
         return $data;
@@ -668,7 +677,7 @@ class ClientProfileController extends Controller
             'client_name', 'business_name', 'constitution_type', 'business_type',
             'date_of_incorporation', 'date_of_birth', 'mobile', 'alt_mobile', 'alt_email',
             'email', 'address', 'city', 'state', 'state_code', 'pincode', 'country', 'website',
-            'gstin', 'has_gst', 'dealer_type', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
+            'gstin', 'has_gst', 'dealer_type', 'gst_filing_frequency', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
             'iec', 'cin', 'llpin', 'pt_reg', 'esic', 'pf',
             'bank_name', 'bank_branch', 'bank_account', 'account_holder_name', 'bank_ifsc',
             'swift_code', 'account_type', 'upi_id', 'signatory_name', 'terms_conditions', 'client_code',

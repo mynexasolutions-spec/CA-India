@@ -78,6 +78,33 @@ export function fyDateRange(fy) {
   };
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** 'YYYY-MM' -> 'Month YYYY'. */
+export function monthLabel(period) {
+  const [y, m] = String(period).split('-').map(Number);
+  if (!y || !m || m < 1 || m > 12) return period;
+  return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+/** The 12 calendar months of an Indian FY (Apr y1 -> Mar y1+1) as { value: 'YYYY-MM', label }. */
+export function fyMonthOptions(fy) {
+  const [y1] = String(fy).split('-');
+  const year = parseInt(y1, 10);
+  if (!year) return [];
+  const options = [];
+  for (let m = 4; m <= 15; m += 1) {
+    const month = m > 12 ? m - 12 : m;
+    const y = m > 12 ? year + 1 : year;
+    const value = `${y}-${String(month).padStart(2, '0')}`;
+    options.push({ value, label: monthLabel(value) });
+  }
+  return options;
+}
+
 export function monthDateRange(month) {
   if (!month || !/^\d{4}-\d{2}$/.test(month)) return null;
   const [y, m] = month.split('-').map(Number);

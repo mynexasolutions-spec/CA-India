@@ -341,11 +341,11 @@ td, th { vertical-align: top; }
 
   $colSno = 6;
   $colHsn = ($showTax || $p->has_gst) ? 8 : 0;
-  $colQty = 8;
-  $colRate = 9;
-  $colDisc = 9;
+  $colQty = 6;
+  $colRate = 7;
+  $colDisc = 6;
   $colTaxable = 12;
-  $colTax = $showTax ? 10 : 0;
+  $colTax = $showTax ? 17 : 0;
   $colTotal = 10;
   $colDesc = 100 - $colSno - $colHsn - $colQty - $colRate - $colDisc - $colTaxable - $colTax - $colTotal;
   $showSplitTax = $showTax && ! $doc->is_inter_state;
@@ -607,12 +607,8 @@ td, th { vertical-align: top; }
           <?php if($showTax): ?>
             <?php if($showSplitTax): ?>
             <tr>
-              <td class="lab">CGST<?php echo e($cgstRate ? ' ('. $fmtRate($cgstRate).'%)' : ''); ?></td>
-              <td class="val">&#8377; <?php echo e(number_format((float) $doc->cgst_amount, 0)); ?></td>
-            </tr>
-            <tr>
-              <td class="lab">SGST<?php echo e($sgstRate ? ' ('. $fmtRate($sgstRate).'%)' : ''); ?></td>
-              <td class="val">&#8377; <?php echo e(number_format((float) $doc->sgst_amount, 0)); ?></td>
+              <td class="lab">GST<?php echo e(($cgstRate !== null && $sgstRate !== null) ? ' ('. $fmtRate($cgstRate + $sgstRate).'%)' : ''); ?></td>
+              <td class="val">&#8377; <?php echo e(number_format((float) $doc->cgst_amount + (float) $doc->sgst_amount, 0)); ?></td>
             </tr>
             <?php else: ?>
             <tr>

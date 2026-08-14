@@ -1,10 +1,11 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes, Navigate, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import HtmlPage from './components/HtmlPage';
 import { AdminPortalLayout, AdminBillingLayout, ClientPortalLayout, ClientBillingLayout, ClientReportsLayout, RequireAuth } from './components/portal/PortalShell';
-import AdminBillingClientPicker from './pages/admin/AdminBillingClientPicker';
-import ClientsUnlockGate from './pages/admin/ClientsUnlockGate';
 import { PAGE_SLUGS } from './data/nav';
+
+/* ── Marketing pages (eagerly loaded — they're the landing pages) ── */
 import HomePage from './pages/marketing/HomePage';
 import BillingManagement from './pages/marketing/BillingManagement';
 import KnowledgeCentre from './pages/marketing/KnowledgeCentre';
@@ -14,47 +15,73 @@ import { CookiePolicy, PrivacyPolicy, TermsAndConditions } from './pages/marketi
 import NotFound from './pages/marketing/NotFound';
 import LoginPage from './pages/marketing/LoginPage';
 import ResetPasswordPage from './pages/marketing/ResetPasswordPage';
-import {
-  ClientDashboard,
-  ClientProfile,
-  ClientResetPassword,
-} from './pages/portal/ClientPages';
-import BillingDashboard from './pages/billing/BillingDashboard';
-import PartiesPage from './pages/billing/PartiesPage';
-import InvoiceForm from './pages/billing/InvoiceForm';
-import InvoiceList from './pages/billing/InvoiceList';
-import InvoiceDetail from './pages/billing/InvoiceDetail';
-import BillingReports from './pages/billing/BillingReports';
-import OutstandingPage from './pages/billing/OutstandingPage';
-import GstSummaryPage from './pages/billing/GstSummaryPage';
-import BusinessSettings from './pages/billing/BusinessSettings';
-import ReportsIndexRedirect from './pages/billing/ReportsIndexRedirect';
-import EditRequestPage from './pages/portal/EditRequestPage';
-import AmendmentsPage from './pages/portal/AmendmentsPage';
-import { AdminEditRequestList, AdminEditRequestDetail } from './pages/admin/AdminEditRequests';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminOverview from './pages/admin/AdminOverview';
-import AdminClients from './pages/admin/AdminClients';
-import ClientProfileForm from './pages/admin/ClientProfileForm';
-import AdminClientBilling from './pages/admin/AdminClientBilling';
-import { AdminChangeRequestList, AdminChangeRequestDetail } from './pages/admin/AdminChangeRequests';
-import {
-  AdminActivity,
-  AdminAppointments,
-  AdminArticles,
-  AdminCompliance,
-  AdminDueDates,
-  AdminEnquiries,
-  AdminStaff,
-} from './pages/admin/AdminPages';
-import {
-  AdminBillingDashboard,
-  AdminBillingInvoices,
-  AdminBillingReports,
-  AdminGstSummary,
-  AdminHsnSummary,
-  AdminInvoiceDetail,
-} from './pages/admin/AdminBillingPages';
+
+/* ── Client Portal pages (lazy-loaded — only fetched when user logs in) ── */
+const ClientPages = lazy(() => import('./pages/portal/ClientPages'));
+const ClientDashboard = lazy(() => import('./pages/portal/ClientPages').then(m => ({ default: m.ClientDashboard })));
+const ClientProfile = lazy(() => import('./pages/portal/ClientPages').then(m => ({ default: m.ClientProfile })));
+const ClientResetPassword = lazy(() => import('./pages/portal/ClientPages').then(m => ({ default: m.ClientResetPassword })));
+const BillingDashboard = lazy(() => import('./pages/billing/BillingDashboard'));
+const PartiesPage = lazy(() => import('./pages/billing/PartiesPage'));
+const InvoiceForm = lazy(() => import('./pages/billing/InvoiceForm'));
+const InvoiceList = lazy(() => import('./pages/billing/InvoiceList'));
+const InvoiceDetail = lazy(() => import('./pages/billing/InvoiceDetail'));
+const BillingReports = lazy(() => import('./pages/billing/BillingReports'));
+const OutstandingPage = lazy(() => import('./pages/billing/OutstandingPage'));
+const GstSummaryPage = lazy(() => import('./pages/billing/GstSummaryPage'));
+const GstLiabilityReport = lazy(() => import('./pages/billing/GstLiabilityReport'));
+const BusinessSettings = lazy(() => import('./pages/billing/BusinessSettings'));
+const ReportsIndexRedirect = lazy(() => import('./pages/billing/ReportsIndexRedirect'));
+const EditRequestPage = lazy(() => import('./pages/portal/EditRequestPage'));
+const AmendmentsPage = lazy(() => import('./pages/portal/AmendmentsPage'));
+const ClientGstr2b = lazy(() => import('./pages/portal/ClientGstr2b'));
+const ClientGstDashboard = lazy(() => import('./pages/client/ClientGstDashboard'));
+
+/* ── Admin pages (lazy-loaded — only fetched when admin logs in) ── */
+const AdminEditRequests = lazy(() => import('./pages/admin/AdminEditRequests'));
+const AdminEditRequestList = lazy(() => import('./pages/admin/AdminEditRequests').then(m => ({ default: m.AdminEditRequestList })));
+const AdminEditRequestDetail = lazy(() => import('./pages/admin/AdminEditRequests').then(m => ({ default: m.AdminEditRequestDetail })));
+const AdminConfiguration = lazy(() => import('./pages/admin/AdminConfiguration'));
+const AdminSettings = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminOverview = lazy(() => import('./pages/admin/AdminOverview'));
+const AdminClients = lazy(() => import('./pages/admin/AdminClients'));
+const ClientProfileForm = lazy(() => import('./pages/admin/ClientProfileForm'));
+const AdminClientBilling = lazy(() => import('./pages/admin/AdminClientBilling'));
+const AdminChangeRequests = lazy(() => import('./pages/admin/AdminChangeRequests'));
+const AdminChangeRequestList = lazy(() => import('./pages/admin/AdminChangeRequests').then(m => ({ default: m.AdminChangeRequestList })));
+const AdminChangeRequestDetail = lazy(() => import('./pages/admin/AdminChangeRequests').then(m => ({ default: m.AdminChangeRequestDetail })));
+const AdminBillingClientPicker = lazy(() => import('./pages/admin/AdminBillingClientPicker'));
+const AdminGstr2bClientPicker = lazy(() => import('./pages/admin/AdminGstr2bClientPicker'));
+const AdminClientGstr2b = lazy(() => import('./pages/admin/AdminClientGstr2b'));
+const AdminGstReturns = lazy(() => import('./pages/admin/AdminGstReturns'));
+const ClientsUnlockGate = lazy(() => import('./pages/admin/ClientsUnlockGate'));
+const AdminPages = lazy(() => import('./pages/admin/AdminPages'));
+const AdminActivity = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminActivity })));
+const AdminAppointments = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminAppointments })));
+const AdminArticles = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminArticles })));
+const AdminCompliance = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminCompliance })));
+const AdminDueDates = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminDueDates })));
+const AdminEnquiries = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminEnquiries })));
+const AdminStaff = lazy(() => import('./pages/admin/AdminPages').then(m => ({ default: m.AdminStaff })));
+const AdminBillingPages = lazy(() => import('./pages/admin/AdminBillingPages'));
+const AdminBillingDashboard = lazy(() => import('./pages/admin/AdminBillingPages').then(m => ({ default: m.AdminBillingDashboard })));
+const AdminBillingInvoices = lazy(() => import('./pages/admin/AdminBillingPages').then(m => ({ default: m.AdminBillingInvoices })));
+const AdminBillingReports = lazy(() => import('./pages/admin/AdminBillingPages').then(m => ({ default: m.AdminBillingReports })));
+const AdminGstSummary = lazy(() => import('./pages/admin/AdminBillingPages').then(m => ({ default: m.AdminGstSummary })));
+const AdminHsnSummary = lazy(() => import('./pages/admin/AdminBillingPages').then(m => ({ default: m.AdminHsnSummary })));
+const AdminInvoiceDetail = lazy(() => import('./pages/admin/AdminBillingPages').then(m => ({ default: m.AdminInvoiceDetail })));
+
+/** Suspense fallback shown while a lazy chunk loads */
+function LazyFallback() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: 200, color: '#6b8499', fontSize: 14, fontWeight: 600,
+    }}>
+      Loading…
+    </div>
+  );
+}
 
 function Page({ path }) {
   const slug = PAGE_SLUGS[path];
@@ -68,6 +95,7 @@ function PendingApprovalIdRedirect() {
 
 export default function App() {
   return (
+    <Suspense fallback={<LazyFallback />}>
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<HomePage />} />
@@ -132,6 +160,8 @@ export default function App() {
             <Route path=":id/edit" element={<InvoiceForm docType="amendment" title="Edit Amendment" />} />
           </Route>
           <Route path="billing/parties" element={<PartiesPage />} />
+          <Route path="gstr-2b" element={<ClientGstr2b />} />
+          <Route path="gst-returns" element={<ClientGstDashboard />} />
           <Route path="billing" element={<ClientBillingLayout />}>
             <Route index element={<BillingDashboard />} />
             <Route path="quotations" element={<Navigate to="/portal/quotation" replace />} />
@@ -159,6 +189,7 @@ export default function App() {
           <Route path="reports" element={<ClientReportsLayout />}>
             <Route index element={<ReportsIndexRedirect />} />
             <Route path="gst-summary" element={<GstSummaryPage />} />
+            <Route path="gst-liability" element={<GstLiabilityReport />} />
             <Route path="hsn-summary" element={<BillingReports defaultType="hsn_summary" title="HSN / SAC Summary" />} />
             <Route path="party-wise" element={<BillingReports defaultType="party_wise_sales" title="Party-wise Detail" />} />
             <Route path="sales-register" element={<BillingReports defaultType="sales_register" title="Sales Register" />} />
@@ -177,10 +208,14 @@ export default function App() {
           </Route>
           <Route path="clients/:id/billing" element={<AdminClientBilling />} />
           <Route path="billing" element={<AdminBillingClientPicker />} />
+          <Route path="clients/:id/gstr-2b" element={<AdminClientGstr2b />} />
+          <Route path="gstr-2b" element={<AdminGstr2bClientPicker />} />
+          <Route path="gst-returns" element={<AdminGstReturns />} />
           <Route path="edit-requests" element={<AdminEditRequestList />} />
           <Route path="edit-requests/:id" element={<AdminEditRequestDetail />} />
           <Route path="pending-approval" element={<AdminChangeRequestList />} />
           <Route path="pending-approval/:id" element={<AdminChangeRequestDetail />} />
+          <Route path="configuration" element={<AdminConfiguration />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="change-requests" element={<Navigate to="/admin/pending-approval" replace />} />
           <Route path="change-requests/:id" element={<PendingApprovalIdRedirect />} />
@@ -206,5 +241,6 @@ export default function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuditLog;
 use App\Http\Middleware\EnsureClient;
 use App\Http\Middleware\EnsureStaff;
 use Illuminate\Foundation\Application;
@@ -18,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role.staff' => EnsureStaff::class,
             'role.client' => EnsureClient::class,
+            'audit' => AuditLog::class,
         ]);
         $middleware->statefulApi();
     })

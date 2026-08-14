@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import PasswordField from '../../components/PasswordField';
 import BillingOverviewStats from '../billing/BillingOverviewStats';
-import { currentFyRange } from '../billing/billingUtils';
+import { billingMode } from '../billing/billingProfile';
+import { currentFyRange, money } from '../billing/billingUtils';
 
 const card = {
   background: '#fff',
@@ -25,50 +26,132 @@ const FIELDS = [
   ['email', 'Corporate Email'],
 ];
 
+function GstDashboardCards({ summary, from, to }) {
+  const mainCards = [
+    ['Output GST', money(summary.output_gst), 'rgba(37, 99, 235, 0.1)', '#2563eb', 'var(--bp-navy)'],
+    ['Eligible ITC', money(summary.eligible_itc), 'rgba(15, 118, 110, 0.1)', '#0f766e', 'var(--bp-navy)'],
+    ['GST Payable', money(summary.gst_payable), 'rgba(190, 18, 60, 0.1)', '#be123c', '#be123c'],
+    ['Excess ITC Available', money(summary.excess_itc), 'rgba(21, 128, 61, 0.1)', '#15803d', '#15803d'],
+  ];
+
+  const subCards = [
+    ['Total GSTR-2B Invoices', summary.total_gstr2b_invoices ?? 0, '#f8fafc', '#475569', 'var(--bp-navy)'],
+    ['Matched Invoices', summary.matched_invoices ?? 0, '#f0fdf4', '#15803d', 'var(--bp-navy)'],
+    ['Unmatched Invoices', summary.unmatched_invoices ?? 0, '#fff7ed', '#c2410c', 'var(--bp-navy)'],
+  ];
+
+  return (
+    <section style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            GST Position
+            <span style={{ fontSize: 10, background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>Live Data</span>
+          </h2>
+          <div style={{ color: 'var(--bp-muted)', fontSize: 12, marginTop: 4, fontWeight: 500 }}>
+            Period: <strong style={{ color: 'var(--bp-text)' }}>{from}</strong> to <strong style={{ color: 'var(--bp-text)' }}>{to}</strong>
+            <span style={{ margin: '0 8px', opacity: 0.5 }}>|</span>
+            Refreshes every 15s
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 16, marginBottom: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        {mainCards.map(([label, value, bg, accent, textCol]) => (
+          <div key={label} style={{ background: '#fff', borderRadius: 16, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: accent }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--bp-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: textCol, lineHeight: 1 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        {subCards.map(([label, value, bg, accent, textCol]) => (
+          <div key={label} style={{ background: bg, borderRadius: 12, padding: '16px 20px', border: `1px solid ${bg === '#fff' ? 'rgba(0,0,0,0.05)' : 'transparent'}` }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: accent, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: textCol, lineHeight: 1 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function ClientDashboard() {
   const fy = currentFyRange();
   const [data, setData] = useState(null);
   const [billing, setBilling] = useState(null);
   const [from, setFrom] = useState(fy.from);
   const [to, setTo] = useState(fy.to);
+  const periodRef = useRef({ from: fy.from, to: fy.to });
 
-  const loadBilling = () => {
+  useEffect(() => {
+    periodRef.current = { from, to };
+  }, [from, to]);
+
+  const loadBilling = useCallback(() => {
+    const period = periodRef.current;
     const qs = new URLSearchParams();
-    if (from) qs.set('from', from);
-    if (to) qs.set('to', to);
+    if (period.from) qs.set('from', period.from);
+    if (period.to) qs.set('to', period.to);
     api(`/billing/dashboard?${qs}`).then(setBilling).catch(console.error);
-  };
+  }, []);
+
+  const applyBillingPeriod = useCallback(() => {
+    periodRef.current = { from, to };
+    loadBilling();
+  }, [from, loadBilling, to]);
 
   useEffect(() => {
     api('/client/dashboard').then(setData).catch(console.error);
     loadBilling();
-  }, []);
+
+    const refreshInterval = window.setInterval(loadBilling, 15000);
+    window.addEventListener('focus', loadBilling);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', loadBilling);
+    };
+  }, [loadBilling]);
 
   if (!data || !billing) return <p>Loading dashboard…</p>;
   return (
-    <div>
-      <h1 style={{ marginTop: 0 }}>Welcome back</h1>
-      <p style={{ marginBottom: 4 }}>{data.profile?.business_name}</p>
-      <p style={{ color: 'var(--bp-muted)', fontSize: 13, marginTop: 0, marginBottom: 16 }}>
-        Current Financial Year by Default — Automatically displays the current Financial Year
-        (1 April – 31 March) and updates dashboard statistics for each new Financial Year.
-      </p>
-      <BillingOverviewStats
-        data={billing}
-        from={from}
-        to={to}
-        setFrom={setFrom}
-        setTo={setTo}
-        onApply={loadBilling}
-      />
-      <div style={{ ...card, marginTop: 20, maxWidth: 480 }}>
-        <h3 style={{ marginTop: 0 }}>Billing workspace</h3>
-        <p style={{ opacity: 0.75, marginBottom: 16 }}>
-          Create and Manage Invoices, Filter Transactions by Date, and Access Summary Reports. .
+    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--bp-navy) 0%, #1a365d 100%)', borderRadius: 16, padding: '24px 32px', color: '#fff', marginBottom: 24, boxShadow: '0 8px 24px rgba(13, 31, 60, 0.12)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '-20%', right: '-5%', width: 250, height: 250, background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)', borderRadius: '50%' }} />
+        <h1 style={{ marginTop: 0, fontSize: 24, color: '#fff', fontWeight: 800, marginBottom: 4, position: 'relative', zIndex: 1 }}>Welcome back</h1>
+        <p style={{ fontSize: 18, fontWeight: 600, color: '#90cdf4', marginBottom: 12, position: 'relative', zIndex: 1 }}>{data.profile?.business_name}</p>
+        <p style={{ color: '#cbd5e1', fontSize: 13, marginTop: 0, maxWidth: 650, lineHeight: 1.5, position: 'relative', zIndex: 1, margin: 0 }}>
+          Your dashboard automatically displays the current Financial Year (1 April – 31 March). Stay on top of your GST position, track matched invoices, and manage your billing efficiently.
         </p>
-        <Link to="/portal/billing" className="btn btn-gold">Open Billing</Link>
-        {' '}
-        <Link to="/portal/reports" className="btn btn-outline">Open Reports</Link>
+      </div>
+
+      {billingMode(data.profile) === 'regular' && billing.gst_dashboard && (
+        <GstDashboardCards summary={billing.gst_dashboard} from={from} to={to} />
+      )}
+      
+      <div style={{ marginBottom: 32 }}>
+         <BillingOverviewStats
+           data={billing}
+           from={from}
+           to={to}
+           setFrom={setFrom}
+           setTo={setTo}
+           onApply={applyBillingPeriod}
+         />
+      </div>
+
+      <div style={{ background: '#fff', borderRadius: 16, padding: '24px 32px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.05)', maxWidth: 500 }}>
+        <h3 style={{ marginTop: 0, fontSize: 18, fontWeight: 700, color: 'var(--bp-navy)', marginBottom: 8 }}>Billing Workspace</h3>
+        <p style={{ color: 'var(--bp-muted)', fontSize: 14, marginBottom: 20, lineHeight: 1.5 }}>
+          Create and manage tax invoices, bills of supply, and track payments. Generate detailed reports for your records.
+        </p>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Link to="/portal/billing" className="bp-btn bp-btn-primary" style={{ padding: '10px 20px', borderRadius: 8 }}>Open Billing</Link>
+          <Link to="/portal/reports" className="bp-btn bp-btn-outline" style={{ padding: '10px 20px', borderRadius: 8 }}>View Reports</Link>
+        </div>
       </div>
     </div>
   );

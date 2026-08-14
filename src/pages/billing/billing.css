@@ -227,27 +227,6 @@
   color: #fff;
 }
 
-.bp-back-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--bp-border, #d7dde8);
-  border-radius: 10px;
-  background: #fff;
-  color: var(--bp-navy);
-  font-size: 22px;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.bp-back-arrow:hover {
-  background: #f3f6fb;
-  border-color: var(--bp-navy);
-}
-
 .bp-content {
   padding: 20px;
 }
@@ -409,6 +388,14 @@
   text-align: center;
   color: var(--bp-muted);
   font-size: 13px;
+}
+
+.bp-invoice-table {
+  table-layout: fixed;
+}
+
+.bp-invoice-table td {
+  word-break: break-word;
 }
 
 .bp-badge {
@@ -1309,5 +1296,24 @@ select.bp-filter-control {
   .hsn-select-desc {
     grid-column: 1 / -1;
     white-space: normal;
+  }
+}
+
+@media print {
+  .bp-sidebar,
+  .bp-topbar,
+  .no-print {
+    display: none !important;
+  }
+
+  .bp-main,
+  .bp-content {
+    padding: 0;
+    margin: 0;
+  }
+
+  .bp-card {
+    box-shadow: none;
+    border: none;
   }
 }

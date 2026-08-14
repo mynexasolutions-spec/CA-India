@@ -83,7 +83,7 @@ class DashboardController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:200',
-            'file' => 'required|file|max:10240',
+            'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,gif,webp,doc,docx,xls,xlsx,csv,txt,zip',
         ]);
         $profile = $request->user()->clientProfile;
         abort_unless($profile, 404);

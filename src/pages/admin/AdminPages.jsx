@@ -111,7 +111,7 @@ export function AdminClients() {
       <div style={card}>
         <h2 style={{ marginTop: 0 }}>Add Client</h2>
         <form
-          style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr' }}
+          style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
           onSubmit={async (e) => {
             e.preventDefault();
             await api('/admin/clients', { method: 'POST', body: form });
@@ -297,30 +297,32 @@ function AdminArticlesList() {
   return (
     <div style={card}>
       <h2 style={{ marginTop: 0 }}>Articles</h2>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            {['ID', 'Title', 'Status', 'Category', 'Preview'].map((h) => (
-              <th key={h} align="left" style={{ borderBottom: '1px solid #ddd', padding: 8 }}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.id}</td>
-              <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.title}</td>
-              <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.status}</td>
-              <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.category?.name || '—'}</td>
-              <td style={{ borderBottom: '1px solid #eee', padding: 8, maxWidth: 280, fontSize: 13, color: '#555' }}>
-                {(r.excerpt || htmlToPlain(r.body) || '').slice(0, 120)}
-                {(r.excerpt || htmlToPlain(r.body) || '').length > 120 ? '…' : ''}
-              </td>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {['ID', 'Title', 'Status', 'Category', 'Preview'].map((h) => (
+                <th key={h} align="left" style={{ borderBottom: '1px solid #ddd', padding: 8 }}>{h}</th>
+              ))}
             </tr>
-          ))}
-          {!rows.length && <tr><td colSpan={5} style={{ padding: 8 }}>No articles yet</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.id}</td>
+                <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.title}</td>
+                <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.status}</td>
+                <td style={{ borderBottom: '1px solid #eee', padding: 8 }}>{r.category?.name || '—'}</td>
+                <td style={{ borderBottom: '1px solid #eee', padding: 8, maxWidth: 280, fontSize: 13, color: '#555' }}>
+                  {(r.excerpt || htmlToPlain(r.body) || '').slice(0, 120)}
+                  {(r.excerpt || htmlToPlain(r.body) || '').length > 120 ? '…' : ''}
+                </td>
+              </tr>
+            ))}
+            {!rows.length && <tr><td colSpan={5} style={{ padding: 8 }}>No articles yet</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -449,7 +451,7 @@ export function AdminCompliance() {
       <div style={card}>
         <h2 style={{ marginTop: 0 }}>Assign Compliance Task</h2>
         <form
-          style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr' }}
+          style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
           onSubmit={async (e) => {
             e.preventDefault();
             await api('/admin/compliance/assign', {
@@ -511,7 +513,7 @@ export function AdminStaff() {
         <h2 style={{ marginTop: 0 }}>Add Staff / Admin</h2>
         <p style={{ opacity: 0.8 }}>Roles: <code>admin</code> (full portal) · <code>staff</code> (operations)</p>
         <form
-          style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr' }}
+          style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}
           onSubmit={async (e) => {
             e.preventDefault();
             await api('/admin/staff', { method: 'POST', body: form });

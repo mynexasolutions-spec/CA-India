@@ -31,7 +31,7 @@ const empty = () => ({
   date_of_incorporation: '', date_of_birth: '', mobile: '', alt_mobile: '',
   email: '', alt_email: '', address: '', city: '', state: '', state_code: '27',
   pincode: '', country: 'India', website: '',
-  pan: '', aadhaar: '', gstin: '', has_gst: false, dealer_type: '', gst_portal_username: '', gst_portal_password: '',
+  pan: '', aadhaar: '', gstin: '', has_gst: false, dealer_type: '', gst_filing_frequency: 'monthly', gst_portal_username: '', gst_portal_password: '',
   tan: '', tan_portal_password: '', it_portal_password: '',
   udyam: '', shop_establishment: '', iec: '', cin: '', llpin: '', pt_reg: '', esic: '', pf: '',
   bank_name: '', bank_branch: '', bank_account: '', account_holder_name: '',
@@ -181,6 +181,7 @@ export default function ClientProfileForm() {
                         ...f,
                         has_gst: false,
                         dealer_type: '',
+                        gst_filing_frequency: '',
                         gstin: '',
                         gst_portal_username: '',
                         gst_portal_password: '',
@@ -207,7 +208,7 @@ export default function ClientProfileForm() {
                         type="radio"
                         name="dealer_type"
                         checked={form.dealer_type === 'regular'}
-                        onChange={() => set('dealer_type', 'regular')}
+                        onChange={() => setForm((f) => ({ ...f, dealer_type: 'regular' }))}
                       />
                       Regular Dealer
                     </label>
@@ -216,9 +217,34 @@ export default function ClientProfileForm() {
                         type="radio"
                         name="dealer_type"
                         checked={form.dealer_type === 'composition'}
-                        onChange={() => set('dealer_type', 'composition')}
+                        onChange={() => setForm((f) => ({ ...f, dealer_type: 'composition', gst_filing_frequency: 'quarterly' }))}
                       />
                       Composition Dealer
+                    </label>
+                  </div>
+                </Field>
+              )}
+              {form.has_gst && form.dealer_type && (
+                <Field label="GST Filing Frequency" full>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 4 }}>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        type="radio"
+                        name="gst_filing_frequency"
+                        checked={form.gst_filing_frequency === 'monthly'}
+                        onChange={() => set('gst_filing_frequency', 'monthly')}
+                        disabled={form.dealer_type === 'composition'}
+                      />
+                      Monthly
+                    </label>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        type="radio"
+                        name="gst_filing_frequency"
+                        checked={form.gst_filing_frequency === 'quarterly'}
+                        onChange={() => set('gst_filing_frequency', 'quarterly')}
+                      />
+                      Quarterly (QRMP)
                     </label>
                   </div>
                 </Field>
@@ -296,7 +322,7 @@ export default function ClientProfileForm() {
                     ? `${prefix}${String(next).padStart(2, '0')}`
                     : `${prefix}-${String(next).padStart(2, '0')}`;
                   return (
-                    <div key={row.next} className="full" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr 0.8fr', gap: 12, alignItems: 'end', paddingBottom: 10, borderBottom: '1px solid var(--bp-border, #e2e8f0)' }}>
+                    <div key={row.next} className="full cp-numbering-row" style={{ paddingBottom: 10, borderBottom: '1px solid var(--bp-border, #e2e8f0)' }}>
                       <Field label={`${row.label} Prefix`}>
                         <input
                           className="bp-input"

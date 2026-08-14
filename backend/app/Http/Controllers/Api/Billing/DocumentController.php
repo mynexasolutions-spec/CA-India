@@ -75,6 +75,9 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $data = $this->validated($request, true, BillingPolicy::mode($profile) !== 'retail');
+        if (!empty($data['document_date'])) {
+            BillingPolicy::assertNotLocked($profile, $data['document_date']);
+        }
         $this->assertOwnedRelations($profile, $data, $data['type'] ?? 'tax_invoice');
         BillingPolicy::assertReferenceDocument($profile, $data['type'] ?? 'tax_invoice', $data['reference_document_id'] ?? null);
         $doc = $this->invoices->create($profile, $data);
@@ -92,7 +95,13 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
+        BillingPolicy::assertNotLocked($profile, $doc->document_date?->toDateString());
+        
         $data = $this->validated($request, false, BillingPolicy::mode($profile) !== 'retail');
+        if (!empty($data['document_date'])) {
+            BillingPolicy::assertNotLocked($profile, $data['document_date']);
+        }
+        
         $this->assertOwnedRelations($profile, $data, $doc->type);
         $doc = $this->invoices->updateDraft($doc, $profile, $data);
 
@@ -125,6 +134,8 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
+        BillingPolicy::assertNotLocked($profile, $doc->document_date?->toDateString());
+        
         $this->invoices->destroyQuotation($doc, $profile);
 
         return response()->json(['message' => 'Quotation deleted']);
@@ -148,6 +159,8 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
+        BillingPolicy::assertNotLocked($profile, $doc->document_date?->toDateString());
+        
         $doc = $this->invoices->issue($doc, $profile);
 
         return response()->json($doc);

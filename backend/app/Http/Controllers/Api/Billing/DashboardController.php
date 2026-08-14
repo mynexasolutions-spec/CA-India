@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\CommercialDocument;
 use App\Models\Customer;
 use App\Services\Billing\BillingPolicy;
+use App\Services\Gst\GstLiabilityService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly GstLiabilityService $liabilityService) {}
+
     private function profile(Request $request)
     {
         $profile = $request->user()->clientProfile;
@@ -130,6 +133,9 @@ class DashboardController extends Controller
                 'credit_note' => $gstCn,
             ],
             'dealer_mode' => $mode,
+            'gst_dashboard' => $mode === 'regular'
+                ? $this->liabilityService->dashboardSummary($pid, $from, $to)
+                : null,
             'monthly_trend' => [],
             'recent_invoices' => $recent,
             'parties_count' => Customer::where('client_profile_id', $pid)->count(),

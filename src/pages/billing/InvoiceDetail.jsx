@@ -233,7 +233,26 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      <table className="bp-table" style={{ marginTop: 16 }}>
+      <table className="bp-table bp-invoice-table" style={{ marginTop: 16 }}>
+        <colgroup>
+          <col style={{ width: '3%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '9%' }} />
+          <col style={{ width: '6%' }} />
+          <col style={{ width: '8%' }} />
+          <col style={{ width: '5%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '6%' }} />
+          {doc.is_inter_state ? (
+            <col style={{ width: '21%' }} />
+          ) : (
+            <>
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+            </>
+          )}
+          <col style={{ width: doc.is_inter_state ? '12%' : '9%' }} />
+        </colgroup>
         <thead>
           <tr>
             <th>#</th><th>Particulars</th><th>HSN</th><th>Qty</th><th>Rate</th><th>Disc%</th>
