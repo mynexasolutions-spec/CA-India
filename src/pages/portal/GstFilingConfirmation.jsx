@@ -184,13 +184,12 @@ export default function GstFilingConfirmation() {
               </div>
             ) : (
               <div className="bp-table-empty">
-                No bills found for this period. Please create bills in the Billing Module first.
+                No bills found for this period. You can proceed with a Nil Filing.
               </div>
             )}
           </div>
 
-          {previewData.bills.length > 0 && (
-            <div className="bp-card" style={{ background: 'var(--bp-sky)', borderColor: 'var(--bp-border)' }}>
+          <div className="bp-card" style={{ background: 'var(--bp-sky)', borderColor: 'var(--bp-border)' }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', color: 'var(--bp-navy)' }}>
                 3. GST Filing Summary
               </h3>
@@ -227,7 +226,7 @@ export default function GstFilingConfirmation() {
                     onClick={(e) => e.stopPropagation()}
                   />
                   <div style={{ fontSize: '14px', lineHeight: '1.5', color: 'var(--bp-text)', fontWeight: 500 }}>
-                    “I confirm that I have reviewed the above bills and GST summary and request the CA to proceed with GST filing for the selected period.”
+                    “I confirm that I have reviewed the above bills and GST summary and request the CA to proceed with GST filing (including Nil filing if applicable) for the selected period.”
                   </div>
                 </div>
 
@@ -243,7 +242,6 @@ export default function GstFilingConfirmation() {
                 </div>
               </div>
             </div>
-          )}
         </div>
       )}
 

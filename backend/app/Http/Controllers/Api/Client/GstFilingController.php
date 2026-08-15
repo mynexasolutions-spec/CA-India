@@ -88,9 +88,6 @@ class GstFilingController extends Controller
             ->whereRaw("DATE_FORMAT(document_date, '%Y-%m') = ?", [$period])
             ->get();
 
-        if ($bills->isEmpty()) {
-            return response()->json(['message' => 'No bills found for the selected period.'], 400);
-        }
 
         $taxableValue = $bills->sum('taxable_amount');
         $cgst = $bills->sum('cgst_amount');
