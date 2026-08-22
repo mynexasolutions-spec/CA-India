@@ -20,8 +20,20 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
 /vendor
 _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Database — never commit the live/demo SQLite file, backups, or a stray
+# extracted-in-place copy of this directory (guards against re-zipping mistakes).
+/database/*.sqlite
+/database/*.sqlite-journal
+/database/database/

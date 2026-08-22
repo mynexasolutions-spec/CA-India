@@ -62,6 +62,7 @@ class InvoiceService
             $isRcm = BillingPolicy::rcmAllowed($profile) && (bool) ($data['is_reverse_charge'] ?? $doc->is_reverse_charge);
             BillingPolicy::assertReferenceDocument($profile, $type, $data['reference_document_id'] ?? $doc->reference_document_id);
             $data = array_key_exists('tax_deduction_type', $data) ? $data : $data + ['tax_deduction_type' => $doc->tax_deduction_type, 'tds_tcs_section_id' => $doc->tds_tcs_section_id];
+            $data = array_key_exists('currency', $data) ? $data : $data + ['currency' => $doc->currency];
             [$taxDeductionType, $tdsSection, $tdsRate] = $this->resolveTdsTcs($data, $type);
             $calc = GstCalculator::calculate(
                 $data['lines'] ?? [],
@@ -180,6 +181,25 @@ class InvoiceService
         abort_unless(! $doc->converted_document_id, 422, 'Converted quotations cannot be deleted.');
         $doc->lineItems()->delete();
         $doc->delete();
+    }
+
+    /**
+     * Cancellation is a status change only — the document, its number, dates,
+     * amounts and line items are always preserved and remain viewable/downloadable.
+     * Never call ->delete() here.
+     */
+    public function cancel(CommercialDocument $doc, string $reason): CommercialDocument
+    {
+        abort_if($doc->status === 'cancelled', 422, 'This document is already cancelled.');
+        abort_if($doc->type === 'quotation' && $doc->converted_document_id, 422, 'A converted quotation cannot be cancelled.');
+
+        $doc->update([
+            'status' => 'cancelled',
+            'cancellation_reason' => $reason,
+            'cancelled_at' => now(),
+        ]);
+
+        return $doc->fresh(['lineItems', 'customer', 'referenceDocument']);
     }
 
     public function issue(CommercialDocument $doc, ClientProfile $profile): CommercialDocument
@@ -382,6 +402,7 @@ class InvoiceService
             'notes' => $data['notes'] ?? null,
             'terms' => $data['terms'] ?? $profile->terms_conditions,
             'payment_terms' => $data['payment_terms'] ?? null,
+            'currency' => $data['currency'] ?? 'INR',
             'share_token' => $data['share_token'] ?? Str::random(40),
         ];
     }

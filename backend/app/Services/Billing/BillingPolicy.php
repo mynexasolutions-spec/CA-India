@@ -141,29 +141,55 @@ class BillingPolicy
         abort_if($exists, 422, 'Invoice number already exists for this client.');
     }
 
-    public static function assertNotLocked(ClientProfile $profile, ?string $documentDate): void
+    /** The GST return tax_period label for a document date, per the profile's filing frequency. */
+    public static function periodOf(ClientProfile $profile, string $documentDate): string
     {
-        if (!$documentDate || !$profile->has_gst) {
-            return;
-        }
-
         $date = Carbon::parse($documentDate);
-        $period = null;
 
         if ($profile->gst_filing_frequency === 'quarterly') {
-            $quarter = ceil($date->month / 3);
-            $period = $date->year . '-Q' . $quarter;
-        } else {
-            $period = $date->format('Y-m');
+            return $date->year.'-Q'.ceil($date->month / 3);
         }
 
-        $isFiled = ClientGstReturn::where('client_profile_id', $profile->id)
-            ->where('tax_period', $period)
+        return $date->format('Y-m');
+    }
+
+    public static function isPeriodFiled(ClientProfile $profile, ?string $documentDate): bool
+    {
+        if (!$documentDate || !$profile->has_gst) {
+            return false;
+        }
+
+        return ClientGstReturn::where('client_profile_id', $profile->id)
+            ->where('tax_period', self::periodOf($profile, $documentDate))
             ->where('status', 'filed')
             ->exists();
+    }
 
-        if ($isFiled) {
-            abort(403, 'GST Return for this period has already been filed. This invoice cannot be edited. Please submit an Edit Request or issue an Amendment Invoice (Credit Note, Debit Note, or Revised Invoice), as applicable.');
+    /** All tax_period labels already filed for this client — for bulk-tagging a list of documents. */
+    public static function filedPeriods(ClientProfile $profile): array
+    {
+        return ClientGstReturn::where('client_profile_id', $profile->id)
+            ->where('status', 'filed')
+            ->pluck('tax_period')
+            ->all();
+    }
+
+    public static function assertNotLocked(ClientProfile $profile, ?string $documentDate): void
+    {
+        if (self::isPeriodFiled($profile, $documentDate)) {
+            abort(403, 'GST Return for this period has already been filed. This invoice cannot be edited directly. Please issue a Credit Note, Debit Note, or Amendment, as applicable.');
+        }
+    }
+
+    /**
+     * Billing Module spec §18/§25 — Request Edit is only available while the
+     * GST Return for the document's period has not yet been filed. Once filed,
+     * correction must go through Credit Note / Debit Note / Amendment instead.
+     */
+    public static function assertEditRequestAllowed(ClientProfile $profile, ?string $documentDate): void
+    {
+        if (self::isPeriodFiled($profile, $documentDate)) {
+            abort(422, 'Request Edit is not available because the GST Return for this document\'s period has already been filed. Please issue a Credit Note, Debit Note, or Amendment instead.');
         }
     }
 }

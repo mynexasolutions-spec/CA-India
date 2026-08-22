@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
-import { billingDocEditPath, billingDocPath, docTypeLabel } from './billingUtils';
+import CancelDocumentModal from './CancelDocumentModal';
+import { billingDocEditPath, billingDocPath, docTypeLabel, formatDMY, formatDMYTime } from './billingUtils';
 
 function money(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -12,6 +13,8 @@ export default function InvoiceDetail() {
   const [doc, setDoc] = useState(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const load = () => {
     setErr('');
@@ -41,6 +44,21 @@ export default function InvoiceDetail() {
   }[doc.type] || '/portal/billing';
   const editPath = billingDocEditPath(doc.type, doc.id);
   const canEdit = doc.status === 'draft' || (doc.edit_allowed && ['issued', 'partial', 'paid'].includes(doc.status));
+  const cancellable = doc.status !== 'cancelled' && doc.status !== 'draft' && !(doc.type === 'quotation' && doc.converted_document_id);
+
+  const confirmCancel = async (reason) => {
+    setCancelBusy(true);
+    try {
+      await api(`/billing/documents/${doc.id}/cancel`, { method: 'POST', body: { reason } });
+      setCancelling(false);
+      setMsg('Document cancelled.');
+      load();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setCancelBusy(false);
+    }
+  };
 
   return (
     <div className="bp-card">
@@ -48,10 +66,11 @@ export default function InvoiceDetail() {
         <div>
           <h2 style={{ margin: 0 }}>{docTypeLabel(doc.type)} · {doc.number}</h2>
           <div style={{ fontSize: 13, color: 'var(--bp-muted)' }}>
-            {String(doc.document_date).slice(0, 10)}
-            {doc.due_date ? ` · Due ${String(doc.due_date).slice(0, 10)}` : ''}
+            {formatDMY(doc.document_date)}
+            {doc.due_date ? ` · Due ${formatDMY(doc.due_date)}` : ''}
+            {doc.currency && doc.currency !== 'INR' ? ` · ${doc.currency}` : ''}
             {' · '}
-            <span className={`bp-badge ${doc.status === 'paid' ? 'bp-badge-paid' : doc.status === 'partial' ? 'bp-badge-partial' : doc.status === 'draft' ? 'bp-badge-draft' : 'bp-badge-unpaid'}`}>
+            <span className={`bp-badge ${doc.status === 'paid' ? 'bp-badge-paid' : doc.status === 'partial' ? 'bp-badge-partial' : doc.status === 'draft' ? 'bp-badge-draft' : doc.status === 'cancelled' ? 'bp-badge-cancelled' : 'bp-badge-unpaid'}`}>
               {doc.status === 'paid' ? 'Paid' : doc.status === 'partial' ? 'Partial' : doc.status === 'draft' ? 'Draft' : doc.status === 'cancelled' ? 'Cancelled' : 'Unpaid'}
             </span>
             {doc.edit_allowed ? <span className="bp-badge bp-badge-paid" style={{ marginLeft: 6 }}>Edit Allowed</span> : null}
@@ -125,7 +144,17 @@ export default function InvoiceDetail() {
             </button>
           )}
           {['issued', 'partial', 'paid'].includes(doc.status) && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && !doc.edit_allowed && (
-            <Link className="bp-btn bp-btn-amber" to="/portal/edit-requests">Request Edit</Link>
+            doc.gst_return_filed ? (
+              <span
+                className="bp-btn bp-btn-amber"
+                style={{ opacity: 0.45, cursor: 'not-allowed' }}
+                title="Request Edit is disabled — the GST Return for this period has already been filed. Use Credit Note, Debit Note, or Amendment instead."
+              >
+                Request Edit
+              </span>
+            ) : (
+              <Link className="bp-btn bp-btn-amber" to="/portal/edit-requests">Request Edit</Link>
+            )
           )}
           {['issued', 'partial', 'paid'].includes(doc.status) && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && (
             <Link className="bp-btn bp-btn-outline" to={`/portal/amendments/new?ref=${doc.id}`}>Create Amendment</Link>
@@ -169,6 +198,16 @@ export default function InvoiceDetail() {
           </button>
           <button
             type="button"
+            className="bp-btn bp-btn-outline"
+            onClick={async () => {
+              const r = await api(`/billing/documents/${doc.id}/pdf`);
+              window.open(r.url, '_blank');
+            }}
+          >
+            Print
+          </button>
+          <button
+            type="button"
             className="bp-btn bp-btn-amber"
             onClick={async () => {
               const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
@@ -177,6 +216,11 @@ export default function InvoiceDetail() {
           >
             Email
           </button>
+          {cancellable && (
+            <button type="button" className="bp-btn bp-btn-danger" onClick={() => setCancelling(true)}>
+              Cancel
+            </button>
+          )}
           {doc.share_token && (
             <a
               className="bp-btn bp-btn-green"
@@ -190,6 +234,17 @@ export default function InvoiceDetail() {
           )}
         </div>
       </div>
+
+      {doc.status === 'cancelled' && (
+        <div className="bp-info-note amber" style={{ marginTop: 14 }}>
+          <div>
+            <strong>This document is Cancelled{doc.cancelled_at ? ` — ${formatDMYTime(doc.cancelled_at)}` : ''}</strong>
+            {doc.cancellation_reason ? `Reason: ${doc.cancellation_reason}` : 'No reason recorded.'}
+            <br />
+            It remains available to view and download, and was never deleted.
+          </div>
+        </div>
+      )}
 
       <div className="bp-split" style={{ marginTop: 14 }}>
         <div>
@@ -319,6 +374,14 @@ export default function InvoiceDetail() {
         {doc.amount_in_words && <p style={{ fontSize: 12 }}><em>{doc.amount_in_words}</em></p>}
       </div>
       {msg && <p style={{ color: 'var(--bp-green)' }}>{msg}</p>}
+      {cancelling && (
+        <CancelDocumentModal
+          docLabel={`${docTypeLabel(doc.type)} ${doc.number}`}
+          busy={cancelBusy}
+          onCancel={() => setCancelling(false)}
+          onConfirm={confirmCancel}
+        />
+      )}
     </div>
   );
 }

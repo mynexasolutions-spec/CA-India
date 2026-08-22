@@ -58,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/profile', [ClientDashboard::class, 'profile']);
             Route::put('/profile', [ClientDashboard::class, 'updateProfile']);
             Route::get('/change-requests/current', [ClientChangeRequestController::class, 'current']);
+            Route::get('/change-requests/history', [ClientChangeRequestController::class, 'history']);
             Route::post('/change-requests', [ClientChangeRequestController::class, 'store']);
             Route::post('/change-requests/assets/{field}', [ClientChangeRequestController::class, 'uploadAsset']);
             Route::get('/edit-requests', [ClientDocumentEditRequestController::class, 'index']);
@@ -75,6 +76,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/gstr2b/export', [ClientGstr2bController::class, 'export']);
             Route::patch('/gstr2b/invoices/{invoiceId}/match-status', [ClientGstr2bController::class, 'updateMatchStatus']);
             Route::get('/gst-returns', [ClientGstReturnController::class, 'index']);
+            Route::get('/gst-compliance', [ClientGstReturnController::class, 'compliance']);
 
             Route::get('/gst-filing/preview', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'preview']);
             Route::post('/gst-filing/request', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'store']);
@@ -104,12 +106,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/documents', [DocumentController::class, 'index']);
             Route::post('/documents', [DocumentController::class, 'store']);
             Route::post('/documents/preview', [DocumentController::class, 'preview']);
+            Route::get('/documents/next-number', [DocumentController::class, 'nextNumber']);
             Route::get('/documents/{id}', [DocumentController::class, 'show']);
             Route::put('/documents/{id}', [DocumentController::class, 'update']);
             Route::delete('/documents/{id}', [DocumentController::class, 'destroy']);
             Route::post('/documents/{id}/issue', [DocumentController::class, 'issue']);
             Route::post('/documents/{id}/convert', [DocumentController::class, 'convert']);
             Route::post('/documents/{id}/duplicate', [DocumentController::class, 'duplicate']);
+            Route::post('/documents/{id}/cancel', [DocumentController::class, 'cancel']);
             Route::get('/documents/{id}/amendments', [DocumentController::class, 'amendments']);
             Route::post('/documents/{id}/payment-status', [DocumentController::class, 'setPaymentStatus']);
             Route::get('/documents/{id}/pdf', [DocumentController::class, 'pdf']);

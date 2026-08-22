@@ -3,6 +3,7 @@
 namespace App\Services\Gst;
 
 use App\Models\ClientGstr2bInvoice;
+use App\Models\ClientGstReturn;
 use App\Models\CommercialDocument;
 
 class GstLiabilityService
@@ -63,6 +64,79 @@ class GstLiabilityService
             'eligible_itc' => (float) $liability['total_eligible_itc'],
             'gst_payable' => (float) $liability['gst_payable'],
             'excess_itc' => (float) $liability['itc_carry_forward'],
+            'total_gstr2b_invoices' => (clone $gstr2b)->count(),
+            'matched_invoices' => (clone $gstr2b)
+                ->where('match_status', ClientGstr2bInvoice::MATCH_STATUS_MATCHED)
+                ->count(),
+            'unmatched_invoices' => (clone $gstr2b)
+                ->where('match_status', ClientGstr2bInvoice::MATCH_STATUS_UNMATCHED)
+                ->count(),
+        ];
+    }
+
+    /**
+     * Composition-scheme summary: Turnover × the client's composition rate, NOT the
+     * output-GST-minus-ITC calculation used for Regular dealers — composition dealers pay a
+     * flat rate on turnover and, by law, cannot avail Input Tax Credit at all (so ITC Availed /
+     * ITC Available are always zero — a genuine business rule, not a placeholder).
+     *
+     * @return array<string, float|int>
+     */
+    public function compositionSummary(int $clientProfileId, string $from, string $to, float $rate): array
+    {
+        $turnover = (float) CommercialDocument::where('client_profile_id', $clientProfileId)
+            ->where('type', 'bill_of_supply')
+            ->where('status', 'issued')
+            ->whereBetween('document_date', [$from, $to])
+            ->sum('taxable_amount');
+
+        $taxPayable = round($turnover * $rate / 100, 2);
+
+        // "Tax Paid (through CMP-08)" — sum the payable for whichever FY quarters overlapping
+        // this period have actually had their CMP-08 marked filed by the admin.
+        $fyStartYear = \Carbon\Carbon::parse($from)->month >= 4
+            ? \Carbon\Carbon::parse($from)->year
+            : \Carbon\Carbon::parse($from)->year - 1;
+        $quarters = [
+            ['key' => "{$fyStartYear}-Q1", 'from' => "{$fyStartYear}-04-01", 'to' => "{$fyStartYear}-06-30"],
+            ['key' => "{$fyStartYear}-Q2", 'from' => "{$fyStartYear}-07-01", 'to' => "{$fyStartYear}-09-30"],
+            ['key' => "{$fyStartYear}-Q3", 'from' => "{$fyStartYear}-10-01", 'to' => "{$fyStartYear}-12-31"],
+            ['key' => ($fyStartYear + 1)."-Q4", 'from' => ($fyStartYear + 1).'-01-01', 'to' => ($fyStartYear + 1).'-03-31'],
+        ];
+        $overlapping = array_filter($quarters, fn ($q) => $q['from'] <= $to && $q['to'] >= $from);
+        $filedKeys = ClientGstReturn::where('client_profile_id', $clientProfileId)
+            ->where('return_type', ClientGstReturn::TYPE_CMP08)
+            ->where('status', 'filed')
+            ->whereIn('tax_period', array_column($overlapping, 'key'))
+            ->pluck('tax_period')
+            ->all();
+
+        $taxPaid = 0.0;
+        foreach ($overlapping as $q) {
+            if (!in_array($q['key'], $filedKeys, true)) {
+                continue;
+            }
+            $qTurnover = (float) CommercialDocument::where('client_profile_id', $clientProfileId)
+                ->where('type', 'bill_of_supply')
+                ->where('status', 'issued')
+                ->whereBetween('document_date', [$q['from'], $q['to']])
+                ->sum('taxable_amount');
+            $taxPaid += round($qTurnover * $rate / 100, 2);
+        }
+
+        // Composition dealers still receive GSTR-2B for their purchases (even though ITC can't
+        // be claimed against it) — reconciling those records against supplier filings still
+        // matters for audit purposes, so reuse the same matching data under CMP-08 terminology.
+        $gstr2b = ClientGstr2bInvoice::where('client_profile_id', $clientProfileId)
+            ->whereBetween('tax_period', [substr($from, 0, 7), substr($to, 0, 7)]);
+
+        return [
+            'turnover' => round($turnover, 2),
+            'tax_payable' => $taxPayable,
+            'tax_paid' => round($taxPaid, 2),
+            'itc_availed' => 0.0,
+            'itc_available' => 0.0,
+            'composition_rate' => $rate,
             'total_gstr2b_invoices' => (clone $gstr2b)->count(),
             'matched_invoices' => (clone $gstr2b)
                 ->where('match_status', ClientGstr2bInvoice::MATCH_STATUS_MATCHED)

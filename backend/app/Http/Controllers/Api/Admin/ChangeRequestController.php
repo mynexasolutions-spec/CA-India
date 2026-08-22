@@ -14,6 +14,7 @@ class ChangeRequestController extends Controller
     {
         $data = [
             'id' => $req->id,
+            'section' => $req->section,
             'status' => $req->status,
             'payload' => $req->payload ?? [],
             'logo_path' => $req->logo_path,

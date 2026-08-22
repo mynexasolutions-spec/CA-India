@@ -35,6 +35,36 @@ export function money(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
+export const CURRENCIES = [
+  { code: 'INR', label: 'INR - Indian Rupee' },
+  { code: 'USD', label: 'USD - US Dollar' },
+  { code: 'EUR', label: 'EUR - Euro' },
+  { code: 'GBP', label: 'GBP - British Pound' },
+  { code: 'AED', label: 'AED - UAE Dirham' },
+];
+
+/** Billing Module spec §2 — mandatory DD:MM:YYYY, e.g. 15:08:2026. Accepts 'YYYY-MM-DD...' or Date. */
+export function formatDMY(value) {
+  if (!value) return '—';
+  const s = String(value).slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) return `${m[3]}:${m[2]}:${m[1]}`;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}:${mm}:${d.getFullYear()}`;
+}
+
+/** DD:MM:YYYY, hh:mm AM/PM — for "Created" timestamp columns. */
+export function formatDMYTime(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return `${formatDMY(d)}, ${time}`;
+}
+
 /** Indian FY labels e.g. 2025-26 (Apr–Mar) */
 export function buildFyOptions(count = 6) {
   const now = new Date();
@@ -76,6 +106,21 @@ export function fyDateRange(fy) {
     from: `${year}-04-01`,
     to: `${year + 1}-03-31`,
   };
+}
+
+/** The four Indian GST quarters (Apr-Jun, Jul-Sep, Oct-Dec, Jan-Mar) for a given FY label
+ * (e.g. "2026-27"), each with its own date range — computed from the FY, never hardcoded. */
+export function fyQuarterOptions(fy) {
+  const [y1] = String(fy).split('-');
+  const year = parseInt(y1, 10);
+  if (!year) return [];
+  const defs = [
+    { q: 1, label: 'Q1 (Apr - Jun)', from: `${year}-04-01`, to: `${year}-06-30` },
+    { q: 2, label: 'Q2 (Jul - Sep)', from: `${year}-07-01`, to: `${year}-09-30` },
+    { q: 3, label: 'Q3 (Oct - Dec)', from: `${year}-10-01`, to: `${year}-12-31` },
+    { q: 4, label: 'Q4 (Jan - Mar)', from: `${year + 1}-01-01`, to: `${year + 1}-03-31` },
+  ];
+  return defs.map((d) => ({ ...d, value: `Q${d.q}` }));
 }
 
 const MONTH_NAMES = [

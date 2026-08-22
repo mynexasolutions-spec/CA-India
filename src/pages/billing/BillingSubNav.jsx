@@ -5,6 +5,7 @@ import { docTypeLock, isRetail } from './billingProfile';
 /** Always shown for GST dealers; locked tabs stay visible but greyed out. */
 const GST_LINKS = [
   { to: '/portal/billing', label: 'All Bills', end: true, type: null },
+  { to: '/portal/quotation', label: 'Quotations', type: 'quotation' },
   { to: '/portal/billing/invoices', label: 'Tax Invoices', type: 'tax_invoice' },
   { to: '/portal/billing/bill-of-supply', label: 'Bill of Supply', type: 'bill_of_supply' },
   { to: '/portal/billing/debit-notes', label: 'Debit Notes', type: 'debit_note' },

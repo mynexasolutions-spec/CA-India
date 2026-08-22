@@ -10,6 +10,13 @@ class ClientChangeRequest extends Model
     public const STATUS_APPROVED = 'approved';
     public const STATUS_REJECTED = 'rejected';
 
+    // Each Settings tab tracks its own independent approval workflow.
+    public const SECTION_BRANDING = 'branding';
+    public const SECTION_BANK = 'bank';
+    public const SECTION_INVOICE_SETTINGS = 'invoice_settings';
+    public const SECTION_NUMBERING = 'numbering';
+    public const SECTIONS = [self::SECTION_BRANDING, self::SECTION_BANK, self::SECTION_INVOICE_SETTINGS, self::SECTION_NUMBERING];
+
     public const TEXT_FIELDS = [
         'bank_name',
         'bank_branch',
@@ -28,6 +35,25 @@ class ClientChangeRequest extends Model
         'terms_conditions',
     ];
 
+    /** Which section each editable text field belongs to. */
+    public const FIELD_SECTIONS = [
+        'bank_name' => self::SECTION_BANK,
+        'bank_branch' => self::SECTION_BANK,
+        'account_holder_name' => self::SECTION_BANK,
+        'bank_account' => self::SECTION_BANK,
+        'bank_ifsc' => self::SECTION_BANK,
+        'swift_code' => self::SECTION_BANK,
+        'account_type' => self::SECTION_BANK,
+        'upi_id' => self::SECTION_BANK,
+        'signatory_name' => self::SECTION_INVOICE_SETTINGS,
+        'terms_conditions' => self::SECTION_INVOICE_SETTINGS,
+        'invoice_prefix' => self::SECTION_NUMBERING,
+        'bill_of_supply_prefix' => self::SECTION_NUMBERING,
+        'credit_note_prefix' => self::SECTION_NUMBERING,
+        'debit_note_prefix' => self::SECTION_NUMBERING,
+        'quotation_prefix' => self::SECTION_NUMBERING,
+    ];
+
     public const ASSET_FIELDS = [
         'logo' => 'logo_path',
         'signature' => 'signature_path',
@@ -37,6 +63,7 @@ class ClientChangeRequest extends Model
 
     protected $fillable = [
         'client_profile_id',
+        'section',
         'submitted_by',
         'status',
         'payload',

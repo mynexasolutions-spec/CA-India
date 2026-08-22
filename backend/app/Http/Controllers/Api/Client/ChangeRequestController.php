@@ -41,6 +41,7 @@ class ChangeRequestController extends Controller
 
         return [
             'id' => $req->id,
+            'section' => $req->section,
             'status' => $req->status,
             'payload' => $req->payload ?? [],
             'logo_path' => $req->logo_path,
@@ -54,29 +55,59 @@ class ChangeRequestController extends Controller
         ];
     }
 
+    /**
+     * Every Settings tab (branding / bank / invoice_settings / numbering) tracks its own
+     * independent pending + last-reviewed request, so one tab can show "Pending Approval"
+     * while another simultaneously shows "Approved" — not one shared status for the whole page.
+     */
     public function current(Request $request)
     {
         $profile = $this->profile($request);
-        $pending = ClientChangeRequest::where('client_profile_id', $profile->id)
-            ->where('status', ClientChangeRequest::STATUS_PENDING)
-            ->latest('id')
-            ->first();
-        $last = ClientChangeRequest::where('client_profile_id', $profile->id)
-            ->whereIn('status', [ClientChangeRequest::STATUS_APPROVED, ClientChangeRequest::STATUS_REJECTED])
-            ->latest('id')
-            ->first();
+
+        $sections = [];
+        foreach (ClientChangeRequest::SECTIONS as $section) {
+            $pending = ClientChangeRequest::where('client_profile_id', $profile->id)
+                ->where('section', $section)
+                ->where('status', ClientChangeRequest::STATUS_PENDING)
+                ->latest('id')
+                ->first();
+            $last = ClientChangeRequest::where('client_profile_id', $profile->id)
+                ->where('section', $section)
+                ->whereIn('status', [ClientChangeRequest::STATUS_APPROVED, ClientChangeRequest::STATUS_REJECTED])
+                ->latest('id')
+                ->first();
+
+            $sections[$section] = [
+                'pending' => $this->serializeRequest($pending),
+                'last_reviewed' => $this->serializeRequest($last),
+            ];
+        }
 
         return response()->json([
             'approved' => $this->approvedSnapshot($profile),
-            'pending' => $this->serializeRequest($pending),
-            'last_reviewed' => $this->serializeRequest($last),
+            'sections' => $sections,
         ]);
     }
 
-    public function store(Request $request)
+    /** Full change-request history across all sections, for the "View Request History" page. */
+    public function history(Request $request)
     {
         $profile = $this->profile($request);
-        $data = $request->validate([
+        $q = ClientChangeRequest::where('client_profile_id', $profile->id)->latest('id');
+
+        if ($request->filled('section') && in_array($request->section, ClientChangeRequest::SECTIONS, true)) {
+            $q->where('section', $request->section);
+        }
+
+        $page = $q->paginate(20);
+        $page->getCollection()->transform(fn ($req) => $this->serializeRequest($req));
+
+        return response()->json($page);
+    }
+
+    private function validationRules(): array
+    {
+        return [
             'bank_name' => 'nullable|string|max:120',
             'bank_branch' => 'nullable|string|max:120',
             'account_holder_name' => 'nullable|string|max:120',
@@ -92,16 +123,30 @@ class ChangeRequestController extends Controller
             'debit_note_prefix' => 'nullable|string|max:40',
             'quotation_prefix' => 'nullable|string|max:40',
             'terms_conditions' => 'nullable|string',
-        ]);
+        ];
+    }
 
+    public function store(Request $request)
+    {
+        $profile = $this->profile($request);
+
+        $data = $request->validate(array_merge($this->validationRules(), [
+            'section' => 'required|string|in:'.implode(',', ClientChangeRequest::SECTIONS),
+        ]));
+        $section = $data['section'];
+        unset($data['section']);
+
+        // Only accept fields that actually belong to this section — a bank-tab submit can't
+        // sneak in a numbering-prefix change, even if the client sent one.
         $payload = [];
-        foreach (ClientChangeRequest::TEXT_FIELDS as $field) {
-            if (array_key_exists($field, $data)) {
-                $payload[$field] = $data[$field];
+        foreach ($data as $field => $value) {
+            if ((ClientChangeRequest::FIELD_SECTIONS[$field] ?? null) === $section) {
+                $payload[$field] = $value;
             }
         }
 
         $pending = ClientChangeRequest::where('client_profile_id', $profile->id)
+            ->where('section', $section)
             ->where('status', ClientChangeRequest::STATUS_PENDING)
             ->latest('id')
             ->first();
@@ -115,6 +160,7 @@ class ChangeRequestController extends Controller
         } else {
             $pending = ClientChangeRequest::create([
                 'client_profile_id' => $profile->id,
+                'section' => $section,
                 'submitted_by' => $request->user()->id,
                 'status' => ClientChangeRequest::STATUS_PENDING,
                 'payload' => $payload,
@@ -138,6 +184,7 @@ class ChangeRequestController extends Controller
 
         $profile = $this->profile($request);
         $pending = ClientChangeRequest::where('client_profile_id', $profile->id)
+            ->where('section', ClientChangeRequest::SECTION_BRANDING)
             ->where('status', ClientChangeRequest::STATUS_PENDING)
             ->latest('id')
             ->first();
@@ -145,6 +192,7 @@ class ChangeRequestController extends Controller
         if (! $pending) {
             $pending = ClientChangeRequest::create([
                 'client_profile_id' => $profile->id,
+                'section' => ClientChangeRequest::SECTION_BRANDING,
                 'submitted_by' => $request->user()->id,
                 'status' => ClientChangeRequest::STATUS_PENDING,
                 'payload' => [],

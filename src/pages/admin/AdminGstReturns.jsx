@@ -42,6 +42,7 @@ export default function AdminGstReturns() {
   // Table filters
   const [periodFilter, setPeriodFilter] = useState(month);
   const [freqFilter, setFreqFilter] = useState('monthly');
+  const [returnType, setReturnType] = useState('GSTR3B');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -57,10 +58,10 @@ export default function AdminGstReturns() {
   const fetchClients = useCallback(async (page = 1) => {
     setLoading(true);
     try {
-      let q = `/admin/gst-returns/clients?page=${page}&period=${periodFilter}`;
+      let q = `/admin/gst-returns/clients?page=${page}&period=${periodFilter}&return_type=${returnType}`;
       if (freqFilter !== 'all') q += `&frequency=${freqFilter}`;
       if (search) q += `&q=${encodeURIComponent(search)}`;
-      
+
       const res = await api(q);
       setClients(res);
     } catch (e) {
@@ -68,7 +69,7 @@ export default function AdminGstReturns() {
     } finally {
       setLoading(false);
     }
-  }, [periodFilter, freqFilter, search]);
+  }, [periodFilter, freqFilter, returnType, search]);
 
   useEffect(() => {
     fetchStats();
@@ -85,6 +86,7 @@ export default function AdminGstReturns() {
         method: 'POST',
         body: {
           tax_period: periodFilter,
+          return_type: returnType,
           status: newStatus
         }
       });
@@ -179,7 +181,9 @@ export default function AdminGstReturns() {
       </div>
 
       <div className="bp-card" style={{ padding: '20px' }}>
-        <h3 style={{ margin: '0 0 20px 0', color: 'var(--bp-navy)' }}>Client Return Status</h3>
+        <h3 style={{ margin: '0 0 20px 0', color: 'var(--bp-navy)' }}>
+          Client Return Status — {returnType === 'GSTR1' ? 'GSTR-1' : returnType === 'CMP08' ? 'CMP-08' : 'GSTR-3B'}
+        </h3>
         
         <div className="bp-toolbar" style={{ backgroundColor: 'transparent', padding: 0, border: 'none', marginBottom: '15px' }}>
           <input
@@ -194,6 +198,11 @@ export default function AdminGstReturns() {
             <option value="all">All Frequencies</option>
             <option value="monthly">Monthly</option>
             <option value="quarterly">Quarterly</option>
+          </select>
+          <select className="bp-select" value={returnType} onChange={(e) => setReturnType(e.target.value)}>
+            <option value="GSTR3B">GSTR-3B</option>
+            <option value="GSTR1">GSTR-1</option>
+            <option value="CMP08">CMP-08 (Composition)</option>
           </select>
           <select className="bp-select" value={periodFilter} onChange={(e) => setPeriodFilter(e.target.value)}>
             <optgroup label="Months">

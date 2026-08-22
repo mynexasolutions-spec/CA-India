@@ -12,6 +12,16 @@ dist
 dist-ssr
 *.local
 
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Database backups / archives — never commit real client data
+database.zip
+*.sqlite
+*.sqlite-journal
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

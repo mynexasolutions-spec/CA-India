@@ -44,6 +44,93 @@ class DashboardController extends Controller
         return $q;
     }
 
+    /**
+     * Taxable value / GST amount across the given period, for the dealer's primary sales
+     * document type (Tax Invoice for regular/retail dealers, Bill of Supply for composition
+     * dealers) — bucketed by calendar month for Monthly filers, or by the four Indian GST
+     * quarters (Apr-Jun, Jul-Sep, Oct-Dec, Jan-Mar) for Quarterly (QRMP) filers, per the
+     * Client Portal spec: "Quarterly client = quarterly chart ... the data grouping ... must
+     * change." Grouped in PHP rather than SQL so it behaves identically on SQLite (dev) and
+     * MySQL (prod).
+     *
+     * @return array<int, array{period: string, label: string, taxable_value: float, gst_amount: float}>
+     */
+    private function monthlyTrend(int $pid, string $from, string $to, string $mode, string $frequency): array
+    {
+        $type = $mode === 'composition' ? 'bill_of_supply' : 'tax_invoice';
+
+        $rows = CommercialDocument::where('client_profile_id', $pid)
+            ->where('type', $type)
+            ->where('status', 'issued')
+            ->whereDate('document_date', '>=', $from)
+            ->whereDate('document_date', '<=', $to)
+            ->get(['document_date', 'taxable_amount', 'cgst_amount', 'sgst_amount', 'igst_amount']);
+
+        $buckets = [];
+        if ($frequency === 'quarterly') {
+            // Same FY-quarter convention as the compliance endpoint: Q1 Apr-Jun, Q2 Jul-Sep,
+            // Q3 Oct-Dec (all in the FY's start year), Q4 Jan-Mar (in start year + 1).
+            $fyStartYear = \Carbon\Carbon::parse($from)->month >= 4
+                ? \Carbon\Carbon::parse($from)->year
+                : \Carbon\Carbon::parse($from)->year - 1;
+            $quarterDefs = [
+                1 => ['months' => [4, 5, 6], 'year' => $fyStartYear],
+                2 => ['months' => [7, 8, 9], 'year' => $fyStartYear],
+                3 => ['months' => [10, 11, 12], 'year' => $fyStartYear],
+                4 => ['months' => [1, 2, 3], 'year' => $fyStartYear + 1],
+            ];
+            $monthToQuarter = [];
+            foreach ($quarterDefs as $q => $def) {
+                foreach ($def['months'] as $m) {
+                    $monthToQuarter[$def['year'].'-'.$m] = $q;
+                }
+            }
+            foreach ($quarterDefs as $q => $def) {
+                $key = $def['year'].'-Q'.$q;
+                $startMonth = $def['months'][0];
+                $endMonth = end($def['months']);
+                $startLabelYear = $def['year'];
+                $buckets[$key] = [
+                    'period' => $key,
+                    'label' => "Q{$q} (".\Carbon\Carbon::createFromDate($startLabelYear, $startMonth, 1)->format('M')
+                        .'-'.\Carbon\Carbon::createFromDate($def['year'], $endMonth, 1)->format("M ’y").')',
+                    'taxable_value' => 0.0,
+                    'gst_amount' => 0.0,
+                ];
+            }
+        } else {
+            $cursor = \Carbon\Carbon::parse($from)->startOfMonth();
+            $end = \Carbon\Carbon::parse($to)->startOfMonth();
+            while ($cursor <= $end) {
+                $key = $cursor->format('Y-m');
+                $buckets[$key] = [
+                    'period' => $key,
+                    'label' => $cursor->format('M \'y'),
+                    'taxable_value' => 0.0,
+                    'gst_amount' => 0.0,
+                ];
+                $cursor->addMonth();
+            }
+        }
+
+        foreach ($rows as $row) {
+            $date = \Carbon\Carbon::parse($row->document_date);
+            if ($frequency === 'quarterly') {
+                $q = $monthToQuarter[$date->year.'-'.$date->month] ?? null;
+                $key = $q ? $quarterDefs[$q]['year'].'-Q'.$q : null;
+            } else {
+                $key = $date->format('Y-m');
+            }
+            if (!$key || !isset($buckets[$key])) {
+                continue;
+            }
+            $buckets[$key]['taxable_value'] += (float) $row->taxable_amount;
+            $buckets[$key]['gst_amount'] += (float) $row->cgst_amount + (float) $row->sgst_amount + (float) $row->igst_amount;
+        }
+
+        return array_values($buckets);
+    }
+
     public function index(Request $request)
     {
         $profile = $this->profile($request);
@@ -95,6 +182,12 @@ class DashboardController extends Controller
             $gstDn = $zero;
         }
 
+        $frequency = $profile->gst_filing_frequency ?? 'monthly';
+        // Composition's compliance cycle is quarterly by law, independent of whatever
+        // gst_filing_frequency happens to be saved — don't rely solely on that field for it.
+        $trendFrequency = $mode === 'composition' ? 'quarterly' : $frequency;
+        $monthlyTrend = $this->monthlyTrend($pid, $from, $to, $mode, $trendFrequency);
+
         $recent = CommercialDocument::where('client_profile_id', $pid);
         $this->applyPeriod($recent, $from, $to);
         $recent = $recent
@@ -133,10 +226,15 @@ class DashboardController extends Controller
                 'credit_note' => $gstCn,
             ],
             'dealer_mode' => $mode,
+            'gst_filing_frequency' => $frequency,
+            'composition_rate' => (float) $profile->composition_rate,
             'gst_dashboard' => $mode === 'regular'
                 ? $this->liabilityService->dashboardSummary($pid, $from, $to)
                 : null,
-            'monthly_trend' => [],
+            'composition_dashboard' => $mode === 'composition'
+                ? $this->liabilityService->compositionSummary($pid, $from, $to, (float) $profile->composition_rate)
+                : null,
+            'monthly_trend' => $monthlyTrend,
             'recent_invoices' => $recent,
             'parties_count' => Customer::where('client_profile_id', $pid)->count(),
         ]);

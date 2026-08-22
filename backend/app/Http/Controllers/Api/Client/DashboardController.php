@@ -31,6 +31,7 @@ class DashboardController extends Controller
                 'pending' => $pending->count(),
                 'documents' => ClientDocument::where('client_profile_id', $profile->id)->count(),
                 'overdue' => $pending->where('status', 'overdue')->count(),
+                'unread_notifications' => NotificationItem::where('user_id', $request->user()->id)->whereNull('read_at')->count(),
             ],
         ]);
     }

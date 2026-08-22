@@ -8,7 +8,9 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Services\Billing\BillingPolicy;
 use App\Services\Billing\InvoiceService;
+
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -25,18 +27,17 @@ class DocumentController extends Controller
         return $profile;
     }
 
-    public function index(Request $request)
+    /** Applies every list filter except `type` — shared by the row query and the
+     *  type-breakdown summary cards, so cards reflect the same FY/date/status/search
+     *  filters without being narrowed by the Document Type filter itself (spec §24). */
+    private function applyCommonFilters($q, Request $request)
     {
-        $q = CommercialDocument::where('client_profile_id', $this->profile($request)->id)
-            ->with('customer:id,name,gstin,gst_status')
-            ->latest('document_date')
-            ->latest('id');
-
-        if ($request->filled('type')) {
-            $q->where('type', $request->type);
-        }
         if ($request->filled('status')) {
             $q->where('status', $request->status);
+        } else {
+            // Cancelled documents move out of the normal working views (§18/§19) —
+            // they stay fully searchable/viewable via an explicit status=cancelled filter.
+            $q->where('status', '!=', 'cancelled');
         }
         if ($request->filled('party_id')) {
             $q->where('customer_id', $request->party_id);
@@ -62,13 +63,73 @@ class DocumentController extends Controller
             $s = $request->q;
             $q->where(function ($w) use ($s) {
                 $w->where('number', 'like', "%{$s}%")
-                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$s}%"));
+                    ->orWhereHas('customer', fn ($c) => $c->where('name', 'like', "%{$s}%")
+                        ->orWhere('gstin', 'like', "%{$s}%"));
             });
         }
 
-        $perPage = min(500, max(1, (int) $request->input('per_page', 25)));
+        return $q;
+    }
 
-        return response()->json($q->paginate($perPage));
+    public function index(Request $request)
+    {
+        $profile = $this->profile($request);
+        $base = $this->applyCommonFilters(
+            CommercialDocument::where('client_profile_id', $profile->id),
+            $request
+        );
+
+        // Filtered aggregate totals (spec §24) and per-type summary counts —
+        // computed from the FULL filtered set, not just the current page.
+        $summaryTypes = ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'];
+        $typeCounts = [];
+        foreach ($summaryTypes as $t) {
+            $typeCounts[$t] = (clone $base)->where('type', $t)->count();
+        }
+        $totalsScope = clone $base;
+        if ($request->filled('type')) {
+            $totalsScope->where('type', $request->type);
+        }
+        $totals = [
+            'count' => (clone $totalsScope)->count(),
+            'taxable_amount' => (float) (clone $totalsScope)->sum('taxable_amount'),
+            'gst_amount' => (float) (clone $totalsScope)->sum(DB::raw('cgst_amount + sgst_amount + igst_amount')),
+            'grand_total' => (float) (clone $totalsScope)->sum(DB::raw('COALESCE(NULLIF(grand_total, 0), total_amount)')),
+        ];
+
+        $q = clone $base;
+        if ($request->filled('type')) {
+            $q->where('type', $request->type);
+        }
+        $q->with('customer:id,name,gstin,gst_status')->latest('document_date')->latest('id');
+
+        $perPage = min(500, max(1, (int) $request->input('per_page', 25)));
+        $paginated = $q->paginate($perPage);
+
+        $filedPeriods = BillingPolicy::filedPeriods($profile);
+        $paginated->getCollection()->each(function (CommercialDocument $doc) use ($profile, $filedPeriods) {
+            $doc->gst_return_filed = $doc->document_date
+                && in_array(BillingPolicy::periodOf($profile, $doc->document_date->toDateString()), $filedPeriods, true);
+        });
+
+        $result = $paginated->toArray();
+        $result['totals'] = $totals;
+        $result['type_counts'] = $typeCounts;
+
+        return response()->json($result);
+    }
+
+    /** Read-only preview of the number that will be allocated on Generate/Issue.
+     *  Never increments the sequence — purely informational for the Create form. */
+    public function nextNumber(Request $request)
+    {
+        $profile = $this->profile($request);
+        $data = $request->validate([
+            'type' => 'required|in:tax_invoice,bill_of_supply,credit_note,debit_note,quotation,amendment,proforma,delivery_challan',
+        ]);
+        BillingPolicy::assertDocumentType($profile, $data['type']);
+
+        return response()->json(['number' => $this->invoices->nextNumber($profile, $data['type'])]);
     }
 
     public function store(Request $request)
@@ -141,6 +202,16 @@ class DocumentController extends Controller
         return response()->json(['message' => 'Quotation deleted']);
     }
 
+    public function cancel(Request $request, int $id)
+    {
+        $profile = $this->profile($request);
+        $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
+        $data = $request->validate(['reason' => 'required|string|max:500']);
+        $doc = $this->invoices->cancel($doc, $data['reason']);
+
+        return response()->json($doc);
+    }
+
     public function amendments(Request $request, int $id)
     {
         $profile = $this->profile($request);
@@ -198,9 +269,11 @@ class DocumentController extends Controller
 
     public function show(Request $request, int $id)
     {
-        $doc = CommercialDocument::where('client_profile_id', $this->profile($request)->id)
+        $profile = $this->profile($request);
+        $doc = CommercialDocument::where('client_profile_id', $profile->id)
             ->with(['lineItems', 'customer', 'clientProfile', 'referenceDocument', 'tdsTcsSection'])
             ->findOrFail($id);
+        $doc->gst_return_filed = BillingPolicy::isPeriodFiled($profile, $doc->document_date?->toDateString());
 
         return response()->json($doc);
     }
@@ -275,6 +348,7 @@ class DocumentController extends Controller
             'due_date' => 'nullable|date',
             'place_of_supply' => 'nullable|string|max:120',
             'payment_terms' => 'nullable|string|max:200',
+            'currency' => 'nullable|string|max:3',
             'is_inter_state' => 'boolean',
             'is_reverse_charge' => 'boolean',
             'notes' => 'nullable|string',

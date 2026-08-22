@@ -31,7 +31,7 @@ const empty = () => ({
   date_of_incorporation: '', date_of_birth: '', mobile: '', alt_mobile: '',
   email: '', alt_email: '', address: '', city: '', state: '', state_code: '27',
   pincode: '', country: 'India', website: '',
-  pan: '', aadhaar: '', gstin: '', has_gst: false, dealer_type: '', gst_filing_frequency: 'monthly', gst_portal_username: '', gst_portal_password: '',
+  pan: '', aadhaar: '', gstin: '', has_gst: false, dealer_type: '', gst_filing_frequency: 'monthly', composition_rate: '1.00', gst_portal_username: '', gst_portal_password: '',
   tan: '', tan_portal_password: '', it_portal_password: '',
   udyam: '', shop_establishment: '', iec: '', cin: '', llpin: '', pt_reg: '', esic: '', pf: '',
   bank_name: '', bank_branch: '', bank_account: '', account_holder_name: '',
@@ -221,6 +221,23 @@ export default function ClientProfileForm() {
                       />
                       Composition Dealer
                     </label>
+                  </div>
+                </Field>
+              )}
+              {form.has_gst && form.dealer_type === 'composition' && (
+                <Field label="Composition Rate (%)">
+                  <input
+                    className="bp-input"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="99.99"
+                    value={form.composition_rate}
+                    onChange={(e) => set('composition_rate', e.target.value)}
+                    placeholder="1.00"
+                  />
+                  <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 4 }}>
+                    Typical: 1% traders/manufacturers, 5% restaurants (no alcohol), 6% other service providers.
                   </div>
                 </Field>
               )}

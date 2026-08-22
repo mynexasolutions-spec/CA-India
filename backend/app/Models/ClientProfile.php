@@ -9,7 +9,7 @@ class ClientProfile extends Model
     protected $fillable = [
         'user_id', 'client_code', 'client_name', 'business_name', 'constitution_type', 'business_type',
         'date_of_incorporation', 'date_of_birth', 'mobile', 'alt_mobile', 'alt_email',
-        'gstin', 'has_gst', 'dealer_type', 'gst_filing_frequency', 'pan', 'email', 'state_code', 'state', 'country', 'place_of_supply_default',
+        'gstin', 'has_gst', 'dealer_type', 'composition_rate', 'gst_filing_frequency', 'pan', 'email', 'state_code', 'state', 'country', 'place_of_supply_default',
         'address', 'city', 'pincode', 'website',
         'aadhaar', 'gst_portal_username', 'gst_portal_password', 'tan', 'tan_portal_password',
         'it_portal_password', 'udyam', 'shop_establishment', 'iec', 'cin', 'llpin', 'pt_reg', 'esic', 'pf',
@@ -28,6 +28,7 @@ class ClientProfile extends Model
             'date_of_incorporation' => 'date',
             'date_of_birth' => 'date',
             'has_gst' => 'boolean',
+            'composition_rate' => 'decimal:2',
         ];
     }
 

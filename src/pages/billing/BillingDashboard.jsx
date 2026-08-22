@@ -1,17 +1,90 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { api } from '../../api/client';
 import BillingDateFilters from './BillingDateFilters';
-import { billingDocEditPath, billingDocPath, currentFyRange, docTypeLabel, money, paymentStatusBadge, paymentStatusLabel } from './billingUtils';
+import DocActionMenu from './DocActionMenu';
+import DocSummaryCards from './DocSummaryCards';
+import NumberedPagination from './NumberedPagination';
+import CancelDocumentModal from './CancelDocumentModal';
+import { isDocTypeDisabled } from './billingProfile';
+import {
+  billingDocEditPath, billingDocPath, currentFyRange, docTypeLabel,
+  formatDMY, formatDMYTime, money, paymentStatusBadge, paymentStatusLabel,
+} from './billingUtils';
 
-function formatCreatedAt(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  const date = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  return `${date}, ${time}`;
+/** Billing Module spec §8/§9 — the only tab with a "+ Create Document ▼" dropdown. */
+const CREATE_OPTIONS = [
+  { type: 'quotation', label: 'Quotation', to: '/portal/quotation/new' },
+  { type: 'tax_invoice', label: 'Tax Invoice', to: '/portal/billing/invoices/new' },
+  { type: 'bill_of_supply', label: 'Bill of Supply', to: '/portal/billing/bill-of-supply/new' },
+  { type: 'debit_note', label: 'Debit Note', to: '/portal/billing/debit-notes/new' },
+  { type: 'credit_note', label: 'Credit Note', to: '/portal/billing/credit-notes/new' },
+];
+
+function CreateDocumentDropdown({ profile }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const options = CREATE_OPTIONS.filter((o) => !isDocTypeDisabled(profile, o.type));
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  if (!options.length) return null;
+
+  return (
+    <div className="bp-dropdown-wrap" ref={ref}>
+      <button type="button" className="bp-btn bp-btn-primary" onClick={() => setOpen((v) => !v)}>
+        + Create Document {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="bp-dropdown-panel">
+          <div className="bp-dropdown-panel-head">Create Document</div>
+          {options.map((o) => (
+            <Link key={o.type} className="bp-dropdown-item" to={o.to} onClick={() => setOpen(false)}>{o.label}</Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Billing Module spec §10 — action set per document type, reused for the All Documents tab. */
+function buildActions(d, { onConvert, onDuplicate, onSend, onMarkPaid, onCancel }) {
+  const editPath = billingDocEditPath(d.type, d.id);
+  const canEditDraft = d.status === 'draft' && editPath;
+  const canEditUnlocked = d.edit_allowed && ['issued', 'partial', 'paid'].includes(d.status) && editPath;
+  const cancellable = d.status !== 'cancelled' && d.status !== 'draft' && !(d.type === 'quotation' && d.converted_document_id);
+  const editOrRequest = canEditDraft
+    ? { label: 'Edit', to: editPath }
+    : canEditUnlocked
+      ? { label: 'Edit Allowed', to: editPath }
+      : ['issued', 'partial', 'paid'].includes(d.status) && !d.edit_allowed
+        ? (d.gst_return_filed
+          ? { label: 'Request Edit', disabled: true, disabledReason: 'GST Return for this period has already been filed. Use Credit Note, Debit Note, or Amendment instead.' }
+          : { label: 'Request Edit', to: '/portal/edit-requests' })
+        : null;
+
+  const view = { label: `View ${docTypeLabel(d.type)}`, to: billingDocPath(d.type, d.id) };
+  const downloadPdf = { label: 'Download PDF', onClick: () => api(`/billing/documents/${d.id}/pdf`).then((r) => window.open(r.url, '_blank')) };
+  const print = { label: 'Print', onClick: () => api(`/billing/documents/${d.id}/pdf`).then((r) => window.open(r.url, '_blank')) };
+  const send = { label: 'Send', onClick: () => onSend(d) };
+  const duplicate = { label: 'Duplicate', onClick: () => onDuplicate(d) };
+  const markPaid = ['issued', 'partial'].includes(d.status) ? { label: 'Mark as Paid', onClick: () => onMarkPaid(d) } : null;
+  const cancel = cancellable ? { label: 'Cancel', danger: true, onClick: () => onCancel(d) } : null;
+
+  if (d.type === 'quotation') {
+    const convert = !d.converted_document_id && d.status !== 'cancelled' ? { label: 'Convert to Tax Invoice', onClick: () => onConvert(d) } : null;
+    return [view, editOrRequest, downloadPdf, print, send, duplicate, convert, cancel];
+  }
+  if (d.type === 'bill_of_supply') return [view, downloadPdf, print, editOrRequest, send, cancel];
+  if (d.type === 'debit_note') return [view, downloadPdf, print, editOrRequest, markPaid, cancel];
+  if (d.type === 'credit_note') return [view, downloadPdf, print, editOrRequest, cancel];
+  return [view, downloadPdf, print, editOrRequest, duplicate, send, markPaid, cancel];
 }
 
 function csvCell(value) {
@@ -25,6 +98,8 @@ export default function BillingDashboard() {
   const fyDefault = currentFyRange();
   const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
+  const [totals, setTotals] = useState(null);
+  const [typeCounts, setTypeCounts] = useState(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
@@ -35,6 +110,9 @@ export default function BillingDashboard() {
   const [to, setTo] = useState(fyDefault.to);
   const [status, setStatus] = useState('');
   const [docType, setDocType] = useState('');
+  const [msg, setMsg] = useState('');
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelBusy, setCancelBusy] = useState(false);
 
   const load = (targetPage = page) => {
     setLoading(true);
@@ -52,6 +130,8 @@ export default function BillingDashboard() {
       .then((d) => {
         setRows(d.data || []);
         setMeta({ current_page: d.current_page || 1, last_page: d.last_page || 1, total: d.total || 0, per_page: d.per_page || perPage });
+        setTotals(d.totals || null);
+        setTypeCounts(d.type_counts || null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -60,20 +140,64 @@ export default function BillingDashboard() {
   useEffect(() => { load(page); }, [page, perPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyFilters = () => { setPage(1); load(1); };
-  const changePerPage = (value) => { setPerPage(value); setPage(1); };
 
-  const exportCsv = () => {
-    const header = ['Number', 'Date', 'Created', 'Type', 'Party', 'Taxable', 'GST', 'Total', 'Status'];
-    const lines = rows.map((d) => [
-      d.number,
-      String(d.document_date).slice(0, 10),
-      formatCreatedAt(d.created_at),
-      docTypeLabel(d.type),
-      d.customer?.name || '—',
-      d.taxable_amount,
-      Number(d.cgst_amount) + Number(d.sgst_amount) + Number(d.igst_amount),
-      d.grand_total || d.total_amount,
-      paymentStatusLabel(d.status),
+  const doConvert = async (d) => {
+    const inv = await api(`/billing/documents/${d.id}/convert`, { method: 'POST', body: {} });
+    window.location.href = `/portal/billing/invoices/${inv.id}`;
+  };
+  const doDuplicate = async (d) => {
+    const copy = await api(`/billing/documents/${d.id}/duplicate`, { method: 'POST', body: {} });
+    window.location.href = billingDocEditPath(copy.type, copy.id) || billingDocPath(copy.type, copy.id);
+  };
+  const doSend = async (d) => {
+    const r = await api(`/billing/documents/${d.id}/email`, { method: 'POST', body: {} });
+    setMsg(r.message || 'Sent');
+  };
+  const doMarkPaid = async (d) => {
+    await api(`/billing/documents/${d.id}/payment-status`, { method: 'POST', body: { status: 'paid' } });
+    load();
+  };
+  const confirmCancel = async (reason) => {
+    setCancelBusy(true);
+    try {
+      await api(`/billing/documents/${cancelTarget.id}/cancel`, { method: 'POST', body: { reason } });
+      setCancelTarget(null);
+      setMsg(`${docTypeLabel(cancelTarget.type)} ${cancelTarget.number} cancelled.`);
+      load();
+    } catch (e) {
+      setMsg(e.message);
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
+  /** §23 — export must reflect the same filtered result shown on screen, not just
+   *  the current page: re-fetch the full filtered set (up to the API's 500 cap) first. */
+  const exportCsv = async () => {
+    const qs = new URLSearchParams();
+    if (q) qs.set('q', q);
+    if (month) qs.set('month', month);
+    if (fy) qs.set('fy', fy);
+    if (from) qs.set('from', from);
+    if (to) qs.set('to', to);
+    if (status) qs.set('status', status);
+    if (docType) qs.set('type', docType);
+    qs.set('per_page', 500);
+    qs.set('page', 1);
+    const d = await api(`/billing/documents?${qs}`);
+    const allRows = d.data || [];
+    const header = ['Number', 'Date', 'Created', 'Type', 'Party', 'GSTIN', 'Taxable', 'GST', 'Total', 'Status'];
+    const lines = allRows.map((doc) => [
+      doc.number,
+      formatDMY(doc.document_date),
+      formatDMYTime(doc.created_at),
+      docTypeLabel(doc.type),
+      doc.customer?.name || '—',
+      doc.customer?.gstin_display || doc.customer?.gstin || 'Unregistered',
+      doc.taxable_amount,
+      Number(doc.cgst_amount) + Number(doc.sgst_amount) + Number(doc.igst_amount),
+      doc.grand_total || doc.total_amount,
+      paymentStatusLabel(doc.status),
     ].map(csvCell).join(','));
     const csv = [header.join(','), ...lines].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -85,29 +209,19 @@ export default function BillingDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const rowFrom = meta.total ? (meta.current_page - 1) * meta.per_page + 1 : 0;
-  const rowTo = Math.min(meta.current_page * meta.per_page, meta.total);
-
   return (
     <div>
-      <div className="bp-card">
-        <div className="bp-docs-head">
-          <span className="bp-docs-head-icon" aria-hidden="true">
-            <svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 2.5h7l3 3v12a.5.5 0 0 1-.5.5h-9a.5.5 0 0 1-.5-.5v-14a.5.5 0 0 1 .5-.5Z" />
-              <path d="M12 2.5V5.5a.5.5 0 0 0 .5.5H15.5" />
-              <path d="M7 10.5h6M7 13h6M7 8h3" />
-            </svg>
-          </span>
-          <div>
-            <h3 style={{ margin: 0 }}>All Bills &amp; Documents</h3>
-            <p className="bp-section-desc">View, track and manage all your invoices, debit notes and documents.</p>
-          </div>
-          <button type="button" className="bp-btn bp-btn-primary bp-docs-export" onClick={exportCsv} disabled={!rows.length}>
-            ⭳ Export Report
-          </button>
-        </div>
+      <div className="bp-toolbar">
+        <h2 style={{ margin: 0, flex: 1 }}>All Documents</h2>
+        <CreateDocumentDropdown profile={profile} />
+        <button type="button" className="bp-btn bp-btn-outline" onClick={exportCsv} disabled={!meta.total}>
+          ⭳ Export Report
+        </button>
+      </div>
 
+      <DocSummaryCards typeCounts={typeCounts} />
+
+      <div className="bp-card">
         <BillingDateFilters
           q={q}
           setQ={setQ}
@@ -128,71 +242,83 @@ export default function BillingDashboard() {
           onApply={applyFilters}
           onClear={applyFilters}
         />
+        {msg && <p style={{ margin: '0 0 10px', color: 'var(--bp-green)', fontSize: 13 }}>{msg}</p>}
         {loading ? <p>Loading…</p> : (
-          <table className="bp-table bp-docs-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Number</th>
-                <th>Date</th>
-                <th>Created</th>
-                <th>Type</th>
-                <th>Party</th>
-                <th>Taxable</th>
-                <th>GST</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((d, i) => {
-                const editPath = billingDocEditPath(d.type, d.id);
-                return (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="bp-table bp-docs-table bp-doc-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Invoice No.</th>
+                  <th>Date</th>
+                  <th>Party</th>
+                  <th>GSTIN</th>
+                  <th>Taxable Value</th>
+                  <th>GST</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((d, i) => (
                   <tr key={d.id}>
-                    <td>{rowFrom + i}</td>
-                    <td><Link to={billingDocPath(d.type, d.id)}>{d.number}</Link></td>
-                    <td>{String(d.document_date).slice(0, 10)}</td>
-                    <td className="bp-docs-created">{formatCreatedAt(d.created_at)}</td>
-                    <td>{docTypeLabel(d.type)}</td>
+                    <td>{(meta.current_page - 1) * meta.per_page + i + 1}</td>
+                    <td><Link className="bp-doc-num-link" to={billingDocPath(d.type, d.id)}>{d.number}</Link></td>
+                    <td>{formatDMY(d.document_date)}</td>
                     <td>{d.customer?.name || '—'}</td>
+                    <td>{d.customer?.gstin_display || d.customer?.gstin || 'Unregistered'}</td>
                     <td>{money(d.taxable_amount)}</td>
-                    <td>{money(Number(d.cgst_amount) + Number(d.sgst_amount) + Number(d.igst_amount))}</td>
-                    <td>{money(d.grand_total || d.total_amount)}</td>
+                    <td>{d.type === 'bill_of_supply' ? '—' : money(Number(d.cgst_amount) + Number(d.sgst_amount) + Number(d.igst_amount))}</td>
+                    <td className="bp-doc-total">{money(d.grand_total || d.total_amount)}</td>
                     <td><span className={`bp-badge ${paymentStatusBadge(d.status)}`}>{paymentStatusLabel(d.status)}</span></td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <Link className="bp-btn bp-btn-outline" style={{ padding: '4px 10px', fontSize: 12 }} to={billingDocPath(d.type, d.id)}>View</Link>
-                      {d.status === 'draft' && editPath && (
-                        <> · <Link to={editPath}>Edit</Link></>
-                      )}
+                    <td>{formatDMYTime(d.created_at)}</td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+                        <Link className="bp-btn bp-btn-outline" style={{ padding: '4px 10px', fontSize: 12 }} to={billingDocPath(d.type, d.id)}>View</Link>
+                        <DocActionMenu
+                          actions={buildActions(d, { onConvert: doConvert, onDuplicate: doDuplicate, onSend: doSend, onMarkPaid: doMarkPaid, onCancel: setCancelTarget })}
+                        />
+                      </div>
                     </td>
                   </tr>
-                );
-              })}
-              {!rows.length && <tr><td colSpan={11}>No documents for selected filters</td></tr>}
-            </tbody>
-          </table>
+                ))}
+                {!rows.length && <tr><td colSpan={11} className="bp-table-empty">No documents for selected filters</td></tr>}
+              </tbody>
+            </table>
+          </div>
         )}
 
-        {meta.total > 0 && (
-          <div className="bp-pagination">
-            <span>Showing {rowFrom} to {rowTo} of {meta.total} entries</span>
-            <div className="bp-pagination-controls">
-              <label>
-                Rows per page:
-                <select className="bp-select" style={{ width: 72 }} value={perPage} onChange={(e) => changePerPage(Number(e.target.value))}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </label>
-              <button type="button" className="bp-btn bp-btn-outline" disabled={meta.current_page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>«</button>
-              <span>{meta.current_page}</span>
-              <button type="button" className="bp-btn bp-btn-outline" disabled={meta.current_page >= meta.last_page} onClick={() => setPage((p) => Math.min(meta.last_page, p + 1))}>»</button>
+        {totals && totals.count > 0 && (
+          <div className="bp-doc-totals-bar">
+            <span className="bp-doc-totals-label">
+              <span className="bp-doc-totals-rupee" aria-hidden="true">₹</span>
+              Total (Filtered Results)
+            </span>
+            <div className="bp-doc-totals-stats">
+              <div className="bp-doc-totals-stat"><strong>{money(totals.taxable_amount)}</strong>Taxable Value</div>
+              <div className="bp-doc-totals-stat"><strong>{money(totals.gst_amount)}</strong>GST</div>
+              <div className="bp-doc-totals-stat"><strong>{money(totals.grand_total)}</strong>Total</div>
             </div>
           </div>
         )}
+
+        <NumberedPagination
+          meta={meta}
+          perPage={perPage}
+          onPerPage={(v) => { setPerPage(v); setPage(1); }}
+          onPage={setPage}
+        />
       </div>
+      {cancelTarget && (
+        <CancelDocumentModal
+          docLabel={`${docTypeLabel(cancelTarget.type)} ${cancelTarget.number}`}
+          busy={cancelBusy}
+          onCancel={() => setCancelTarget(null)}
+          onConfirm={confirmCancel}
+        />
+      )}
     </div>
   );
 }

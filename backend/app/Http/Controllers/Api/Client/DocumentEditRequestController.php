@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Client;
 use App\Http\Controllers\Controller;
 use App\Models\CommercialDocument;
 use App\Models\DocumentEditRequest;
+use App\Services\Billing\BillingPolicy;
 use Illuminate\Http\Request;
 
 class DocumentEditRequestController extends Controller
@@ -46,6 +47,7 @@ class DocumentEditRequestController extends Controller
 
         abort_unless($doc, 404, 'Document not found.');
         abort_unless(in_array($doc->status, ['issued', 'paid', 'partial'], true), 422, 'Only issued documents can be requested for edit.');
+        BillingPolicy::assertEditRequestAllowed($profile, $doc->document_date?->toDateString());
 
         return response()->json([
             'id' => $doc->id,
@@ -78,6 +80,7 @@ class DocumentEditRequestController extends Controller
         abort_unless($doc, 404, 'Document not found.');
         abort_unless(in_array($doc->status, ['issued', 'paid', 'partial'], true), 422, 'Only issued documents can be requested for edit.');
         abort_if($doc->edit_allowed, 422, 'This document is already unlocked for editing.');
+        BillingPolicy::assertEditRequestAllowed($profile, $doc->document_date?->toDateString());
 
         $pending = DocumentEditRequest::where('commercial_document_id', $doc->id)
             ->where('status', 'pending')

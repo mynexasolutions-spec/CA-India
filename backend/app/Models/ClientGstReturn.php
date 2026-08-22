@@ -6,9 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class ClientGstReturn extends Model
 {
+    public const TYPE_GSTR1 = 'GSTR1';
+    public const TYPE_GSTR3B = 'GSTR3B';
+    public const TYPE_CMP08 = 'CMP08';
+    public const TYPES = [self::TYPE_GSTR1, self::TYPE_GSTR3B, self::TYPE_CMP08];
+
     protected $fillable = [
         'client_profile_id',
         'tax_period',
+        'return_type',
         'status',
         'filed_on',
         'filed_by',

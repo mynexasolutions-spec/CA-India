@@ -1,26 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
-import StateSelect from '../../components/StateSelect';
 import { INDIAN_STATES } from '../../data/indianStates';
-
-const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
-
-const empty = {
-  name: '', contact_person: '', email: '', phone: '', gst_status: 'registered', gstin: '',
-  state: 'Maharashtra', state_code: '27', billing_address: '', shipping_address: '',
-};
-
-const FIELD_LABELS = {
-  name: 'Name',
-  contact_person: 'Contact Person',
-  email: 'Email',
-  phone: 'Phone',
-  state: 'State',
-  billing_address: 'Billing Address',
-  shipping_address: 'Shipping Address',
-};
-
-const FORM_KEYS = Object.keys(empty).filter((k) => k !== 'state_code' && k !== 'gst_status' && k !== 'gstin');
 
 const AVATAR_COLORS = [
   { bg: '#e3ecfb', fg: '#1c4b9c' },
@@ -42,19 +23,45 @@ function initialsOf(name) {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+const HELP_ICON_PROPS = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+function StarIcon() {
+  return <svg {...HELP_ICON_PROPS} width="18" height="18"><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6L12 3Z" /></svg>;
+}
+function SearchIcon() {
+  return <svg {...HELP_ICON_PROPS}><circle cx="10" cy="10" r="6.5" /><path d="m20 20-4.5-4.5" /></svg>;
+}
+function ShieldCheckIcon() {
+  return <svg {...HELP_ICON_PROPS}><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z" /><path d="m9 12 2 2 4-4" /></svg>;
+}
+function EditIcon() {
+  return <svg {...HELP_ICON_PROPS}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" /></svg>;
+}
+function PlusCircleIcon() {
+  return <svg {...HELP_ICON_PROPS}><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>;
+}
+function InfoBadgeIcon() {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.01" /></svg>;
+}
+
+const HIGHLIGHTS = [
+  { Icon: SearchIcon, title: 'Search & Filter', desc: 'Search companies by name, GSTIN, phone and filter by State or GST Status.' },
+  { Icon: ShieldCheckIcon, title: 'GST Status', desc: 'Quickly identify Registered and Unregistered companies.' },
+  { Icon: EditIcon, title: 'Edit Company', desc: 'Click on Edit to view and update company details.' },
+  { Icon: PlusCircleIcon, title: 'Add New Company', desc: 'Add a new company to manage GST compliance and invoicing.' },
+];
+
+/** Parties Dashboard — displays every company/party created by the logged-in client (the
+ * backend scopes every query to the authenticated client's own client_profile_id, so this
+ * list can never show another client's parties). Add New Company / Edit Company are their
+ * own routed pages, not a modal — matching how the rest of the portal (invoices, etc.) works. */
 export default function PartiesPage() {
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0, per_page: 10 });
-  const [form, setForm] = useState(empty);
-  const [editing, setEditing] = useState(null);
   const [q, setQ] = useState('');
   const [stateFilter, setStateFilter] = useState('');
   const [gstFilter, setGstFilter] = useState('');
   const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
-  const [msg, setMsg] = useState('');
-  const [gstinError, setGstinError] = useState('');
-  const [modalOpen, setModalOpen] = useState(false);
 
   const load = (targetPage = page) => {
     const qs = new URLSearchParams();
@@ -71,6 +78,22 @@ export default function PartiesPage() {
 
   useEffect(() => { load(page); }, [page, perPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Live search: re-query a short moment after the user stops typing, instead of requiring
+  // Enter/Apply. Skips the very first render so it doesn't duplicate the mount-time load above.
+  const searchMounted = useRef(false);
+  useEffect(() => {
+    if (!searchMounted.current) {
+      searchMounted.current = true;
+      return;
+    }
+    const t = setTimeout(() => {
+      setPage(1);
+      load(1);
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
   const changePerPage = (value) => {
     setPerPage(value);
     setPage(1);
@@ -84,56 +107,6 @@ export default function PartiesPage() {
     setGstFilter('');
     setPage(1);
     setTimeout(() => load(1), 0);
-  };
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const openAdd = () => {
-    setEditing(null);
-    setForm(empty);
-    setMsg('');
-    setGstinError('');
-    setModalOpen(true);
-  };
-
-  const openEdit = (p) => {
-    setEditing(p.id);
-    setForm({ ...empty, ...p, gst_status: p.gst_status || (p.gstin ? 'registered' : 'unregistered'), gstin: p.gstin || '' });
-    setMsg('');
-    setGstinError('');
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditing(null);
-    setForm(empty);
-    setGstinError('');
-    setMsg('');
-  };
-
-  const onSave = async (e) => {
-    e.preventDefault();
-    setGstinError('');
-    if (form.gst_status === 'registered') {
-      const gstin = (form.gstin || '').trim().toUpperCase();
-      if (!gstin) {
-        setGstinError('GSTIN is required for a registered party.');
-        return;
-      }
-      if (!GSTIN_REGEX.test(gstin)) {
-        setGstinError('Enter a valid 15-character GSTIN (e.g. 27ABCDE1234F1Z5).');
-        return;
-      }
-    }
-    const payload = { ...form, gstin: form.gst_status === 'registered' ? form.gstin.trim().toUpperCase() : '' };
-    if (editing) await api(`/billing/parties/${editing}`, { method: 'PUT', body: payload });
-    else await api('/billing/parties', { method: 'POST', body: payload });
-    setMsg('Saved');
-    setModalOpen(false);
-    setEditing(null);
-    setForm(empty);
-    load(page);
   };
 
   const from = meta.total ? (meta.current_page - 1) * meta.per_page + 1 : 0;
@@ -151,11 +124,11 @@ export default function PartiesPage() {
           </svg>
         </span>
         <div>
-          <h2>Parties</h2>
-          <p className="bp-section-desc">Manage your customers and billing parties.</p>
+          <h2>Parties (Company Management)</h2>
+          <p className="bp-section-desc">Manage your companies and billing parties.</p>
         </div>
-        <span className="bp-parties-count">{meta.total} {meta.total === 1 ? 'Party' : 'Parties'}</span>
-        <button type="button" className="bp-btn bp-btn-blue" onClick={openAdd}>+ Add Party</button>
+        <span className="bp-parties-count">{meta.total} {meta.total === 1 ? 'Company' : 'Companies'}</span>
+        <Link to="/portal/billing/parties/new" className="bp-btn bp-btn-blue">+ New Company</Link>
       </div>
 
       <div className="bp-card">
@@ -166,7 +139,7 @@ export default function PartiesPage() {
               <path d="m17 17-3.8-3.8" />
             </svg>
             <input
-              placeholder="Search by party name, GSTIN or phone"
+              placeholder="Search by Company Name, GSTIN or Phone"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
@@ -190,12 +163,12 @@ export default function PartiesPage() {
         <table className="bp-table bp-parties-table">
           <thead>
             <tr>
-              <th>Party</th>
+              <th>Company Name</th>
               <th>GSTIN</th>
               <th>Contact</th>
               <th>State</th>
               <th>GST Status</th>
-              <th />
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -226,7 +199,7 @@ export default function PartiesPage() {
                     </span>
                   </td>
                   <td>
-                    <button type="button" className="bp-btn bp-btn-outline" style={{ padding: '4px 8px' }} onClick={() => openEdit(p)}>Edit</button>
+                    <Link to={`/portal/billing/parties/${p.id}/edit`} className="bp-btn bp-btn-outline" style={{ padding: '4px 8px' }}>Edit</Link>
                   </td>
                 </tr>
               );
@@ -234,12 +207,16 @@ export default function PartiesPage() {
           </tbody>
         </table>
         {items.length === 0 && (
-          <p className="bp-table-empty">No parties yet — click "+ Add Party" to add your first customer or vendor.</p>
+          <p className="bp-table-empty">
+            {(q || stateFilter || gstFilter)
+              ? 'No companies found matching your search or filters.'
+              : 'No companies yet — click "+ New Company" to add your first customer or vendor.'}
+          </p>
         )}
 
         {meta.total > 0 && (
           <div className="bp-pagination">
-            <span>Showing {from} to {to} of {meta.total} parties</span>
+            <span>Showing {from} to {to} of {meta.total} companies</span>
             <div className="bp-pagination-controls">
               <label>
                 Rows per page:
@@ -257,108 +234,72 @@ export default function PartiesPage() {
         )}
       </div>
 
-      {modalOpen && (
-        <div
-          role="presentation"
-          onClick={closeModal}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 80,
-            background: 'rgba(15, 23, 42, 0.45)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 16,
-          }}
-        >
-          <div
-            className="bp-card bp-party-modal-card"
-            role="dialog"
-            aria-modal="true"
-            aria-label={editing ? 'Edit Party' : 'Add Party'}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <form className="bp-party-modal-form" onSubmit={onSave}>
-              <div className="bp-party-modal-head">
-                <div>
-                  <h3 style={{ margin: 0 }}>{editing ? 'Edit Party' : 'Add Party'}</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--bp-muted)' }}>Fields marked * are required.</p>
-                </div>
-                <button type="button" className="bp-btn bp-btn-outline" onClick={closeModal}>Close</button>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 20 }}>
+        <div className="bp-card">
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bp-blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><StarIcon /></span>
+            Key Highlights
+          </h3>
+          <div className="bp-parties-highlights" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
+            {HIGHLIGHTS.map(({ Icon, title, desc }) => (
+              <div key={title}>
+                <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bp-sky)', color: 'var(--bp-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                  <Icon />
+                </span>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-blue)', marginBottom: 4 }}>{title}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)', lineHeight: 1.5 }}>{desc}</div>
               </div>
-
-              <div className="bp-party-modal-body">
-                <div className="bp-form two">
-                  <label style={{ gridColumn: '1 / -1' }}>
-                    <strong className="bp-field-title">GST Registration Status *</strong>
-                    <div className="bp-gst-radio-row">
-                      <label className="bp-gst-radio">
-                        <input
-                          type="radio"
-                          name="gst_status"
-                          checked={form.gst_status === 'registered'}
-                          onChange={() => { set('gst_status', 'registered'); setGstinError(''); }}
-                        />
-                        Registered
-                      </label>
-                      <label className="bp-gst-radio">
-                        <input
-                          type="radio"
-                          name="gst_status"
-                          checked={form.gst_status === 'unregistered'}
-                          onChange={() => { set('gst_status', 'unregistered'); set('gstin', ''); setGstinError(''); }}
-                        />
-                        Unregistered
-                      </label>
-                    </div>
-                  </label>
-
-                  {form.gst_status === 'registered' && (
-                    <label style={{ gridColumn: '1 / -1' }}>
-                      <strong className="bp-field-title">GSTIN *</strong>
-                      <input
-                        className="bp-input"
-                        value={form.gstin}
-                        maxLength={15}
-                        placeholder="e.g. 27ABCDE1234F1Z5"
-                        style={{ textTransform: 'uppercase' }}
-                        onChange={(e) => { set('gstin', e.target.value.toUpperCase()); setGstinError(''); }}
-                        required
-                      />
-                      {gstinError && <span className="bp-gstin-error">{gstinError}</span>}
-                    </label>
-                  )}
-
-                  {FORM_KEYS.map((k) => {
-                    const fullWidth = k === 'billing_address' || k === 'shipping_address';
-                    return (
-                      <label key={k} style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
-                        <strong className="bp-field-title">
-                          {FIELD_LABELS[k] || k.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-                          {k === 'name' ? ' *' : ''}
-                        </strong>
-                        {k === 'state' ? (
-                          <StateSelect
-                            value={form.state_code}
-                            onChange={(code, name) => setForm((f) => ({ ...f, state_code: code, state: name }))}
-                            required
-                          />
-                        ) : (
-                          <input className="bp-input" value={form[k] || ''} onChange={(e) => set(k, e.target.value)} required={k === 'name'} />
-                        )}
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="bp-actions bp-party-modal-foot">
-                <button type="submit" className="bp-btn bp-btn-blue">{editing ? 'Update Party' : 'Save Party'}</button>
-                <button type="button" className="bp-btn bp-btn-outline" onClick={closeModal}>Cancel</button>
-              </div>
-            </form>
+            ))}
           </div>
         </div>
-      )}
 
-      {msg && <p className="bp-alert bp-alert-success">{msg}</p>}
+        <div className="bp-card">
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--bp-navy)' }}>GST Status Guide</h3>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{ marginTop: 5, width: 8, height: 8, borderRadius: '50%', background: '#15803d', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>Registered</div>
+                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Company is registered under GST.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <span style={{ marginTop: 5, width: 8, height: 8, borderRadius: '50%', background: '#6b8499', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-text)' }}>Unregistered</div>
+                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Company is not registered under GST.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bp-card">
+          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--bp-navy)' }}>Actions Available</h3>
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ color: 'var(--bp-blue)', flexShrink: 0 }}><EditIcon /></span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-blue)' }}>Edit</div>
+                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Update company information anytime.</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{ color: 'var(--bp-blue)', flexShrink: 0 }}><PlusCircleIcon /></span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-blue)' }}>New Company</div>
+                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Add a new company to manage compliance.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px' }}>
+        <span style={{ color: '#92400e', flexShrink: 0 }}><InfoBadgeIcon /></span>
+        <span style={{ fontSize: 12.5, color: '#92400e' }}>
+          <strong>Note:</strong> Only authorised client users can add or edit companies. Each company will be used for GST compliance, invoicing and reporting.
+        </span>
+      </div>
     </div>
   );
 }

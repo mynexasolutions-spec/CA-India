@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { billingDocPath, docTypeLabel, documentDateLabel, normalizeGstRate } from './billingUtils';
+import { billingDocPath, CURRENCIES, docTypeLabel, documentDateLabel, formatDMY, money, normalizeGstRate } from './billingUtils';
 import { useAuth } from '../../auth/AuthContext';
 import { docTypeLock, isDocTypeDisabled, showGstFields, showHsnFields, showRcmCheckbox } from './billingProfile';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -7,6 +7,8 @@ import { api } from '../../api/client';
 import StateSelect from '../../components/StateSelect';
 import HsnSacSelect from '../../components/HsnSacSelect';
 import GstRateSelect from '../../components/GstRateSelect';
+import DocTypeTiles from './DocTypeTiles';
+import PartySearchSelect from './PartySearchSelect';
 
 const emptyLine = () => ({
   description: '', hsn_sac: '', qty: 1, unit: 'NOS', rate: 0, discount_percent: 0, gst_rate: 18,
@@ -55,6 +57,39 @@ function calcLocal(lines, inter, taxesEnabled = true, tdsTcs = null) {
   return { taxable, cgst, sgst, igst, discount, sub, round, tdsTcsAmount, grand };
 }
 
+function LockIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="9" width="12" height="8" rx="1.5" />
+      <path d="M6.5 9V6a3.5 3.5 0 0 1 7 0v3" />
+    </svg>
+  );
+}
+
+function InfoDotIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M10 9.2v4.3M10 6.7v.01" />
+    </svg>
+  );
+}
+
+/** Numbered section header, matching the ①②③ pattern from the approved Create Document mockup. */
+function SectionHeader({ n, title, subtitle }) {
+  return (
+    <div className="bp-section-header">
+      <span className="bp-section-header-num">{n}</span>
+      <div>
+        <h3>{title}</h3>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+const DOC_TYPE_TILE_SET = ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'];
+
 export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const { user } = useAuth();
   const profile = user?.client_profile;
@@ -71,12 +106,15 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const [documentDate, setDocumentDate] = useState(new Date().toISOString().slice(0, 10));
   const [placeOfSupply, setPlaceOfSupply] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
+  const [currency, setCurrency] = useState('INR');
   const [refId, setRefId] = useState(params.get('ref') || '');
   const [rcm, setRcm] = useState(false);
   const [lines, setLines] = useState([emptyLine()]);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
   const [docId, setDocId] = useState(id || null);
+  const [docNumber, setDocNumber] = useState('');
+  const [previewNumber, setPreviewNumber] = useState('');
   const [docStatus, setDocStatus] = useState('draft');
   const [editAllowed, setEditAllowed] = useState(false);
   const [taxDeductionType, setTaxDeductionType] = useState(''); // '', 'tds', 'tcs'
@@ -89,6 +127,8 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const selectedSection = activeSections.find((s) => String(s.id) === String(tdsTcsSectionId));
   const tdsTcsRate = selectedSection ? Number(selectedSection.rate) : 0;
   const requireHsn = hsnEnabled;
+  const showRcmBox = showRcmCheckbox(profile) && ['tax_invoice', 'debit_note', 'credit_note'].includes(docType);
+  const showTaxSettingsSection = showRcmBox || tdsTcsApplicable;
 
   const totals = useMemo(
     () => calcLocal(lines, inter, taxesEnabled && !rcm, tdsTcsApplicable && taxDeductionType ? { type: taxDeductionType, rate: tdsTcsRate } : null),
@@ -120,6 +160,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     if (!id) return;
     api(`/billing/documents/${id}`).then((d) => {
       setDocId(d.id);
+      setDocNumber(d.number || '');
       setDocStatus(d.status || 'draft');
       setEditAllowed(!!d.edit_allowed);
       setPartyId(d.customer_id ? String(d.customer_id) : '');
@@ -128,6 +169,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       setDocumentDate(String(d.document_date).slice(0, 10));
       setPlaceOfSupply(d.place_of_supply || '');
       setPaymentTerms(d.payment_terms || '');
+      setCurrency(d.currency || 'INR');
       setRefId(d.reference_document_id ? String(d.reference_document_id) : '');
       setRcm(!!d.is_reverse_charge);
       setTaxDeductionType(d.tax_deduction_type || '');
@@ -136,6 +178,17 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       setLines(mapped.length ? mapped : [emptyLine()]);
     });
   }, [id]);
+
+  // Read-only preview of the number Generate/Issue will allocate — never reserved,
+  // purely informational (Reference 2 mockup shows Document No. locked from the start).
+  useEffect(() => {
+    if (id) return undefined;
+    let cancelled = false;
+    api(`/billing/documents/next-number?type=${docType}`)
+      .then((d) => { if (!cancelled) setPreviewNumber(d.number || ''); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [id, docType]);
 
   // Prefill credit/debit notes and amendments from original document (?ref= or dropdown)
   useEffect(() => {
@@ -160,6 +213,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     document_date: documentDate,
     place_of_supply: placeOfSupply,
     payment_terms: paymentTerms,
+    currency,
     is_inter_state: inter,
     is_reverse_charge: rcm,
     tax_deduction_type: tdsTcsApplicable && taxDeductionType ? taxDeductionType : null,
@@ -172,13 +226,24 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     if (!pid) { setParty(null); return; }
     const p = await api(`/billing/parties/${pid}`);
     setParty(p);
-    setPlaceOfSupply(''); // invoice-specific — do not copy from party master
+    // Billing Module spec §16: default Place of Supply to the party's saved State.
+    // It remains editable per document — this never writes back to the Party Master.
+    setPlaceOfSupply(p.state || '');
     if (p.state_code && profile?.state_code) {
       setInter(p.state_code !== profile.state_code);
     }
   };
 
   const setLine = (idx, key, val) => setLines((L) => L.map((x, i) => (i === idx ? { ...x, [key]: val } : x)));
+
+  const quickAddByHsn = (code, row) => {
+    setLines((L) => {
+      const blank = L.find((l) => !l.description && !l.hsn_sac);
+      const filled = { ...emptyLine(), hsn_sac: code, description: row?.description || '' };
+      if (blank) return L.map((l) => (l === blank ? filled : l));
+      return [...L, filled];
+    });
+  };
 
   const validateBeforeSave = () => {
     if (!partyId) return 'Please select a party.';
@@ -212,6 +277,51 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     return '';
   };
 
+  const saveDraft = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setMsg(validationError);
+      return;
+    }
+    setBusy(true); setMsg('');
+    try {
+      const body = { ...payload(), status: unlockedEdit ? docStatus : 'draft' };
+      const doc = docId
+        ? await api(`/billing/documents/${docId}`, { method: 'PUT', body })
+        : await api('/billing/documents', { method: 'POST', body: { ...body, status: 'draft' } });
+      setDocId(doc.id);
+      setDocNumber(doc.number || '');
+      setDocStatus(doc.status);
+      setEditAllowed(!!doc.edit_allowed);
+      setMsg(unlockedEdit ? `Saved corrections: ${doc.number}` : `Draft saved: ${doc.number}`);
+      if (unlockedEdit) navigate(billingDocPath(docType, doc.id));
+    } catch (e) { setMsg(e.message); }
+    finally { setBusy(false); }
+  };
+
+  const generateDoc = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setMsg(validationError);
+      return;
+    }
+    setBusy(true); setMsg('');
+    try {
+      let doc;
+      if (docId) {
+        await api(`/billing/documents/${docId}`, { method: 'PUT', body: { ...payload(), status: 'draft' } });
+        doc = await api(`/billing/documents/${docId}/issue`, { method: 'POST', body: {} });
+      } else {
+        doc = await api('/billing/documents', { method: 'POST', body: { ...payload(), status: 'issued' } });
+      }
+      setDocId(doc.id);
+      setDocNumber(doc.number || '');
+      setMsg(`Generated ${doc.number}`);
+      navigate(billingDocPath(docType, doc.id));
+    } catch (e) { setMsg(e.message); }
+    finally { setBusy(false); }
+  };
+
   if (isDocTypeDisabled(profile, docType)) {
     return (
       <div className="bp-card">
@@ -222,34 +332,54 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     );
   }
 
+  const backPath = {
+    tax_invoice: '/portal/billing/invoices',
+    debit_note: '/portal/billing/debit-notes',
+    credit_note: '/portal/billing/credit-notes',
+    bill_of_supply: '/portal/billing/bill-of-supply',
+    quotation: '/portal/quotation',
+    amendment: '/portal/amendments',
+  }[docType] || '/portal/billing';
+  let sectionNum = 0;
+
   return (
     <div>
       <div className="bp-toolbar">
         <h2 style={{ margin: 0, flex: 1 }}>{title || 'Create Document'}</h2>
-        {docId && <Link className="bp-btn bp-btn-outline" to={billingDocPath(docType, docId)}>Open saved</Link>}
+        <Link className="bp-btn bp-btn-outline" to={backPath}>Cancel</Link>
+        <button type="button" className="bp-btn bp-btn-primary" disabled={busy} onClick={saveDraft}>
+          {unlockedEdit ? 'Save Changes' : 'Save Document'}
+        </button>
       </div>
 
+      {!id && DOC_TYPE_TILE_SET.includes(docType) && (
+        <DocTypeTiles docType={docType} profile={profile} />
+      )}
+
       <div className="bp-card" style={{ marginBottom: 14 }}>
-        <h3 style={{ marginTop: 0, marginBottom: 2, color: 'var(--bp-navy)' }}>Invoice Details</h3>
-        <p className="bp-section-desc" style={{ marginBottom: 14 }}>Party, dates and tax settings for this document.</p>
+        <SectionHeader n={++sectionNum} title="Document Details" subtitle="Party, dates and basic settings for this document." />
         <form className="bp-form two">
           <label>
-            <span>Party <span className="bp-required">*</span></span>
-            <select className="bp-select" value={partyId} onChange={(e) => onParty(e.target.value)} required>
-              <option value="">Select party…</option>
-              {parties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <span>Document No.</span>
+            <div style={{ position: 'relative' }}>
+              <input className="bp-input" style={{ paddingRight: 30, color: 'var(--bp-muted)', background: '#f4f7fa' }} value={docNumber || previewNumber} readOnly disabled />
+              <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--bp-muted)' }}><LockIcon /></span>
+            </div>
           </label>
           <label>
             {documentDateLabel(docType)}
             <input className="bp-input" type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} />
           </label>
           <label>
+            <span>Party <span className="bp-required">*</span></span>
+            <PartySearchSelect parties={parties} value={partyId} onSelect={onParty} />
+          </label>
+          <label>
             Place of Supply
             <StateSelect
               value={placeOfSupply}
               valueMode="name"
-              placeholder="Select state for this invoice…"
+              placeholder="Select state…"
               onChange={(code, name) => {
                 setPlaceOfSupply(name);
                 if (code && profile?.state_code) {
@@ -267,6 +397,12 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             Payment Terms
             <input className="bp-input" value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} placeholder="Net 7 / Immediate" />
           </label>
+          <label>
+            Currency
+            <select className="bp-select" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+            </select>
+          </label>
           {(docType === 'credit_note' || docType === 'debit_note' || docType === 'amendment') && (
             <label style={{ gridColumn: '1 / -1' }}>
               {docType === 'amendment' ? 'Original Bill *' : 'Original Invoice Number *'}
@@ -274,79 +410,39 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                 <option value="">{docType === 'amendment' ? 'Select original bill…' : 'Select original invoice…'}</option>
                 {invoices.map((inv) => (
                   <option key={inv.id} value={inv.id}>
-                    {inv.number} — {String(inv.document_date).slice(0, 10)} — {inv.customer?.name} ({docTypeLabel(inv.type)})
+                    {inv.number} — {formatDMY(inv.document_date)} — {inv.customer?.name} ({docTypeLabel(inv.type)})
                   </option>
                 ))}
               </select>
               {selectedRef && (
-                <span style={{ display: 'block', marginTop: 6, fontSize: 12, color: 'var(--bp-muted)' }}>
-                  Original Date: {String(selectedRef.document_date).slice(0, 10)}
-                </span>
+                <div className="bp-info-note" style={{ marginTop: 10, gridColumn: '1 / -1' }}>
+                  <div>
+                    <strong>Original {docTypeLabel(selectedRef.type)}: {selectedRef.number}</strong>
+                    Original Date: {formatDMY(selectedRef.document_date)}
+                    {' · '}Original Taxable Value: {money(selectedRef.taxable_amount)}
+                    {' · '}Original GST: {money(Number(selectedRef.cgst_amount) + Number(selectedRef.sgst_amount) + Number(selectedRef.igst_amount))}
+                    {' · '}Original Total: {money(selectedRef.grand_total || selectedRef.total_amount)}
+                    <br />
+                    <Link to={billingDocPath(selectedRef.type, selectedRef.id)} target="_blank" rel="noreferrer">View Invoice ↗</Link>
+                  </div>
+                </div>
+              )}
+              {docType === 'credit_note' && (
+                <div className="bp-info-note amber" style={{ marginTop: 10, gridColumn: '1 / -1' }}>
+                  Please verify the original invoice details above before issuing this credit note.
+                </div>
               )}
             </label>
+          )}
+          {docType === 'bill_of_supply' && (
+            <div className="bp-info-note" style={{ gridColumn: '1 / -1' }}>
+              Bill of Supply is issued for exempted / nil-rated supplies, or by Composition dealers. GST is not applicable on this document.
+            </div>
           )}
           {unlockedEdit && (
             <p style={{ gridColumn: '1 / -1', color: 'var(--bp-green)', margin: 0, fontSize: 13 }}>
               Edit Allowed — save once to apply corrections. Unlock clears after save.
             </p>
-          )}
-          {((showRcmCheckbox(profile) && ['tax_invoice', 'debit_note', 'credit_note'].includes(docType)) || tdsTcsApplicable) && (
-            <div className="bp-tax-options" style={{ gridColumn: '1 / -1' }}>
-              {showRcmCheckbox(profile) && ['tax_invoice', 'debit_note', 'credit_note'].includes(docType) && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input type="checkbox" checked={rcm} onChange={(e) => setRcm(e.target.checked)} />
-                  Supply Under Reverse Charge?
-                </label>
-              )}
-              {tdsTcsApplicable && (
-                <>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={taxDeductionType === 'tds'}
-                      onChange={(e) => { setTaxDeductionType(e.target.checked ? 'tds' : ''); setTdsTcsSectionId(''); }}
-                    />
-                    TDS
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <input
-                      type="checkbox"
-                      checked={taxDeductionType === 'tcs'}
-                      onChange={(e) => { setTaxDeductionType(e.target.checked ? 'tcs' : ''); setTdsTcsSectionId(''); }}
-                    />
-                    TCS
-                  </label>
-                  {taxDeductionType && (
-                    <>
-                      <label style={{ marginBottom: 0 }}>
-                        {taxDeductionType === 'tds' ? 'TDS' : 'TCS'} Section
-                        <select
-                          className="bp-select"
-                          value={tdsTcsSectionId}
-                          onChange={(e) => setTdsTcsSectionId(e.target.value)}
-                          required
-                        >
-                          <option value="">Select section…</option>
-                          {activeSections.map((s) => (
-                            <option key={s.id} value={s.id}>{s.code} — {s.description}</option>
-                          ))}
-                        </select>
-                      </label>
-                      <label style={{ marginBottom: 0 }}>
-                        Rate (%)
-                        <input
-                          className="bp-input"
-                          style={{ width: 90 }}
-                          value={selectedSection ? Number(selectedSection.rate).toFixed(2) : ''}
-                          readOnly
-                          disabled
-                        />
-                      </label>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
           )}
         </form>
         {party && (
@@ -356,8 +452,67 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         )}
       </div>
 
+      {showTaxSettingsSection && (
+        <div className="bp-card" style={{ marginBottom: 14 }}>
+          <SectionHeader n={++sectionNum} title="Additional Tax Settings" subtitle="Configure tax related options for this invoice." />
+          <div className="bp-tax-option-boxes">
+            {showRcmBox && (
+              <div className="bp-tax-option-box">
+                <div className="bp-tax-option-box-label"><InfoDotIcon /> Supply Under Reverse Charge?</div>
+                <div className="bp-tax-option-box-radios">
+                  <label><input type="radio" name="rcm" checked={rcm} onChange={() => setRcm(true)} /> Yes</label>
+                  <label><input type="radio" name="rcm" checked={!rcm} onChange={() => setRcm(false)} /> No</label>
+                </div>
+              </div>
+            )}
+            {tdsTcsApplicable && (
+              <div className="bp-tax-option-box">
+                <div className="bp-tax-option-box-label"><InfoDotIcon /> TDS</div>
+                <div className="bp-tax-option-box-radios">
+                  <label><input type="radio" name="tds" checked={taxDeductionType === 'tds'} onChange={() => { setTaxDeductionType('tds'); setTdsTcsSectionId(''); }} /> Yes</label>
+                  <label><input type="radio" name="tds" checked={taxDeductionType !== 'tds'} onChange={() => { if (taxDeductionType === 'tds') { setTaxDeductionType(''); setTdsTcsSectionId(''); } }} /> No</label>
+                </div>
+              </div>
+            )}
+            {tdsTcsApplicable && (
+              <div className="bp-tax-option-box">
+                <div className="bp-tax-option-box-label"><InfoDotIcon /> TCS</div>
+                <div className="bp-tax-option-box-radios">
+                  <label><input type="radio" name="tcs" checked={taxDeductionType === 'tcs'} onChange={() => { setTaxDeductionType('tcs'); setTdsTcsSectionId(''); }} /> Yes</label>
+                  <label><input type="radio" name="tcs" checked={taxDeductionType !== 'tcs'} onChange={() => { if (taxDeductionType === 'tcs') { setTaxDeductionType(''); setTdsTcsSectionId(''); } }} /> No</label>
+                </div>
+              </div>
+            )}
+          </div>
+          {tdsTcsApplicable && taxDeductionType && (
+            <div className="bp-form two" style={{ marginTop: 12 }}>
+              <label>
+                {taxDeductionType === 'tds' ? 'TDS' : 'TCS'} Section
+                <select className="bp-select" value={tdsTcsSectionId} onChange={(e) => setTdsTcsSectionId(e.target.value)} required>
+                  <option value="">Select section…</option>
+                  {activeSections.map((s) => (
+                    <option key={s.id} value={s.id}>{s.code} — {s.description}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Rate (%)
+                <input className="bp-input" style={{ width: 90 }} value={selectedSection ? Number(selectedSection.rate).toFixed(2) : ''} readOnly disabled />
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="bp-card bp-line-grid">
-        <h3 style={{ marginTop: 0 }}>Item Details</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+          <SectionHeader n={++sectionNum} title="Item Details" subtitle="Add items or services for this document." />
+          {hsnEnabled && (
+            <div style={{ minWidth: 220 }}>
+              <HsnSacSelect value="" onChange={quickAddByHsn} placeholder="Search HSN / SAC" />
+            </div>
+          )}
+        </div>
         <div className="bp-line-row" style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 700 }}>
           <span>Particulars <span className="bp-required">*</span></span>
           {hsnEnabled && <span>HSN/SAC <span className="bp-required">*</span></span>}
@@ -369,7 +524,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         </div>
         {lines.map((l, idx) => (
           <div className="bp-line-row" key={idx}>
-            <input className="bp-input" value={l.description} onChange={(e) => setLine(idx, 'description', e.target.value)} placeholder="Description" required />
+            <input className="bp-input" value={l.description} onChange={(e) => setLine(idx, 'description', e.target.value)} placeholder="Description of product / service" required />
             {hsnEnabled && (
               <HsnSacSelect
                 value={l.hsn_sac}
@@ -383,7 +538,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             <input className="bp-input" type="number" required value={l.discount_percent} onChange={(e) => setLine(idx, 'discount_percent', +e.target.value)} />
             {taxesEnabled && (
               <GstRateSelect
-                value={l.gst_rate}
+                value={rcm ? 0 : l.gst_rate}
                 onChange={(rate) => setLine(idx, 'gst_rate', rate)}
                 disabled={rcm}
               />
@@ -405,67 +560,21 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             </button>
           </div>
         ))}
-        <button type="button" className="bp-btn bp-btn-outline" onClick={() => setLines((L) => [...L, emptyLine()])}>+ Add Item</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button type="button" className="bp-btn bp-btn-outline" onClick={() => setLines((L) => [...L, emptyLine()])}>+ Add Item</button>
+          <span style={{ fontSize: 12, color: 'var(--bp-muted)' }}>You can add multiple items</span>
+        </div>
       </div>
 
       <div className="bp-split" style={{ marginTop: 14 }}>
         <div className="bp-actions">
-          <button
-            type="button"
-            className="bp-btn bp-btn-outline"
-            disabled={busy}
-            onClick={async () => {
-              const validationError = validateBeforeSave();
-              if (validationError) {
-                setMsg(validationError);
-                return;
-              }
-              setBusy(true); setMsg('');
-              try {
-                const body = { ...payload(), status: unlockedEdit ? docStatus : 'draft' };
-                const doc = docId
-                  ? await api(`/billing/documents/${docId}`, { method: 'PUT', body })
-                  : await api('/billing/documents', { method: 'POST', body: { ...body, status: 'draft' } });
-                setDocId(doc.id);
-                setDocStatus(doc.status);
-                setEditAllowed(!!doc.edit_allowed);
-                setMsg(unlockedEdit ? `Saved corrections: ${doc.number}` : `Draft saved: ${doc.number}`);
-                if (unlockedEdit) navigate(billingDocPath(docType, doc.id));
-              } catch (e) { setMsg(e.message); }
-              finally { setBusy(false); }
-            }}
-          >
+          <button type="button" className="bp-btn bp-btn-outline" disabled={busy} onClick={saveDraft}>
             {unlockedEdit ? 'Save Corrections' : 'Save Draft'}
           </button>
           {!unlockedEdit && (
-          <button
-            type="button"
-            className="bp-btn bp-btn-green"
-            disabled={busy}
-            onClick={async () => {
-              const validationError = validateBeforeSave();
-              if (validationError) {
-                setMsg(validationError);
-                return;
-              }
-              setBusy(true); setMsg('');
-              try {
-                let doc;
-                if (docId) {
-                  await api(`/billing/documents/${docId}`, { method: 'PUT', body: { ...payload(), status: 'draft' } });
-                  doc = await api(`/billing/documents/${docId}/issue`, { method: 'POST', body: {} });
-                } else {
-                  doc = await api('/billing/documents', { method: 'POST', body: { ...payload(), status: 'issued' } });
-                }
-                setDocId(doc.id);
-                setMsg(`Generated ${doc.number}`);
-                navigate(billingDocPath(docType, doc.id));
-              } catch (e) { setMsg(e.message); }
-              finally { setBusy(false); }
-            }}
-          >
-            Generate {docType === 'tax_invoice' ? 'Tax Invoice' : docType === 'bill_of_supply' ? 'Bill of Supply' : docType === 'quotation' ? 'Quotation' : docType === 'debit_note' ? 'Debit Note' : docType === 'credit_note' ? 'Credit Note' : docType === 'amendment' ? 'Amendment' : 'Document'}
-          </button>
+            <button type="button" className="bp-btn bp-btn-green" disabled={busy} onClick={generateDoc}>
+              Generate {docType === 'tax_invoice' ? 'Tax Invoice' : docType === 'bill_of_supply' ? 'Bill of Supply' : docType === 'quotation' ? 'Quotation' : docType === 'debit_note' ? 'Debit Note' : docType === 'credit_note' ? 'Credit Note' : docType === 'amendment' ? 'Amendment' : 'Document'}
+            </button>
           )}
         </div>
         <div className="bp-gst-box">

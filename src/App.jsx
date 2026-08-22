@@ -23,6 +23,7 @@ const ClientProfile = lazy(() => import('./pages/portal/ClientPages').then(m => 
 const ClientResetPassword = lazy(() => import('./pages/portal/ClientPages').then(m => ({ default: m.ClientResetPassword })));
 const BillingDashboard = lazy(() => import('./pages/billing/BillingDashboard'));
 const PartiesPage = lazy(() => import('./pages/billing/PartiesPage'));
+const PartyForm = lazy(() => import('./pages/billing/PartyForm'));
 const InvoiceForm = lazy(() => import('./pages/billing/InvoiceForm'));
 const InvoiceList = lazy(() => import('./pages/billing/InvoiceList'));
 const InvoiceDetail = lazy(() => import('./pages/billing/InvoiceDetail'));
@@ -31,6 +32,7 @@ const OutstandingPage = lazy(() => import('./pages/billing/OutstandingPage'));
 const GstSummaryPage = lazy(() => import('./pages/billing/GstSummaryPage'));
 const GstLiabilityReport = lazy(() => import('./pages/billing/GstLiabilityReport'));
 const BusinessSettings = lazy(() => import('./pages/billing/BusinessSettings'));
+const ChangeRequestHistory = lazy(() => import('./pages/billing/BusinessSettings').then((m) => ({ default: m.ChangeRequestHistory })));
 const ReportsIndexRedirect = lazy(() => import('./pages/billing/ReportsIndexRedirect'));
 const EditRequestPage = lazy(() => import('./pages/portal/EditRequestPage'));
 const AmendmentsPage = lazy(() => import('./pages/portal/AmendmentsPage'));
@@ -163,6 +165,8 @@ export default function App() {
             <Route path=":id/edit" element={<InvoiceForm docType="amendment" title="Edit Amendment" />} />
           </Route>
           <Route path="billing/parties" element={<PartiesPage />} />
+          <Route path="billing/parties/new" element={<PartyForm />} />
+          <Route path="billing/parties/:id/edit" element={<PartyForm />} />
           <Route path="gstr-2b" element={<ClientGstr2b />} />
           <Route path="gst-returns" element={<ClientGstDashboard />} />
           <Route path="gst-filing" element={<GstFilingConfirmation />} />
@@ -190,6 +194,7 @@ export default function App() {
             <Route path="reports" element={<Navigate to="/portal/reports" replace />} />
           </Route>
           <Route path="settings" element={<BusinessSettings />} />
+          <Route path="settings/history" element={<ChangeRequestHistory />} />
           <Route path="reports" element={<ClientReportsLayout />}>
             <Route index element={<ReportsIndexRedirect />} />
             <Route path="gst-summary" element={<GstSummaryPage />} />

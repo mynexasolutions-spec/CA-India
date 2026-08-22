@@ -48,14 +48,15 @@ class MasterController extends Controller
     {
         return [
             'name' => 'required|string|max:200',
+            'proprietor_name' => 'required|string|max:200',
             'contact_person' => 'nullable|string|max:120',
             'email' => 'nullable|email',
             'phone' => 'nullable|string|max:20',
             'gst_status' => 'required|in:registered,unregistered',
             'gstin' => ['required_if:gst_status,registered', 'nullable', 'string', 'regex:'.self::GSTIN_REGEX],
-            'state_code' => 'nullable|string|max:2',
-            'state' => 'nullable|string|max:80',
-            'billing_address' => 'nullable|string',
+            'state_code' => 'required|string|max:2',
+            'state' => 'required|string|max:80',
+            'billing_address' => 'required|string',
             'shipping_address' => 'nullable|string',
         ];
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ClientGstReturn;
 use App\Models\ClientProfile;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class GstReturnController extends Controller
 {
@@ -25,6 +26,7 @@ class GstReturnController extends Controller
         // Monthly Stats
         $monthlyClientsCount = ClientProfile::where('has_gst', true)->where('gst_filing_frequency', 'monthly')->count();
         $monthlyFiledCount = ClientGstReturn::where('tax_period', $month)
+            ->where('return_type', ClientGstReturn::TYPE_GSTR3B)
             ->whereHas('clientProfile', fn($q) => $q->where('gst_filing_frequency', 'monthly'))
             ->count();
         $monthlyPendingCount = max(0, $monthlyClientsCount - $monthlyFiledCount);
@@ -32,6 +34,7 @@ class GstReturnController extends Controller
         // Quarterly Stats
         $quarterlyClientsCount = ClientProfile::where('has_gst', true)->where('gst_filing_frequency', 'quarterly')->count();
         $quarterlyFiledCount = ClientGstReturn::where('tax_period', $quarter)
+            ->where('return_type', ClientGstReturn::TYPE_GSTR3B)
             ->whereHas('clientProfile', fn($q) => $q->where('gst_filing_frequency', 'quarterly'))
             ->count();
         $quarterlyPendingCount = max(0, $quarterlyClientsCount - $quarterlyFiledCount);
@@ -65,10 +68,14 @@ class GstReturnController extends Controller
     public function index(Request $request)
     {
         $period = $request->input('period'); // "2026-04"
-        
+        $returnType = in_array($request->input('return_type'), ClientGstReturn::TYPES, true)
+            ? $request->input('return_type')
+            : ClientGstReturn::TYPE_GSTR3B;
+
         $q = ClientProfile::query()
             ->where('has_gst', true)
-            ->with(['gstReturns' => function($q) use ($period) {
+            ->with(['gstReturns' => function($q) use ($period, $returnType) {
+                $q->where('return_type', $returnType);
                 if ($period) {
                     $q->where('tax_period', $period);
                 } else {
@@ -94,7 +101,7 @@ class GstReturnController extends Controller
         $clients = $q->orderBy('business_name')->paginate(25);
 
         // Transform results to add status
-        $clients->getCollection()->transform(function ($client) use ($period) {
+        $clients->getCollection()->transform(function ($client) use ($period, $returnType) {
             $filed = $client->gstReturns->firstWhere('tax_period', $period);
             $lastFiled = $client->gstReturns->sortByDesc('tax_period')->first();
 
@@ -105,6 +112,7 @@ class GstReturnController extends Controller
                 'gstin' => $client->gstin,
                 'registration_type' => $client->dealer_type,
                 'frequency' => $client->gst_filing_frequency,
+                'return_type' => $returnType,
                 'status' => $filed ? 'filed' : 'pending',
                 'last_filed' => $lastFiled ? $lastFiled->tax_period : null,
             ];
@@ -120,8 +128,10 @@ class GstReturnController extends Controller
     {
         $data = $request->validate([
             'tax_period' => 'required|string|max:10', // e.g. 2026-04 or 2026-Q1
+            'return_type' => ['nullable', Rule::in(ClientGstReturn::TYPES)],
             'status' => 'required|in:filed,pending',
         ]);
+        $returnType = $data['return_type'] ?? ClientGstReturn::TYPE_GSTR3B;
 
         $client = ClientProfile::findOrFail($clientId);
 
@@ -130,6 +140,7 @@ class GstReturnController extends Controller
                 [
                     'client_profile_id' => $client->id,
                     'tax_period' => $data['tax_period'],
+                    'return_type' => $returnType,
                 ],
                 [
                     'status' => 'filed',
@@ -141,6 +152,7 @@ class GstReturnController extends Controller
         } else {
             ClientGstReturn::where('client_profile_id', $client->id)
                 ->where('tax_period', $data['tax_period'])
+                ->where('return_type', $returnType)
                 ->delete();
             return response()->json(['message' => 'Marked as pending']);
         }
