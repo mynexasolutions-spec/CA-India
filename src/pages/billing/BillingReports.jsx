@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, getAuthToken } from '../../api/client';
+import { LoadingBlock } from '../../components/Spinner';
 import BillingDateFilters from './BillingDateFilters';
 import { currentFyRange, docTypeLabel, money } from './billingUtils';
 import GstSummaryMatrix, { resolveGstMatrix } from './GstSummaryMatrix';
@@ -183,7 +184,7 @@ export default function BillingReports({ defaultType = 'gst_summary', title = 'R
         </div>
       </div>
       <div className="bp-card" style={{ marginTop: 14, overflowX: 'auto' }}>
-        {loading ? <p>Loading…</p> : <ReportView type={type} payload={data} from={from} to={to} fy={fy} />}
+        {loading ? <LoadingBlock /> : <ReportView type={type} payload={data} from={from} to={to} fy={fy} />}
       </div>
     </div>
   );

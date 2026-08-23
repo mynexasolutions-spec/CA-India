@@ -19,11 +19,16 @@ const CARD_STYLE = {
   border: '1px solid rgba(0,0,0,0.05)',
 };
 
-export function DashCard({ title, badge, action, children, style }) {
+export function DashCard({ title, icon, iconColor = '#2563eb', badge, action, children, style }) {
   return (
-    <section style={{ ...CARD_STYLE, ...style }}>
+    <section className="bp-dash-card" style={{ ...CARD_STYLE, ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          {icon && (
+            <span style={{ width: 30, height: 30, borderRadius: 9, background: iconColor, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 6px ${iconColor}55` }}>
+              {icon}
+            </span>
+          )}
           {title}
           {badge}
         </h3>
@@ -36,7 +41,8 @@ export function DashCard({ title, badge, action, children, style }) {
 
 export function LiveBadge({ children = 'Live data · updates every 15s' }) {
   return (
-    <span style={{ fontSize: 10, background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 12, fontWeight: 700, letterSpacing: 0.3, textTransform: 'uppercase' }}>
+    <span style={{ fontSize: 10, background: '#e0e7ff', color: '#3730a3', padding: '3px 10px 3px 8px', borderRadius: 12, fontWeight: 700, letterSpacing: 0.3, textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4f46e5', boxShadow: '0 0 0 3px rgba(79,70,229,0.25)', flexShrink: 0 }} />
       {children}
     </span>
   );
@@ -85,7 +91,16 @@ export function SalesBarChart({ data }) {
   const rows = Array.isArray(data) ? data : [];
   const [hover, setHover] = useState(null);
   if (!rows.length) {
-    return <p style={{ color: 'var(--bp-muted)', fontSize: 13 }}>No billing activity yet for this period.</p>;
+    return (
+      <div style={{ textAlign: 'center', padding: '20px 12px 8px' }}>
+        <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+        </div>
+        <p style={{ color: 'var(--bp-muted)', fontSize: 13, margin: 0 }}>No billing activity yet for this period.</p>
+      </div>
+    );
   }
 
   const max = Math.max(1, ...rows.map((r) => Math.max(r.taxable_value || 0, r.gst_amount || 0)));
@@ -227,7 +242,16 @@ function ComplianceRow({ label, row }) {
 }
 
 export function ComplianceStatus({ compliance, financialYear }) {
-  if (!compliance) return <p style={{ color: 'var(--bp-muted)', fontSize: 13 }}>Loading compliance status…</p>;
+  if (!compliance) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {[0, 1].map((i) => (
+          <div key={i} style={{ height: 14, borderRadius: 6, background: '#f1f5f9', width: i === 0 ? '40%' : '100%' }} />
+        ))}
+        <p style={{ color: 'var(--bp-muted)', fontSize: 13, margin: '4px 0 0' }}>Loading compliance status…</p>
+      </div>
+    );
+  }
   const cycle = compliance.frequency === 'quarterly' ? 'Quarterly' : 'Monthly';
   return (
     <div>

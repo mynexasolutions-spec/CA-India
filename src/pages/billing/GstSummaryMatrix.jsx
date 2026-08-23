@@ -4,7 +4,7 @@ import { billingMode } from './billingProfile';
 export const GST_MATRIX_ROWS = [
   ['taxable_value', 'Total Taxable Value'],
   ['cgst', 'CGST Amount'],
-  ['sgst', 'SGST/UTGST Amount'],
+  ['sgst', 'SGST / UTGST Amount'],
   ['igst', 'IGST Amount'],
   ['total_invoice_value', 'Total Gross Value'],
 ];
@@ -12,7 +12,7 @@ export const GST_MATRIX_ROWS = [
 /** Always 4 columns — structure stays the same for Regular and Composition. */
 export const GST_MATRIX_COLS = [
   ['tax_invoice', 'Tax Invoices'],
-  ['bill_of_supply', 'Bill of Supply'],
+  ['bill_of_supply', 'Bills of Supply'],
   ['debit_note', 'Debit Notes'],
   ['credit_note', 'Credit Notes'],
 ];

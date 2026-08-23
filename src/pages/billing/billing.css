@@ -1,20 +1,20 @@
 /* Shared portal / billing shell */
 .bp-shell {
-  --bp-navy: #175888;
-  --bp-blue: #2a7ab5;
-  --bp-sky: #e8f3fb;
+  --bp-navy: #0a3d82;
+  --bp-blue: #2563eb;
+  --bp-sky: #f0f7ff;
   --bp-card: #ffffff;
-  --bp-border: #d5e3ef;
-  --bp-text: #163a52;
-  --bp-muted: #6b8499;
-  --bp-green: #1f8a5b;
-  --bp-red: #c0392b;
-  --bp-amber: #d99a1b;
+  --bp-border: #cbd5e1;
+  --bp-text: #0f172a;
+  --bp-muted: #475569;
+  --bp-green: #16a34a;
+  --bp-red: #dc2626;
+  --bp-amber: #d97706;
   display: flex;
   min-height: 100vh;
-  background: #f3f8fc;
+  background: #f8fafc;
   color: var(--bp-text);
-  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', 'Manrope', system-ui, sans-serif;
 }
 
 .bp-sidebar {
@@ -119,6 +119,7 @@
   padding: 12px 10px;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden !important;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
@@ -256,6 +257,44 @@
   gap: 14px;
 }
 
+/* Responsive stat/summary-card grids — pages pass a fixed column count inline
+   (repeat(N, 1fr)) via className instead of inline gridTemplateColumns, so these
+   breakpoints can actually take effect on narrow screens. */
+.bp-stat-grid-2,
+.bp-stat-grid-3,
+.bp-stat-grid-4,
+.bp-stat-grid-5 {
+  display: grid;
+}
+.bp-stat-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.bp-stat-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.bp-stat-grid-4 { grid-template-columns: repeat(4, 1fr); }
+.bp-stat-grid-5 { grid-template-columns: repeat(5, 1fr); }
+
+@media (max-width: 1024px) {
+  .bp-stat-grid-4,
+  .bp-stat-grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .bp-stat-grid-3,
+  .bp-stat-grid-4,
+  .bp-stat-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .bp-stat-grid-2,
+  .bp-stat-grid-3,
+  .bp-stat-grid-4,
+  .bp-stat-grid-5 {
+    grid-template-columns: 1fr;
+  }
+}
+
 .bp-card {
   background: var(--bp-card);
   border: 1px solid var(--bp-border);
@@ -304,16 +343,32 @@
   flex: 0 0 auto;
 }
 
-.bp-btn-primary { background: var(--bp-navy); }
-.bp-btn-blue { background: var(--bp-blue); }
-.bp-btn-green { background: var(--bp-green); }
-.bp-btn-amber { background: var(--bp-amber); color: #173048; }
+.bp-btn-primary {
+  background: var(--bp-navy);
+}
+
+.bp-btn-blue {
+  background: var(--bp-blue);
+}
+
+.bp-btn-green {
+  background: var(--bp-green);
+}
+
+.bp-btn-amber {
+  background: var(--bp-amber);
+  color: #173048;
+}
+
 .bp-btn-outline {
   background: #fff;
   color: var(--bp-navy);
   border: 1px solid var(--bp-border);
 }
-.bp-btn-danger { background: var(--bp-red); }
+
+.bp-btn-danger {
+  background: var(--bp-red);
+}
 
 .bp-required {
   color: var(--bp-red);
@@ -335,7 +390,9 @@
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
-.bp-line-remove svg { pointer-events: none; }
+.bp-line-remove svg {
+  pointer-events: none;
+}
 
 .bp-line-remove:hover {
   background: var(--bp-red);
@@ -367,11 +424,13 @@
   margin: 0;
   border: 1px solid transparent;
 }
+
 .bp-alert-success {
   background: #eaf7f0;
   border-color: #bfe6d1;
   color: var(--bp-green);
 }
+
 .bp-alert-error {
   background: #fbecea;
   border-color: #f0c6c0;
@@ -381,32 +440,38 @@
 .bp-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 13.5px;
 }
 
 .bp-table th,
 .bp-table td {
-  padding: 10px 8px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--bp-border);
   text-align: left;
 }
 
 .bp-table th {
   color: var(--bp-muted);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 750;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
+}
+
+.bp-table tbody tr {
+  background: #ffffff;
+  transition: background 0.15s ease;
 }
 
 .bp-table tbody tr:hover {
-  background: var(--bp-sky);
+  background: #f8fafc;
 }
 
 .bp-table-empty {
-  padding: 28px 8px;
+  padding: 36px 16px;
   text-align: center;
   color: var(--bp-muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .bp-invoice-table {
@@ -417,12 +482,41 @@
   word-break: break-word;
 }
 
+.bp-table-wrapper {
+  border: 1px solid var(--bp-border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
 /* Billing Module document tables (All Documents / Quotations / Tax Invoices /
    Bill of Supply / Debit Notes / Credit Notes) — spec §6 exact standard.
    Scoped to .bp-doc-table so Parties/Reports/Settings tables are unaffected. */
+.bp-doc-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.bp-doc-table tbody tr:last-child td {
+  border-bottom: none;
+  /* Avoid duplicate bottom border with wrapper */
+}
+
 .bp-doc-table th,
 .bp-doc-table td {
   text-align: center;
+  /* Center-align all columns like screenshot */
+  vertical-align: middle;
+  border-right: 1px solid var(--bp-border);
+  /* Vertical grid borders */
+  border-bottom: 1px solid var(--bp-border);
+}
+
+.bp-doc-table th:last-child,
+.bp-doc-table td:last-child {
+  border-right: none;
+  /* No border on the last action column */
 }
 
 .bp-doc-table thead tr {
@@ -430,8 +524,13 @@
 }
 
 .bp-doc-table th {
-  color: #fff;
-  font-size: 11px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--bp-border);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  /* Light vertical lines in header */
 }
 
 .bp-doc-table .bp-doc-num-link {
@@ -440,7 +539,9 @@
 }
 
 .bp-doc-table .bp-doc-total {
-  font-weight: 600;
+  font-weight: 700;
+  color: #2563eb;
+  /* Blue colored total value like screenshot */
 }
 
 .bp-action-menu {
@@ -544,78 +645,237 @@
 .bp-summary-cards {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .bp-summary-card {
-  background: #fff;
+  background: #ffffff;
   border: 1px solid var(--bp-border);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 18px 22px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  gap: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bp-summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px -8px rgba(0, 0, 0, 0.08);
+}
+
+/* Client Dashboard — hover lift for DashCard sections, StatTiles and workspace quick-links */
+.bp-dash-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bp-dash-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px -10px rgba(13, 31, 60, 0.16);
+}
+
+.bp-stat-tile {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bp-stat-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -6px rgba(0, 0, 0, 0.14);
+}
+
+.bp-workspace-link {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.bp-workspace-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -8px rgba(13, 31, 60, 0.18);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.bp-summary-card:nth-child(1),
+.bp-summary-card:nth-child(2) {
+  background: #f8fafc;
+  background: linear-gradient(135deg, #f3f8ff 0%, #ffffff 100%);
+  border: 1px solid #dbeafe;
+}
+
+.bp-summary-card:nth-child(1) .bp-summary-card-value,
+.bp-summary-card:nth-child(2) .bp-summary-card-value {
+  color: #2563eb;
+}
+
+.bp-summary-card:nth-child(3) {
+  background: #f8fafc;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.bp-summary-card:nth-child(3) .bp-summary-card-value {
+  color: #16a34a;
+}
+
+.bp-summary-card:nth-child(4) {
+  background: #f8fafc;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+  border: 1px solid #fef3c7;
+}
+
+.bp-summary-card:nth-child(4) .bp-summary-card-value {
+  color: #ea580c;
+}
+
+.bp-summary-card:nth-child(5) {
+  background: #f8fafc;
+  background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
+  border: 1px solid #e9d5ff;
+}
+
+.bp-summary-card:nth-child(5) .bp-summary-card-value {
+  color: #9333ea;
 }
 
 .bp-summary-card-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
 .bp-summary-card-label {
-  font-size: 12px;
-  color: var(--bp-muted);
+  font-size: 13.5px;
+  color: #475569;
   font-weight: 600;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .bp-summary-card-value {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--bp-navy);
+  font-size: 30px;
+  font-weight: 850;
+  line-height: 1;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+  .bp-summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
   .bp-summary-cards {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 /* Filtered-results totals footer bar under a document table */
+.bp-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.bp-table-footer .bp-pagination {
+  flex: 1;
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap; /* No wrapping to keep elements on a single horizontal line */
+  gap: 10px;
+}
+
+.bp-table-footer .bp-pagination > span {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.bp-table-footer .bp-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bp-table-footer .bp-pagination-controls label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.bp-table-footer .bp-page-btn {
+  min-width: 28px;
+  height: 28px;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+/* Totals bar + pagination sit side by side on desktop but neither wraps internally —
+   stack them and let their own contents wrap once the row can't fit anymore. */
+@media (max-width: 768px) {
+  .bp-table-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .bp-table-footer .bp-pagination {
+    flex-wrap: wrap;
+  }
+
+  .bp-doc-totals-bar {
+    flex-wrap: wrap;
+  }
+
+  .bp-doc-totals-stats {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+
 .bp-doc-totals-bar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 24px;
-  background: var(--bp-sky);
-  border: 1px solid var(--bp-border);
-  border-radius: 10px;
-  padding: 12px 18px;
-  margin-top: 14px;
+  gap: 10px;
+  background: #f0f7ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 8px 12px;
+  flex-shrink: 0;
 }
 
 .bp-doc-totals-label {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--bp-navy);
+  color: #475569;
+  border-right: 1px solid #cbd5e1;
+  padding-right: 10px;
+  line-height: 1.2;
 }
 
 .bp-doc-totals-label .bp-doc-totals-rupee {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--bp-navy);
-  color: #fff;
+  background: #ffffff;
+  border: 1.5px solid #2563eb;
+  color: #2563eb;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -626,21 +886,23 @@
 
 .bp-doc-totals-stats {
   display: flex;
-  gap: 28px;
-  margin-left: auto;
-  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
 }
 
 .bp-doc-totals-stat {
-  font-size: 13px;
-  color: var(--bp-muted);
+  font-size: 10px;
+  color: #475569;
+  font-weight: 600;
+  text-align: center;
 }
 
 .bp-doc-totals-stat strong {
   display: block;
-  font-size: 16px;
-  color: var(--bp-navy);
+  font-size: 13.5px;
+  color: #2563eb;
   font-weight: 800;
+  margin-bottom: 2px;
 }
 
 /* Create Document form (Reference 2) */
@@ -658,16 +920,17 @@
 
 .bp-doctype-tile {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
   text-align: left;
   background: #fff;
   border: 1.5px solid var(--bp-border);
   border-radius: 12px;
-  padding: 14px;
+  padding: 14px 16px;
   cursor: pointer;
   font-family: inherit;
+  transition: all 0.15s ease;
 }
 
 .bp-doctype-tile:hover:not(:disabled) {
@@ -681,8 +944,12 @@
 
 .bp-doctype-tile.active {
   border-color: var(--bp-blue);
-  background: var(--bp-sky);
+  background: #f4f8ff; /* Soft blue tint */
   box-shadow: 0 0 0 1px var(--bp-blue);
+}
+
+.bp-doctype-tile.active .bp-doctype-tile-label {
+  color: var(--bp-blue);
 }
 
 .bp-doctype-tile-icon {
@@ -716,7 +983,7 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--bp-navy);
+  background: #2563eb; /* Vibrant royal blue like screenshot */
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -740,8 +1007,14 @@
 
 .bp-tax-option-boxes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .bp-tax-option-boxes {
+    grid-template-columns: 1fr;
+  }
 }
 
 .bp-tax-option-box {
@@ -859,8 +1132,13 @@
   font-weight: 700;
 }
 
-.bp-tax-type-hint.intra { color: var(--bp-green); }
-.bp-tax-type-hint.inter { color: var(--bp-blue); }
+.bp-tax-type-hint.intra {
+  color: var(--bp-green);
+}
+
+.bp-tax-type-hint.inter {
+  color: var(--bp-blue);
+}
 
 .bp-tax-options {
   display: flex;
@@ -900,8 +1178,15 @@
   color: #64748b;
 }
 
-.bp-form { display: grid; gap: 12px; }
-.bp-form.two { grid-template-columns: 1fr 1fr; }
+.bp-form {
+  display: grid;
+  gap: 12px;
+}
+
+.bp-form.two {
+  grid-template-columns: 1fr 1fr;
+}
+
 .bp-form label {
   display: grid;
   gap: 4px;
@@ -1070,26 +1355,69 @@
 .bp-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 8px;
+  gap: 12px 10px;
   align-items: flex-end;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 /* Billing Module spec §7 — labeled filter grid + Apply/Clear row beneath it */
 .bp-filters-panel {
-  margin-bottom: 14px;
+  margin-bottom: 20px;
+  padding: 12px 0;
 }
 
 .bp-filters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 14px;
-  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: nowrap;
+  /* Prevent wrapping on desktop/laptop screens */
+  margin-bottom: 20px;
+  width: 100%;
 }
 
-.bp-filters-grid .bp-filter-item {
-  width: 100%;
-  min-width: 0;
+.bp-filters-grid>.bp-filter-field:first-child {
+  border-right: 1px dotted #cbd5e1;
+  padding-right: 10px;
+  flex: 0 0 auto;
+}
+
+.bp-filters-grid .bp-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+/* Specific flex basis for each column type to prevent squeezing */
+.bp-filters-grid>.bp-filter-field:nth-child(2) {
+  flex: 2 1 200px;
+  /* Search */
+}
+
+.bp-filters-grid>.bp-filter-field:nth-child(3) {
+  flex: 1 1 100px;
+  /* Financial Year */
+}
+
+.bp-filters-grid>.bp-filter-field:nth-child(4) {
+  flex: 1 1 115px;
+  /* From Date */
+}
+
+.bp-filters-grid>.bp-filter-field:nth-child(5) {
+  flex: 1 1 115px;
+  /* To Date */
+}
+
+.bp-filters-grid>.bp-filter-field:nth-child(6) {
+  flex: 1 1 115px;
+  /* Payment Status */
+}
+
+.bp-filters-grid>.bp-filter-field:nth-child(7) {
+  flex: 0 1 105px;
+  /* Document Type (Reduced Width) */
 }
 
 .bp-filter-quick-row {
@@ -1100,52 +1428,115 @@
 .bp-filter-quick-row .bp-filter-item {
   width: auto;
   min-width: 0;
-  flex: 1;
   padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .bp-filters-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
+  margin-top: 4px;
+  justify-content: center;
 }
 
-.bp-filters-actions .bp-filter-item {
+.bp-filters-actions .bp-filter-btn {
   width: auto;
-  min-width: 140px;
-  padding: 0 18px;
-  gap: 6px;
+  min-width: 130px;
+  padding: 0 20px;
+  gap: 8px;
+  border-radius: 8px;
+  height: 40px;
+  font-weight: 700;
+}
+
+/* The shared Billing filter bar is deliberately nowrap on desktop so its columns line up,
+   but that same nowrap forces horizontal scrolling once the fields can't shrink any further —
+   let it wrap instead once there's no room. */
+@media (max-width: 900px) {
+  .bp-filters-grid {
+    flex-wrap: wrap;
+  }
+
+  .bp-filters-grid > .bp-filter-field:first-child {
+    border-right: none;
+    padding-right: 0;
+  }
+
+  .bp-filters-grid > .bp-filter-field:nth-child(2),
+  .bp-filters-grid > .bp-filter-field:nth-child(3),
+  .bp-filters-grid > .bp-filter-field:nth-child(4),
+  .bp-filters-grid > .bp-filter-field:nth-child(5),
+  .bp-filters-grid > .bp-filter-field:nth-child(6),
+  .bp-filters-grid > .bp-filter-field:nth-child(7) {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 480px) {
+  .bp-filters-grid > .bp-filter-field {
+    flex: 1 1 100% !important;
+  }
+
+  .bp-filters-actions {
+    flex-direction: column;
+  }
+
+  .bp-filters-actions .bp-filter-btn {
+    width: 100%;
+  }
+}
+
+.bp-filter-btn.active {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+  color: #2563eb !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 1px #2563eb;
 }
 
 .bp-filter-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   margin: 0;
 }
 
 .bp-filter-title {
   display: block;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
-  color: var(--bp-text);
-  padding-left: 4px;
+  color: var(--bp-muted);
+  padding-left: 2px;
   line-height: 1.2;
 }
 
 .bp-filter-item {
   box-sizing: border-box;
-  height: 38px;
-  min-width: 148px;
-  width: 148px;
-  border-radius: 999px;
-  border: 1px solid #c8d3e6;
-  background: #fff;
-  color: var(--bp-navy);
-  font-size: 13px;
-  font-weight: 600;
+  height: 40px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: var(--bp-text);
+  font-size: 13.5px;
+  font-weight: 500;
   font-family: inherit;
-  padding: 0 14px;
+  padding: 0 12px;
   line-height: 1;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bp-filter-item::placeholder {
+  color: #94a3b8;
+}
+
+.bp-filter-item:focus {
+  border-color: var(--bp-blue);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .bp-filter-btn {
@@ -1154,21 +1545,29 @@
   justify-content: center;
   cursor: pointer;
   text-align: center;
+  font-weight: 700;
+  border: 1px solid #2563eb !important;
+  color: #2563eb !important;
+  background: #ffffff;
+  transition: all 0.2s ease;
 }
 
 .bp-filter-btn:hover {
-  background: #f3f7fc;
+  background: #f0f7ff !important;
+  border-color: #1d4ed8 !important;
+  color: #1d4ed8 !important;
 }
 
 .bp-filter-btn-primary {
-  background: var(--bp-navy);
-  border-color: var(--bp-navy);
-  color: #fff;
+  background: var(--bp-navy) !important;
+  border-color: var(--bp-navy) !important;
+  color: #ffffff !important;
 }
 
 .bp-filter-btn-primary:hover {
-  background: #134766;
-  color: #fff;
+  background: #082f63 !important;
+  border-color: #082f63 !important;
+  color: #ffffff !important;
 }
 
 .bp-filter-control {
@@ -1183,12 +1582,11 @@
 
 select.bp-filter-control {
   cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--bp-navy) 50%),
-    linear-gradient(135deg, var(--bp-navy) 50%, transparent 50%);
-  background-position: calc(100% - 16px) 16px, calc(100% - 11px) 16px;
-  background-size: 5px 5px, 5px 5px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+  background-position: calc(100% - 12px) center;
+  background-size: 16px;
   background-repeat: no-repeat;
-  padding-right: 28px;
+  padding-right: 32px;
 }
 
 .bp-split {
@@ -1570,7 +1968,9 @@ select.bp-filter-control {
   white-space: nowrap;
 }
 
-.bp-line-grid { overflow-x: auto; }
+.bp-line-grid {
+  overflow-x: auto;
+}
 
 .bp-line-row {
   display: grid;
@@ -1619,9 +2019,17 @@ select.bp-filter-control {
 }
 
 @media (max-width: 1100px) {
-  .bp-grid-4 { grid-template-columns: repeat(2, 1fr); }
-  .bp-split { grid-template-columns: 1fr; }
-  .bp-form.two { grid-template-columns: 1fr; }
+  .bp-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bp-split {
+    grid-template-columns: 1fr;
+  }
+
+  .bp-form.two {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Government HSN / SAC code picker */
@@ -1752,6 +2160,23 @@ select.bp-filter-control {
     font-size: 16px;
   }
 
+  /* The title (hamburger + "Client Portal" / business name) and the right-side controls
+     (FY selector, refresh, bell, avatar) were squeezed into one row, leaving the title only
+     ~90px wide and forcing it to truncate hard. Give each its own full-width row instead. */
+  .bp-topbar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .bp-topbar-left {
+    flex: 1 1 100%;
+  }
+
+  .bp-topbar-right {
+    flex: 1 1 100%;
+    justify-content: flex-end;
+  }
+
   .bp-grid-4,
   .bp-report-grid {
     grid-template-columns: 1fr;
@@ -1821,6 +2246,7 @@ select.bp-filter-control {
 }
 
 @media print {
+
   .bp-sidebar,
   .bp-topbar,
   .no-print {
@@ -1845,9 +2271,13 @@ select.bp-filter-control {
 }
 
 .bp-shell.bp-shell-client .bp-nav a.active {
-  background: #2f6fdb;
-  color: #fff;
-  box-shadow: none;
+  background: #2563eb !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  margin: 2px 10px !important;
+  width: auto !important;
 }
 
 .bp-nav-group {
@@ -2223,6 +2653,20 @@ select.bp-filter-control {
   }
 }
 
+@media (max-width: 480px) {
+  .bp-parties-highlights {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Parties: bottom Key Highlights / GST Status Guide / Actions Available row —
+   stacks once the 3fr/1fr/1fr split can no longer fit side by side. */
+@media (max-width: 900px) {
+  .bp-parties-columns {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Settings: underline tabs (jump-to-section shortcuts, not a show/hide switcher). */
 .bp-uline-tabs {
   display: flex;
@@ -2260,21 +2704,23 @@ select.bp-filter-control {
    floating as a separate colored card — a border-top is the only separator. */
 .bp-help-card {
   flex-shrink: 0;
-  margin: 0;
-  padding: 18px 14px 20px;
-  background: transparent;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  margin: 15px !important;
+  padding: 16px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
 }
 
 .bp-help-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  background: #0052ff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 12px !important;
+  color: #fff !important;
 }
 
 .bp-help-title {
@@ -2299,9 +2745,8 @@ select.bp-filter-control {
   width: 100%;
   box-sizing: border-box;
   padding: 10px 14px;
-  border-radius: 9px;
-  /* Same active-nav accent used elsewhere in the client sidebar. */
-  background: #2f6fdb;
+  border-radius: 8px;
+  background: #0052ff !important;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -2311,9 +2756,318 @@ select.bp-filter-control {
 }
 
 .bp-help-btn:hover {
-  background: #4380e6;
+  background: #0040cc !important;
 }
 
 .bp-help-btn .bp-help-arrow {
   margin-left: auto;
+}
+
+/* Item Details (Section 3) Lines Table styling */
+.bp-invoice-lines-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.bp-invoice-lines-table th,
+.bp-invoice-lines-table td {
+  padding: 8px 10px;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.bp-invoice-lines-table th {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--bp-border);
+  font-size: 12.5px;
+}
+
+.bp-invoice-lines-table td {
+  border-bottom: 1px solid var(--bp-border);
+  background: #ffffff;
+}
+
+.bp-invoice-lines-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.bp-invoice-lines-table td textarea.bp-textarea,
+.bp-invoice-lines-table td input.bp-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.bp-global-hsn-search input.bp-input {
+  padding-right: 36px !important;
+  border-radius: 8px !important;
+}
+
+.bp-doctype-tile-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+}
+
+.bp-gstr-kpi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.bp-gstr-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.bp-gstr-table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.bp-gstr-table thead tr {
+  background: #7c3aed;
+}
+
+.bp-gstr-table th,
+.bp-gstr-table td {
+  padding: 8px 6px !important;
+  font-size: 11.5px !important;
+}
+
+.bp-gstr-table th {
+  font-weight: 800 !important;
+}
+
+.bp-gstr-table td select.bp-select {
+  height: 26px !important;
+  padding: 2px 14px 2px 6px !important;
+  font-size: 11px !important;
+  width: 95px !important;
+}
+
+.bp-shell.bp-shell-client .bp-nav-children a.active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+  margin: 2px 10px !important;
+  padding-left: 20px !important;
+  width: auto !important;
+}
+
+.bp-shell.bp-shell-client .bp-nav-children a.active::before {
+  background: #ffffff !important;
+}
+
+/* Mobile responsive overrides for all updated Client Portal pages */
+@media (max-width: 768px) {
+  /* 1. GSTR KPI & Status card grids */
+  .bp-content div[style*="grid-template-columns: repeat(5, 1fr)"],
+  .bp-content div[style*="display: grid; grid-template-columns: repeat(5, 1fr)"] {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .bp-content div[style*="grid-template-columns: repeat(4, 1fr)"] {
+    grid-template-columns: 1fr !important;
+    padding: 10px 0 !important;
+  }
+  
+  /* Scoped to children that actually declare their own border-right (the ClientGstDashboard-style
+     divider row) — a plain repeat(4,1fr) grid of independent gradient KPI/highlight cards (Outstanding,
+     GST Liability, Parties' Key Highlights, etc.) has no border-right on its children, so it's left
+     alone instead of getting an unwanted divider line and padding stamped onto every card. */
+  .bp-content div[style*="grid-template-columns: repeat(4, 1fr)"] > div[style*="border-right"] {
+    border-right: none !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+    padding: 12px 16px !important;
+  }
+
+  .bp-content div[style*="grid-template-columns: repeat(4, 1fr)"] > div[style*="border-right"]:last-child {
+    border-bottom: none !important;
+  }
+
+  .bp-gstr-kpi {
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 12px 16px !important;
+  }
+
+  /* 2. Filters & Selection Forms Alignment */
+  .bp-filters, 
+  .bp-card div[style*="display: flex; flex-wrap: wrap; gap: 12px;"],
+  .bp-card div[style*="display: flex; flex-wrap: wrap; gap: 16px;"],
+  .bp-card div[style*="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .bp-filters select,
+  .bp-filters input,
+  .bp-filters button,
+  .bp-card select,
+  .bp-card input,
+  .bp-card button {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* The blanket ".bp-card select/input/button" rule above targets filter-bar controls, but it
+     also catches compact widgets that merely happen to live inside a .bp-card — pagination's
+     rows-per-page select and page-number buttons, and per-row table action buttons — stretching
+     them to full width and breaking those layouts. Give them their intrinsic size back. */
+  .bp-pagination select,
+  .bp-pagination button,
+  .bp-pagination-controls select,
+  .bp-pagination-controls button,
+  .bp-table-footer select,
+  .bp-table-footer button,
+  .bp-page-btn,
+  .bp-table td button,
+  .bp-table td .bp-btn,
+  .bp-doc-table td button,
+  .bp-doc-table td .bp-btn {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Any run of 2+ buttons (or a button glued to its input, like a "Fetch"/lookup button) sitting
+     side by side in the same row — Search+Clear, Reset+Apply, quick-filter pills, Export Excel/PDF,
+     Prev/Next, page-number triples — must not each be forced to 100% width, or every one of them
+     fights for the full row and they collide or overflow instead of sitting neatly in a line. */
+  .bp-card button:has(+ button),
+  .bp-card button + button,
+  .bp-card input:has(+ button),
+  .bp-card input + button {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* Standalone icon/toggle buttons in a table toolbar (Filter, Refresh) — not adjacent to another
+     button, so the two rules above don't catch them, but they're just as wrong stretched to 100%. */
+  .bp-toolbar-icon-action {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  /* 3. Original Invoice Selection (Debit/Credit Note Creation Section 2) */
+  .bp-card div[style*="display: flex; gap: 10px; align-items: flex-end;"],
+  .bp-card div[style*="display: flex; gap: 10px; align-items: flex-end"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  
+  .bp-card div[style*="display: flex; gap: 10px; align-items: flex-end;"] > div,
+  .bp-card div[style*="display: flex; gap: 10px; align-items: flex-end;"] > button {
+    width: 100% !important;
+  }
+
+  /* 5-column Summary reference table in Debit/Credit Note */
+  .bp-card div[style*="display: grid; grid-template-columns: repeat(5, 1fr);"],
+  .bp-card div[style*="grid-template-columns: repeat(5, 1fr)"] {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* 4. Toolbar headers layout */
+  .bp-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  
+  .bp-toolbar div[style*="display: flex; gap: 10px;"],
+  .bp-toolbar div[style*="display: flex; gap: 10px"] {
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+  
+  .bp-toolbar div[style*="display: flex; gap: 10px;"] > button,
+  .bp-toolbar div[style*="display: flex; gap: 10px;"] > a,
+  .bp-toolbar button {
+    width: 100% !important;
+  }
+
+  /* 5. Topbar/Navbar mobile responsive optimizations */
+  .bp-refresh-icon-only {
+    display: none;
+  }
+
+  .bp-fy-label {
+    display: none !important;
+  }
+
+  .bp-fy-dates {
+    display: none !important; /* Hide secondary date range on mobile topbar */
+  }
+
+  .bp-fy-select-box {
+    height: 40px !important;
+    padding: 0 8px !important;
+  }
+
+  .bp-topbar select.bp-select {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+  }
+
+  .bp-refresh-btn {
+    height: 40px !important;
+    padding: 0 12px !important;
+  }
+
+  .bp-refresh-text {
+    display: none !important;
+  }
+
+  .bp-refresh-icon-only {
+    display: inline-block !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+  }
+
+  .bp-avatar-name {
+    display: none !important; /* Hide avatar name text on mobile */
+  }
+
+  .bp-avatar-btn {
+    padding: 4px !important;
+    background: transparent !important;
+  }
+
+  .bp-topbar-right {
+    gap: 6px !important;
+  }
+
+  /* Adjust Client header spacing in mobile topbar */
+  .bp-topbar h1 {
+    font-size: 15px !important;
+  }
+
+  .bp-topbar span[style*="display: inline-block"] {
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    margin-top: 4px !important;
+  }
+
 }

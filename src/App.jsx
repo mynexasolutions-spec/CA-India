@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Route, Routes, Navigate, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import HtmlPage from './components/HtmlPage';
+import Spinner from './components/Spinner';
 import { AdminPortalLayout, AdminBillingLayout, ClientPortalLayout, ClientBillingLayout, ClientReportsLayout, RequireAuth } from './components/portal/PortalShell';
 import { PAGE_SLUGS } from './data/nav';
 
@@ -31,9 +32,12 @@ const BillingReports = lazy(() => import('./pages/billing/BillingReports'));
 const OutstandingPage = lazy(() => import('./pages/billing/OutstandingPage'));
 const GstSummaryPage = lazy(() => import('./pages/billing/GstSummaryPage'));
 const GstLiabilityReport = lazy(() => import('./pages/billing/GstLiabilityReport'));
+const HsnSummaryPage = lazy(() => import('./pages/billing/HsnSummaryPage'));
+const PartyWisePage = lazy(() => import('./pages/billing/PartyWisePage'));
+const PartyDocumentDetailPage = lazy(() => import('./pages/billing/PartyDocumentDetailPage'));
 const BusinessSettings = lazy(() => import('./pages/billing/BusinessSettings'));
 const ChangeRequestHistory = lazy(() => import('./pages/billing/BusinessSettings').then((m) => ({ default: m.ChangeRequestHistory })));
-const ReportsIndexRedirect = lazy(() => import('./pages/billing/ReportsIndexRedirect'));
+const ReportsDashboard = lazy(() => import('./pages/billing/ReportsDashboard'));
 const EditRequestPage = lazy(() => import('./pages/portal/EditRequestPage'));
 const AmendmentsPage = lazy(() => import('./pages/portal/AmendmentsPage'));
 const ClientGstr2b = lazy(() => import('./pages/portal/ClientGstr2b'));
@@ -80,9 +84,10 @@ const AdminInvoiceDetail = lazy(() => import('./pages/admin/AdminBillingPages').
 function LazyFallback() {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
       minHeight: 200, color: '#6b8499', fontSize: 14, fontWeight: 600,
     }}>
+      <Spinner size={22} />
       Loading…
     </div>
   );
@@ -196,11 +201,12 @@ export default function App() {
           <Route path="settings" element={<BusinessSettings />} />
           <Route path="settings/history" element={<ChangeRequestHistory />} />
           <Route path="reports" element={<ClientReportsLayout />}>
-            <Route index element={<ReportsIndexRedirect />} />
+            <Route index element={<ReportsDashboard />} />
             <Route path="gst-summary" element={<GstSummaryPage />} />
             <Route path="gst-liability" element={<GstLiabilityReport />} />
-            <Route path="hsn-summary" element={<BillingReports defaultType="hsn_summary" title="HSN / SAC Summary" />} />
-            <Route path="party-wise" element={<BillingReports defaultType="party_wise_sales" title="Party-wise Detail" />} />
+            <Route path="hsn-summary" element={<HsnSummaryPage />} />
+            <Route path="party-wise" element={<PartyWisePage />} />
+            <Route path="party-wise/:partyId" element={<PartyDocumentDetailPage />} />
             <Route path="sales-register" element={<BillingReports defaultType="sales_register" title="Sales Register" />} />
             <Route path="outstanding" element={<OutstandingPage />} />
           </Route>

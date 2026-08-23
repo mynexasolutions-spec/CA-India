@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import PasswordField from '../../components/PasswordField';
+import { LoadingBlock } from '../../components/Spinner';
 import { useClientPortal } from '../../components/portal/PortalShell';
 import { billingMode } from '../billing/billingProfile';
 import { currentFyLabel, currentFyRange, fyDateRange, fyQuarterOptions, money } from '../billing/billingUtils';
-import { ComplianceStatus, DashCard, LiveBadge, SalesBarChart } from './ClientDashboardWidgets';
+import { ComplianceStatus, DashCard, LiveBadge, SalesBarChart, shortMoney } from './ClientDashboardWidgets';
 
 const card = {
   background: '#fff',
@@ -126,24 +127,82 @@ function chartFreqTitle(base, profile) {
 }
 
 function StatTile({ label, count, value, color, bg }) {
+  const valueLen = String(value).length;
+  const valueFontSize = valueLen > 13 ? 14 : valueLen > 10 ? 16 : 18;
   return (
-    <div style={{ background: '#fff', borderRadius: 12, padding: '16px 18px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>{label}</div>
+    <div className="bp-stat-tile" style={{ background: bg, borderRadius: 12, padding: '14px 16px', border: `1px solid ${color}22`, minWidth: 0, overflow: 'hidden' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>{label}</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ background: bg, color, padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 700 }}>
-          {count} {count === 1 ? 'Doc' : 'Docs'}
-        </span>
-        <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--bp-navy)' }}>{value}</span>
+        <span style={{ fontSize: valueFontSize, fontWeight: 850, color, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{value}</span>
+        {count != null && (
+          <span style={{ background: '#fff', color, padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, border: `1px solid ${color}33`, whiteSpace: 'nowrap' }}>
+            {count} {count === 1 ? 'Doc' : 'Docs'}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
+function ArrowRightIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </svg>
+  );
+}
+
 function ViewLink({ to, children }) {
   return (
-    <Link to={to} style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-blue)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 14 }}>
-      {children} <span aria-hidden="true">→</span>
+    <Link to={to} style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-blue)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 14 }}>
+      {children} <ArrowRightIcon />
     </Link>
+  );
+}
+
+/* ── Dashboard section icons ──────────────────────────────────── */
+const ICON_24 = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'white', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
+function ReconciliationIcon() {
+  return (
+    <svg {...ICON_24}>
+      <path d="M21 12a9 9 0 1 1-2.6-6.4" /><polyline points="21 3 21 9 15 9" />
+    </svg>
+  );
+}
+function GstSummaryIcon() {
+  return (
+    <svg {...ICON_24}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+      <path d="M9 17v-3M12 17v-6M15 17v-2" />
+    </svg>
+  );
+}
+function BillingOverviewIcon() {
+  return (
+    <svg {...ICON_24}>
+      <rect x="4" y="3" width="14" height="18" rx="2" /><line x1="8" y1="8" x2="14" y2="8" /><line x1="8" y1="12" x2="14" y2="12" /><line x1="8" y1="16" x2="11" y2="16" />
+    </svg>
+  );
+}
+function SalesOverviewIcon() {
+  return (
+    <svg {...ICON_24}>
+      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  );
+}
+function ComplianceIcon() {
+  return (
+    <svg {...ICON_24}>
+      <path d="M12 2 4 5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V5l-8-3Z" /><polyline points="9 12 11 14 15 10" />
+    </svg>
+  );
+}
+function WorkspaceIcon() {
+  return (
+    <svg {...ICON_24}>
+      <rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
   );
 }
 
@@ -245,7 +304,7 @@ export function ClientDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fy]);
 
-  if (!data || !billing) return <p>Loading dashboard…</p>;
+  if (!data || !billing) return <LoadingBlock label="Loading dashboard…" size={26} minHeight={300} />;
 
   const gst = billing.gst_dashboard;
   const matchTotal = (gst?.matched_invoices || 0) + (gst?.unmatched_invoices || 0);
@@ -265,6 +324,10 @@ export function ClientDashboard() {
       {/* Welcome banner */}
       <div style={{ background: 'linear-gradient(135deg, var(--bp-navy) 0%, #1a365d 100%)', borderRadius: 16, padding: '24px 32px', color: '#fff', marginBottom: 24, boxShadow: '0 8px 24px rgba(13, 31, 60, 0.12)', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '-20%', right: '-5%', width: 250, height: 250, background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%)', borderRadius: '50%' }} />
+        <svg width="150" height="150" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
+          style={{ position: 'absolute', top: -18, right: 6, opacity: 0.08, pointerEvents: 'none' }}>
+          <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
         <h1 style={{ marginTop: 0, fontSize: 24, color: '#fff', fontWeight: 800, marginBottom: 4, position: 'relative', zIndex: 1 }}>
           Welcome back, {data.profile?.business_name} <span style={{ color: '#90cdf4', fontWeight: 700 }}>({gstConfigLabel(profile)})</span>
         </h1>
@@ -274,18 +337,18 @@ export function ClientDashboard() {
       </div>
 
       {mode === 'regular' && gst && (
-        <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20 }}>
-          <DashCard title={returnTitle('GST Reconciliation', profile)} badge={<LiveBadge />}>
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, 1fr)' }}>
-              <StatTile label="GSTR-2B Invoices" count={gst.total_gstr2b_invoices} value={gst.total_gstr2b_invoices} color="#2563eb" bg="rgba(37,99,235,0.08)" />
-              <StatTile label="Matched" count={gst.matched_invoices} value={gst.matched_invoices} color="#15803d" bg="rgba(21,128,61,0.08)" />
-              <StatTile label="Unmatched" count={gst.unmatched_invoices} value={gst.unmatched_invoices} color="#c2410c" bg="rgba(194,65,12,0.08)" />
-              <StatTile label="Match Rate" count={0} value={`${matchRate}%`} color="#3730a3" bg="rgba(55,48,163,0.08)" />
+        <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20, alignItems: 'start' }}>
+          <DashCard title={returnTitle('GST Reconciliation', profile)} icon={<ReconciliationIcon />} iconColor="#2563eb" badge={<LiveBadge />}>
+            <div className="bp-stat-grid-2" style={{ gap: 12 }}>
+              <StatTile label="GSTR-2B Invoices" value={gst.total_gstr2b_invoices} color="#2563eb" bg="rgba(37,99,235,0.08)" />
+              <StatTile label="Matched" value={gst.matched_invoices} color="#15803d" bg="rgba(21,128,61,0.08)" />
+              <StatTile label="Unmatched" value={gst.unmatched_invoices} color="#c2410c" bg="rgba(194,65,12,0.08)" />
+              <StatTile label="Match Rate" value={`${matchRate}%`} color="#3730a3" bg="rgba(55,48,163,0.08)" />
             </div>
             <ViewLink to="/portal/gstr-2b">View Reconciliation Details</ViewLink>
           </DashCard>
 
-          <DashCard title={returnTitle('GST Summary', profile)}>
+          <DashCard title={returnTitle('GST Summary', profile)} icon={<GstSummaryIcon />} iconColor="#0f766e">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {isQuarterly && (
                 <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--bp-text)' }}>
@@ -315,29 +378,29 @@ export function ClientDashboard() {
             <div style={{ fontSize: 10, color: 'var(--bp-muted)', fontWeight: 600, marginBottom: 16 }}>
               Period: {gstFrom?.split('-').reverse().join('/')} – {gstTo?.split('-').reverse().join('/')}
             </div>
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, 1fr)' }}>
-              <StatTile label="Output GST" count={0} value={money(gstSummaryData.output_gst)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
-              <StatTile label="Eligible ITC" count={0} value={money(gstSummaryData.eligible_itc)} color="#0f766e" bg="rgba(15,118,110,0.08)" />
-              <StatTile label="GST Payable" count={0} value={money(gstSummaryData.gst_payable)} color="#be123c" bg="rgba(190,18,60,0.08)" />
-              <StatTile label="Excess ITC Available" count={0} value={money(gstSummaryData.excess_itc)} color="#15803d" bg="rgba(21,128,61,0.08)" />
+            <div className="bp-stat-grid-2" style={{ gap: 12 }}>
+              <StatTile label="Output GST" value={money(gstSummaryData.output_gst)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
+              <StatTile label="Eligible ITC" value={money(gstSummaryData.eligible_itc)} color="#0f766e" bg="rgba(15,118,110,0.08)" />
+              <StatTile label="GST Payable" value={money(gstSummaryData.gst_payable)} color="#be123c" bg="rgba(190,18,60,0.08)" />
+              <StatTile label="Excess ITC Available" value={money(gstSummaryData.excess_itc)} color="#15803d" bg="rgba(21,128,61,0.08)" />
             </div>
           </DashCard>
         </div>
       )}
 
       {isComposition && composition && (
-        <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20 }}>
-          <DashCard title={returnTitle('GST Reconciliation', profile)} badge={<LiveBadge />}>
-            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(2, 1fr)' }}>
-              <StatTile label="CMP-08 Filed" count={composition.total_gstr2b_invoices} value={composition.total_gstr2b_invoices} color="#2563eb" bg="rgba(37,99,235,0.08)" />
-              <StatTile label="CMP-08 Matched" count={composition.matched_invoices} value={composition.matched_invoices} color="#15803d" bg="rgba(21,128,61,0.08)" />
-              <StatTile label="CMP-08 Unmatched" count={composition.unmatched_invoices} value={composition.unmatched_invoices} color="#c2410c" bg="rgba(194,65,12,0.08)" />
-              <StatTile label="Match Rate" count={0} value={`${compMatchRate}%`} color="#3730a3" bg="rgba(55,48,163,0.08)" />
+        <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20, alignItems: 'start' }}>
+          <DashCard title={returnTitle('GST Reconciliation', profile)} icon={<ReconciliationIcon />} iconColor="#2563eb" badge={<LiveBadge />}>
+            <div className="bp-stat-grid-2" style={{ gap: 12 }}>
+              <StatTile label="CMP-08 Filed" value={composition.total_gstr2b_invoices} color="#2563eb" bg="rgba(37,99,235,0.08)" />
+              <StatTile label="CMP-08 Matched" value={composition.matched_invoices} color="#15803d" bg="rgba(21,128,61,0.08)" />
+              <StatTile label="CMP-08 Unmatched" value={composition.unmatched_invoices} color="#c2410c" bg="rgba(194,65,12,0.08)" />
+              <StatTile label="Match Rate" value={`${compMatchRate}%`} color="#3730a3" bg="rgba(55,48,163,0.08)" />
             </div>
             <ViewLink to="/portal/gstr-2b">View Reconciliation Details</ViewLink>
           </DashCard>
 
-          <DashCard title={returnTitle('GST Summary', profile)}>
+          <DashCard title={returnTitle('GST Summary', profile)} icon={<GstSummaryIcon />} iconColor="#0f766e">
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--bp-text)' }}>
                 From
@@ -355,64 +418,66 @@ export function ClientDashboard() {
               Period: {gstFrom?.split('-').reverse().join('/')} – {gstTo?.split('-').reverse().join('/')}
             </div>
             <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-              <StatTile label="Turnover" count={0} value={money(compositionData.turnover)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
-              <StatTile label="Tax Payable (Payable under Composition)" count={0} value={money(compositionData.tax_payable)} color="#be123c" bg="rgba(190,18,60,0.08)" />
-              <StatTile label="Tax Paid (through CMP-08)" count={0} value={money(compositionData.tax_paid)} color="#15803d" bg="rgba(21,128,61,0.08)" />
-              <StatTile label="ITC Availed" count={0} value={money(compositionData.itc_availed)} color="#6b8499" bg="rgba(107,132,153,0.08)" />
-              <StatTile label="ITC Available" count={0} value={money(compositionData.itc_available)} color="#6b8499" bg="rgba(107,132,153,0.08)" />
+              <StatTile label="Turnover" value={money(compositionData.turnover)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
+              <StatTile label="Tax Payable (Payable under Composition)" value={money(compositionData.tax_payable)} color="#be123c" bg="rgba(190,18,60,0.08)" />
+              <StatTile label="Tax Paid (through CMP-08)" value={money(compositionData.tax_paid)} color="#15803d" bg="rgba(21,128,61,0.08)" />
+              <StatTile label="ITC Availed" value={money(compositionData.itc_availed)} color="#6b8499" bg="rgba(107,132,153,0.08)" />
+              <StatTile label="ITC Available" value={money(compositionData.itc_available)} color="#6b8499" bg="rgba(107,132,153,0.08)" />
             </div>
           </DashCard>
         </div>
       )}
 
-      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20 }}>
+      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20, alignItems: 'start' }}>
         <DashCard
           title={freqTitle('Billing Overview', profile)}
+          icon={<BillingOverviewIcon />}
+          iconColor="#16a34a"
           badge={isQuarterly ? <span style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 600 }}>({quarterOptions.find((q) => q.value === selectedQuarter)?.label || selectedQuarter})</span> : null}
         >
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
-            <StatTile label="Tax Invoices" count={billingOverviewData.tax_invoices ?? 0} value={money(billingOverviewData.tax_invoices_value)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
-            <StatTile label="Bill of Supply" count={billingOverviewData.bill_of_supply ?? 0} value={money(billingOverviewData.bill_of_supply_value)} color="#0f766e" bg="rgba(15,118,110,0.08)" />
-            <StatTile label="Debit Notes" count={billingOverviewData.debit_notes ?? 0} value={money(billingOverviewData.debit_notes_value)} color="#d97706" bg="rgba(217,119,6,0.08)" />
-            <StatTile label="Credit Notes" count={billingOverviewData.credit_notes ?? 0} value={money(billingOverviewData.credit_notes_value)} color="#059669" bg="rgba(5,150,105,0.08)" />
+            <StatTile label="Tax Invoices" count={billingOverviewData.tax_invoices ?? 0} value={shortMoney(billingOverviewData.tax_invoices_value)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
+            <StatTile label="Bill of Supply" count={billingOverviewData.bill_of_supply ?? 0} value={shortMoney(billingOverviewData.bill_of_supply_value)} color="#0f766e" bg="rgba(15,118,110,0.08)" />
+            <StatTile label="Debit Notes" count={billingOverviewData.debit_notes ?? 0} value={shortMoney(billingOverviewData.debit_notes_value)} color="#d97706" bg="rgba(217,119,6,0.08)" />
+            <StatTile label="Credit Notes" count={billingOverviewData.credit_notes ?? 0} value={shortMoney(billingOverviewData.credit_notes_value)} color="#059669" bg="rgba(5,150,105,0.08)" />
             <StatTile label="Cancelled Invoices" count={billingOverviewData.cancelled_invoices ?? 0} value="—" color="#dc2626" bg="rgba(220,38,38,0.08)" />
           </div>
           <ViewLink to="/portal/billing">View All Documents</ViewLink>
         </DashCard>
 
-        <DashCard title={chartFreqTitle('Sales Overview', profile)} badge={<span style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 600 }}>({fy === currentFyLabel() ? 'Current FY' : fy})</span>}>
+        <DashCard title={chartFreqTitle('Sales Overview', profile)} icon={<SalesOverviewIcon />} iconColor="#7c3aed" badge={<span style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 600 }}>({fy === currentFyLabel() ? 'Current FY' : fy})</span>}>
           <SalesBarChart data={billing.monthly_trend} />
           <ViewLink to="/portal/reports/gst-summary">View Detailed Report</ViewLink>
         </DashCard>
       </div>
 
-      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', alignItems: 'start' }}>
         {hasGst && (
-          <DashCard title="Compliance Status">
+          <DashCard title="Compliance Status" icon={<ComplianceIcon />} iconColor="#ea580c">
             <ComplianceStatus compliance={compliance} financialYear={fy} />
             <ViewLink to="/portal/gst-returns">View Full Compliance Report</ViewLink>
           </DashCard>
         )}
 
-        <DashCard title="Billing Workspace">
+        <DashCard title="Billing Workspace" icon={<WorkspaceIcon />} iconColor="#0a3d82">
           <p style={{ color: 'var(--bp-muted)', fontSize: 13, margin: '0 0 16px', lineHeight: 1.5 }}>
             Create, manage and track your billing documents.
           </p>
           <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
             {[
-              { to: '/portal/billing/invoices/new', label: 'Tax Invoice', desc: 'Create & manage tax invoices', show: mode !== 'composition' },
-              { to: '/portal/billing/bill-of-supply/new', label: 'Bill of Supply', desc: 'Create & manage bills of supply', show: mode !== 'retail' },
-              { to: '/portal/billing/debit-notes/new', label: 'Debit Note', desc: 'Create debit notes', show: mode === 'regular' },
-              { to: '/portal/billing/credit-notes/new', label: 'Credit Note', desc: 'Create & manage credit notes', show: mode !== 'retail' },
+              { to: '/portal/billing/invoices/new', label: 'Tax Invoice', desc: 'Create & manage tax invoices', color: '#2563eb', show: mode !== 'composition' },
+              { to: '/portal/billing/bill-of-supply/new', label: 'Bill of Supply', desc: 'Create & manage bills of supply', color: '#0f766e', show: mode !== 'retail' },
+              { to: '/portal/billing/debit-notes/new', label: 'Debit Note', desc: 'Create debit notes', color: '#d97706', show: mode === 'regular' },
+              { to: '/portal/billing/credit-notes/new', label: 'Credit Note', desc: 'Create & manage credit notes', color: '#059669', show: mode !== 'retail' },
             ].filter((a) => a.show).map((a) => (
-              <Link key={a.to} to={a.to} style={{ textDecoration: 'none', border: '1px solid var(--bp-border)', borderRadius: 10, padding: '12px 14px', display: 'block' }}>
+              <Link key={a.to} to={a.to} className="bp-workspace-link" style={{ textDecoration: 'none', border: '1px solid var(--bp-border)', borderLeft: `3px solid ${a.color}`, borderRadius: 10, padding: '12px 14px', display: 'block' }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--bp-navy)' }}>{a.label}</div>
                 <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 2 }}>{a.desc}</div>
               </Link>
             ))}
           </div>
-          <Link to="/portal/billing" className="bp-btn bp-btn-primary" style={{ display: 'block', textAlign: 'center', marginTop: 16, padding: '10px 20px', borderRadius: 8 }}>
-            Open Billing Workspace →
+          <Link to="/portal/billing" className="bp-btn bp-btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, padding: '10px 20px', borderRadius: 8 }}>
+            Open Billing Workspace <ArrowRightIcon />
           </Link>
         </DashCard>
       </div>
@@ -442,7 +507,7 @@ export function ClientProfile() {
     });
   }, []);
 
-  if (!profile) return <p>Loading…</p>;
+  if (!profile) return <LoadingBlock />;
   return (
     <div style={{ maxWidth: 900 }}>
       <div style={{ fontSize: 12, color: 'var(--bp-muted)', marginBottom: 12, fontWeight: 600 }}>

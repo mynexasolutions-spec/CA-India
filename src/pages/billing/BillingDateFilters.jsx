@@ -51,6 +51,12 @@ export default function BillingDateFilters({
 }) {
   const fyOptions = buildFyOptions();
 
+  const now = new Date();
+  const currentMonthVal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const prevDate = new Date();
+  prevDate.setMonth(prevDate.getMonth() - 1);
+  const prevMonthVal = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
   const applyMonth = (value) => {
     setMonth(value);
     if (value) {
@@ -107,8 +113,20 @@ export default function BillingDateFilters({
       <div className="bp-filters-grid">
         <FilterField label="Quick Filters">
           <div className="bp-filter-quick-row">
-            <button type="button" className="bp-filter-item bp-filter-btn" onClick={applyCurrentMonth}>This Month</button>
-            <button type="button" className="bp-filter-item bp-filter-btn" onClick={applyPreviousMonth}>Previous Month</button>
+            <button
+              type="button"
+              className={`bp-filter-item bp-filter-btn ${month === currentMonthVal ? 'active' : ''}`}
+              onClick={applyCurrentMonth}
+            >
+              This Month
+            </button>
+            <button
+              type="button"
+              className={`bp-filter-item bp-filter-btn ${month === prevMonthVal ? 'active' : ''}`}
+              onClick={applyPreviousMonth}
+            >
+              Previous Month
+            </button>
           </div>
         </FilterField>
         {showSearch && (

@@ -43,10 +43,20 @@ export default function DocTypeTiles({ docType, profile }) {
               disabled={locked}
               title={locked ? 'Locked for your GST dealer type' : undefined}
               onClick={() => { if (!active) navigate(t.newPath); }}
+              style={{ position: 'relative' }}
             >
               <span className="bp-doctype-tile-icon" style={{ background: t.bg, color: t.color }}><t.Icon /></span>
-              <span className="bp-doctype-tile-label">{t.label}</span>
-              <span className="bp-doctype-tile-desc">{t.desc}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span className="bp-doctype-tile-label">{t.label}</span>
+                <span className="bp-doctype-tile-desc">{t.desc}</span>
+              </div>
+              {active && (
+                <span className="bp-doctype-tile-check">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
+              )}
             </button>
           );
         })}

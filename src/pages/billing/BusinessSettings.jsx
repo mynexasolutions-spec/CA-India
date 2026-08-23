@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
+import { LoadingBlock } from '../../components/Spinner';
 import { currentFyLabel } from './billingUtils';
 
 const ASSETS = [
@@ -270,7 +271,7 @@ export default function BusinessSettings() {
 
   useEffect(() => { load(); }, []);
 
-  if (!form) return <p>Loading…</p>;
+  if (!form) return <LoadingBlock />;
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -489,7 +490,7 @@ export function ChangeRequestHistory() {
         </select>
       </div>
 
-      {!data ? <p>Loading…</p> : (
+      {!data ? <LoadingBlock /> : (
         <table className="bp-table">
           <thead>
             <tr>

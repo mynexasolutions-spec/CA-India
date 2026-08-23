@@ -344,12 +344,29 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
 
   return (
     <div>
-      <div className="bp-toolbar">
-        <h2 style={{ margin: 0, flex: 1 }}>{title || 'Create Document'}</h2>
-        <Link className="bp-btn bp-btn-outline" to={backPath}>Cancel</Link>
-        <button type="button" className="bp-btn bp-btn-primary" disabled={busy} onClick={saveDraft}>
-          {unlockedEdit ? 'Save Changes' : 'Save Document'}
-        </button>
+      <div className="bp-toolbar" style={{ marginBottom: 20 }}>
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--bp-navy)' }}>{docId ? (title || 'Edit Document') : 'New Billing Document'}</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>Create and manage your business documents</p>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {docType === 'credit_note' ? (
+            <Link className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }} to={backPath}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              Back to Billing
+            </Link>
+          ) : (
+            <>
+              <Link className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', fontWeight: 600 }} to={backPath}>Cancel</Link>
+              <button type="button" className="bp-btn bp-btn-primary" style={{ borderRadius: 8, height: 40, backgroundColor: '#0052cc', fontWeight: 600 }} disabled={busy} onClick={saveDraft}>
+                {unlockedEdit ? 'Save Changes' : 'Save Document'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {!id && DOC_TYPE_TILE_SET.includes(docType) && (
@@ -357,17 +374,17 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       )}
 
       <div className="bp-card" style={{ marginBottom: 14 }}>
-        <SectionHeader n={++sectionNum} title="Document Details" subtitle="Party, dates and basic settings for this document." />
+        <SectionHeader n={++sectionNum} title="Document Details" subtitle={docType === 'credit_note' ? 'Enter party and document details.' : 'Party, dates and basic settings for this document.'} />
         <form className="bp-form two">
           <label>
-            <span>Document No.</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Document No. <InfoDotIcon /></span>
             <div style={{ position: 'relative' }}>
               <input className="bp-input" style={{ paddingRight: 30, color: 'var(--bp-muted)', background: '#f4f7fa' }} value={docNumber || previewNumber} readOnly disabled />
               <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--bp-muted)' }}><LockIcon /></span>
             </div>
           </label>
           <label>
-            {documentDateLabel(docType)}
+            <span>{documentDateLabel(docType)} <span className="bp-required">*</span></span>
             <input className="bp-input" type="date" value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} />
           </label>
           <label>
@@ -375,7 +392,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             <PartySearchSelect parties={parties} value={partyId} onSelect={onParty} />
           </label>
           <label>
-            Place of Supply
+            <span>Place of Supply <span className="bp-required">*</span></span>
             <StateSelect
               value={placeOfSupply}
               valueMode="name"
@@ -403,40 +420,26 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
               {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
             </select>
           </label>
-          {(docType === 'credit_note' || docType === 'debit_note' || docType === 'amendment') && (
-            <label style={{ gridColumn: '1 / -1' }}>
-              {docType === 'amendment' ? 'Original Bill *' : 'Original Invoice Number *'}
-              <select className="bp-select" value={refId} onChange={(e) => setRefId(e.target.value)} required>
-                <option value="">{docType === 'amendment' ? 'Select original bill…' : 'Select original invoice…'}</option>
-                {invoices.map((inv) => (
-                  <option key={inv.id} value={inv.id}>
-                    {inv.number} — {formatDMY(inv.document_date)} — {inv.customer?.name} ({docTypeLabel(inv.type)})
-                  </option>
-                ))}
-              </select>
-              {selectedRef && (
-                <div className="bp-info-note" style={{ marginTop: 10, gridColumn: '1 / -1' }}>
-                  <div>
-                    <strong>Original {docTypeLabel(selectedRef.type)}: {selectedRef.number}</strong>
-                    Original Date: {formatDMY(selectedRef.document_date)}
-                    {' · '}Original Taxable Value: {money(selectedRef.taxable_amount)}
-                    {' · '}Original GST: {money(Number(selectedRef.cgst_amount) + Number(selectedRef.sgst_amount) + Number(selectedRef.igst_amount))}
-                    {' · '}Original Total: {money(selectedRef.grand_total || selectedRef.total_amount)}
-                    <br />
-                    <Link to={billingDocPath(selectedRef.type, selectedRef.id)} target="_blank" rel="noreferrer">View Invoice ↗</Link>
-                  </div>
-                </div>
-              )}
-              {docType === 'credit_note' && (
-                <div className="bp-info-note amber" style={{ marginTop: 10, gridColumn: '1 / -1' }}>
-                  Please verify the original invoice details above before issuing this credit note.
-                </div>
-              )}
-            </label>
-          )}
+
           {docType === 'bill_of_supply' && (
-            <div className="bp-info-note" style={{ gridColumn: '1 / -1' }}>
-              Bill of Supply is issued for exempted / nil-rated supplies, or by Composition dealers. GST is not applicable on this document.
+            <div
+              className="bp-info-note"
+              style={{
+                gridColumn: '1 / -1',
+                background: '#f0f7ff',
+                border: '1px solid #dbeafe',
+                borderRadius: 8,
+                padding: '10px 14px',
+                color: '#1e40af',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 10
+              }}
+            >
+              <InfoDotIcon />
+              <span>Bill of Supply is applicable for supply to unregistered persons under GST.</span>
             </div>
           )}
           {unlockedEdit && (
@@ -452,13 +455,126 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         )}
       </div>
 
+      {['credit_note', 'debit_note', 'amendment'].includes(docType) && (
+        <div className="bp-card" style={{ marginBottom: 14 }}>
+          <SectionHeader
+            n={++sectionNum}
+            title={docType === 'amendment' ? 'Reference Bill (Amendment)' : `Reference Invoice (${docTypeLabel(docType)})`}
+            subtitle={
+              docType === 'amendment'
+                ? 'Select the original bill against which this amendment is raised.'
+                : `Select the original invoice against which this ${docTypeLabel(docType).toLowerCase()} is ${docType === 'credit_note' ? 'issued' : 'raised'}.`
+            }
+          />
+          <div style={{ maxWidth: 650 }}>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 700, fontSize: 13, color: '#475569' }}>
+              {docType === 'amendment' ? 'Original Bill' : 'Original Invoice Number'} <span className="bp-required">*</span>
+            </label>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <select className="bp-select" style={{ height: 40, boxSizing: 'border-box', flex: 1 }} value={refId} onChange={(e) => setRefId(e.target.value)} required>
+                <option value="">{docType === 'amendment' ? 'Select original bill…' : 'Search and select original invoice…'}</option>
+                {invoices.map((inv) => (
+                  <option key={inv.id} value={inv.id}>
+                    {inv.number} — {formatDMY(inv.document_date)} — {inv.customer?.name} ({docTypeLabel(inv.type)})
+                  </option>
+                ))}
+              </select>
+              {selectedRef && (
+                <Link
+                  className="bp-btn bp-btn-outline"
+                  style={{
+                    height: 40,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    border: '1.5px solid #2563eb',
+                    color: '#2563eb',
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    padding: '0 16px',
+                    whiteSpace: 'nowrap',
+                    boxSizing: 'border-box'
+                  }}
+                  to={billingDocPath(selectedRef.type, selectedRef.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  View Invoice
+                </Link>
+              )}
+            </div>
+          </div>
+
+          {selectedRef && (
+            <div
+              style={{
+                marginTop: 16,
+                background: '#f0f7ff',
+                border: '1px solid #cbd5e1',
+                borderRadius: 8,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(5, 1fr)',
+                padding: '12px 16px',
+                gap: 16
+              }}
+            >
+              <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: '#475569', fontWeight: 600, marginBottom: 4 }}>Original Invoice No.</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{selectedRef.number}</span>
+              </div>
+              <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: '#475569', fontWeight: 600, marginBottom: 4 }}>Invoice Date</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{formatDMY(selectedRef.document_date)}</span>
+              </div>
+              <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: '#475569', fontWeight: 600, marginBottom: 4 }}>Original Taxable Value</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{money(selectedRef.taxable_amount)}</span>
+              </div>
+              <div style={{ borderRight: '1px solid #cbd5e1', paddingRight: 12 }}>
+                <span style={{ display: 'block', fontSize: 11, color: '#475569', fontWeight: 600, marginBottom: 4 }}>Original GST</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{money(Number(selectedRef.cgst_amount) + Number(selectedRef.sgst_amount) + Number(selectedRef.igst_amount))}</span>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: 11, color: '#475569', fontWeight: 600, marginBottom: 4 }}>Original Total</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{money(selectedRef.grand_total || selectedRef.total_amount)}</span>
+              </div>
+            </div>
+          )}
+
+          {docType === 'credit_note' && (
+            <div
+              className="bp-info-note"
+              style={{
+                background: '#f0f7ff',
+                border: '1px solid #dbeafe',
+                borderRadius: 8,
+                padding: '10px 14px',
+                color: '#1e40af',
+                fontSize: 13,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 12
+              }}
+            >
+              <InfoDotIcon />
+              <span>Ensure the original invoice details are correct before raising a credit note.</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {showTaxSettingsSection && (
         <div className="bp-card" style={{ marginBottom: 14 }}>
           <SectionHeader n={++sectionNum} title="Additional Tax Settings" subtitle="Configure tax related options for this invoice." />
           <div className="bp-tax-option-boxes">
             {showRcmBox && (
               <div className="bp-tax-option-box">
-                <div className="bp-tax-option-box-label"><InfoDotIcon /> Supply Under Reverse Charge?</div>
+                <div className="bp-tax-option-box-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Supply Under Reverse Charge? <InfoDotIcon /></div>
                 <div className="bp-tax-option-box-radios">
                   <label><input type="radio" name="rcm" checked={rcm} onChange={() => setRcm(true)} /> Yes</label>
                   <label><input type="radio" name="rcm" checked={!rcm} onChange={() => setRcm(false)} /> No</label>
@@ -467,7 +583,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             )}
             {tdsTcsApplicable && (
               <div className="bp-tax-option-box">
-                <div className="bp-tax-option-box-label"><InfoDotIcon /> TDS</div>
+                <div className="bp-tax-option-box-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>TDS <InfoDotIcon /></div>
                 <div className="bp-tax-option-box-radios">
                   <label><input type="radio" name="tds" checked={taxDeductionType === 'tds'} onChange={() => { setTaxDeductionType('tds'); setTdsTcsSectionId(''); }} /> Yes</label>
                   <label><input type="radio" name="tds" checked={taxDeductionType !== 'tds'} onChange={() => { if (taxDeductionType === 'tds') { setTaxDeductionType(''); setTdsTcsSectionId(''); } }} /> No</label>
@@ -476,7 +592,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             )}
             {tdsTcsApplicable && (
               <div className="bp-tax-option-box">
-                <div className="bp-tax-option-box-label"><InfoDotIcon /> TCS</div>
+                <div className="bp-tax-option-box-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>TCS <InfoDotIcon /></div>
                 <div className="bp-tax-option-box-radios">
                   <label><input type="radio" name="tcs" checked={taxDeductionType === 'tcs'} onChange={() => { setTaxDeductionType('tcs'); setTdsTcsSectionId(''); }} /> Yes</label>
                   <label><input type="radio" name="tcs" checked={taxDeductionType !== 'tcs'} onChange={() => { if (taxDeductionType === 'tcs') { setTaxDeductionType(''); setTdsTcsSectionId(''); } }} /> No</label>
@@ -504,65 +620,167 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         </div>
       )}
 
-      <div className="bp-card bp-line-grid">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+      <div className="bp-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
           <SectionHeader n={++sectionNum} title="Item Details" subtitle="Add items or services for this document." />
           {hsnEnabled && (
-            <div style={{ minWidth: 220 }}>
-              <HsnSacSelect value="" onChange={quickAddByHsn} placeholder="Search HSN / SAC" />
+            <div className="bp-global-hsn-search" style={{ minWidth: 260, position: 'relative' }}>
+              <HsnSacSelect
+                value=""
+                onChange={quickAddByHsn}
+                placeholder="Search HSN / SAC"
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--bp-muted)',
+                  pointerEvents: 'none',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="9" cy="9" r="6" />
+                  <path d="M19 19l-5-5" />
+                </svg>
+              </span>
             </div>
           )}
         </div>
-        <div className="bp-line-row" style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 700 }}>
-          <span>Particulars <span className="bp-required">*</span></span>
-          {hsnEnabled && <span>HSN/SAC <span className="bp-required">*</span></span>}
-          <span>Qty <span className="bp-required">*</span></span>
-          <span>Rate <span className="bp-required">*</span></span>
-          <span>Disc% <span className="bp-required">*</span></span>
-          {taxesEnabled && <span>GST%</span>}
-          <span>Unit</span><span />
+
+        <div className="bp-table-wrapper" style={{ overflowX: 'auto' }}>
+          <table className="bp-table bp-invoice-lines-table">
+            <thead>
+              <tr style={{ background: '#f8fafc' }}>
+                <th style={{ width: 50, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>#</th>
+                <th style={{ color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Particulars <span className="bp-required">*</span></th>
+                {hsnEnabled && <th style={{ width: 180, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>HSN / SAC <span className="bp-required">*</span></th>}
+                <th style={{ width: 70, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Qty <span className="bp-required">*</span></th>
+                <th style={{ width: 85, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Unit</th>
+                <th style={{ width: 110, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Rate (₹) <span className="bp-required">*</span></th>
+                <th style={{ width: 75, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Disc.%</th>
+                {taxesEnabled && <th style={{ width: 100, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>GST % <span className="bp-required">*</span></th>}
+                <th style={{ width: 130, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Taxable Value (₹)</th>
+                <th style={{ width: 60, color: 'var(--bp-text)', fontWeight: 700 }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, idx) => {
+                const gross = Number(l.qty || 0) * Number(l.rate || 0);
+                const disc = (gross * Number(l.discount_percent || 0)) / 100;
+                const lineTaxable = Math.max(0, gross - disc);
+
+                return (
+                  <tr key={idx}>
+                    <td style={{ fontWeight: 600, borderRight: '1px solid var(--bp-border)' }}>{idx + 1}</td>
+                    <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                      <textarea
+                        className="bp-textarea"
+                        style={{ height: 38, resize: 'none', padding: '6px 8px', fontSize: 13, border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        value={l.description}
+                        onChange={(e) => setLine(idx, 'description', e.target.value)}
+                        placeholder="Description of product / service"
+                        required
+                      />
+                    </td>
+                    {hsnEnabled && (
+                      <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                        <HsnSacSelect
+                          value={l.hsn_sac}
+                          onChange={(code) => setLine(idx, 'hsn_sac', code)}
+                          placeholder="Search HSN / SAC"
+                          required
+                        />
+                      </td>
+                    )}
+                    <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                      <input
+                        className="bp-input"
+                        type="number"
+                        style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        required
+                        value={l.qty}
+                        onChange={(e) => setLine(idx, 'qty', +e.target.value)}
+                      />
+                    </td>
+                    <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                      <input
+                        className="bp-input"
+                        style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        value={l.unit}
+                        onChange={(e) => setLine(idx, 'unit', e.target.value)}
+                      />
+                    </td>
+                    <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                      <input
+                        className="bp-input"
+                        type="number"
+                        step="0.01"
+                        style={{ textAlign: 'right', border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        required
+                        value={l.rate}
+                        onChange={(e) => setLine(idx, 'rate', +e.target.value)}
+                      />
+                    </td>
+                    <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                      <input
+                        className="bp-input"
+                        type="number"
+                        style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        required
+                        value={l.discount_percent}
+                        onChange={(e) => setLine(idx, 'discount_percent', +e.target.value)}
+                      />
+                    </td>
+                    {taxesEnabled && (
+                      <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                        <GstRateSelect
+                          value={rcm ? 0 : l.gst_rate}
+                          onChange={(rate) => setLine(idx, 'gst_rate', rate)}
+                          disabled={rcm}
+                        />
+                      </td>
+                    )}
+                    <td style={{ fontWeight: 600, borderRight: '1px solid var(--bp-border)' }}>
+                      {money(lineTaxable)}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        className="bp-line-remove"
+                        aria-label="Remove item"
+                        title="Remove item"
+                        onClick={() => setLines((L) => (L.length > 1 ? L.filter((_, i) => i !== idx) : [emptyLine()]))}
+                        style={{ margin: 'auto' }}
+                      >
+                        <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 6h12" />
+                          <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6" />
+                          <path d="M5.5 6l.6 9.2A1.5 1.5 0 0 0 7.6 16.5h4.8a1.5 1.5 0 0 0 1.5-1.3L14.5 6" />
+                          <path d="M8.3 9v4.5M11.7 9v4.5" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        {lines.map((l, idx) => (
-          <div className="bp-line-row" key={idx}>
-            <input className="bp-input" value={l.description} onChange={(e) => setLine(idx, 'description', e.target.value)} placeholder="Description of product / service" required />
-            {hsnEnabled && (
-              <HsnSacSelect
-                value={l.hsn_sac}
-                onChange={(code) => setLine(idx, 'hsn_sac', code)}
-                placeholder="Search HSN / SAC"
-                required
-              />
-            )}
-            <input className="bp-input" type="number" required value={l.qty} onChange={(e) => setLine(idx, 'qty', +e.target.value)} />
-            <input className="bp-input" type="number" required value={l.rate} onChange={(e) => setLine(idx, 'rate', +e.target.value)} />
-            <input className="bp-input" type="number" required value={l.discount_percent} onChange={(e) => setLine(idx, 'discount_percent', +e.target.value)} />
-            {taxesEnabled && (
-              <GstRateSelect
-                value={rcm ? 0 : l.gst_rate}
-                onChange={(rate) => setLine(idx, 'gst_rate', rate)}
-                disabled={rcm}
-              />
-            )}
-            <input className="bp-input" value={l.unit} onChange={(e) => setLine(idx, 'unit', e.target.value)} />
-            <button
-              type="button"
-              className="bp-line-remove"
-              aria-label="Remove item"
-              title="Remove item"
-              onClick={() => setLines((L) => (L.length > 1 ? L.filter((_, i) => i !== idx) : [emptyLine()]))}
-            >
-              <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 6h12" />
-                <path d="M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6" />
-                <path d="M5.5 6l.6 9.2A1.5 1.5 0 0 0 7.6 16.5h4.8a1.5 1.5 0 0 0 1.5-1.3L14.5 6" />
-                <path d="M8.3 9v4.5M11.7 9v4.5" />
-              </svg>
-            </button>
-          </div>
-        ))}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button type="button" className="bp-btn bp-btn-outline" onClick={() => setLines((L) => [...L, emptyLine()])}>+ Add Item</button>
-          <span style={{ fontSize: 12, color: 'var(--bp-muted)' }}>You can add multiple items</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
+          <button
+            type="button"
+            className="bp-btn bp-btn-outline"
+            style={{ border: '1.5px solid #2563eb', color: '#2563eb', fontWeight: 700 }}
+            onClick={() => setLines((L) => [...L, emptyLine()])}
+          >
+            + Add Item
+          </button>
+          <span style={{ fontSize: 13, color: 'var(--bp-muted)' }}>You can add multiple items</span>
         </div>
       </div>
 

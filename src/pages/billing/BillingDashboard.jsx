@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { api } from '../../api/client';
+import { LoadingBlock } from '../../components/Spinner';
 import BillingDateFilters from './BillingDateFilters';
 import DocActionMenu from './DocActionMenu';
 import DocSummaryCards from './DocSummaryCards';
@@ -22,6 +23,41 @@ const CREATE_OPTIONS = [
   { type: 'credit_note', label: 'Credit Note', to: '/portal/billing/credit-notes/new' },
 ];
 
+function PlusIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 8 }}>
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  );
+}
+
+function ChevronUpIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 8 }}>
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+      <polyline points="7 10 12 15 17 10"></polyline>
+      <line x1="12" y1="15" x2="12" y2="3"></line>
+    </svg>
+  );
+}
+
 function CreateDocumentDropdown({ profile }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -39,7 +75,7 @@ function CreateDocumentDropdown({ profile }) {
   return (
     <div className="bp-dropdown-wrap" ref={ref}>
       <button type="button" className="bp-btn bp-btn-primary" onClick={() => setOpen((v) => !v)}>
-        + Create Document {open ? '▲' : '▼'}
+        <PlusIcon /> Create Document {open ? <ChevronUpIcon /> : <ChevronDownIcon />}
       </button>
       {open && (
         <div className="bp-dropdown-panel">
@@ -130,7 +166,22 @@ export default function BillingDashboard() {
       .then((d) => {
         setRows(d.data || []);
         setMeta({ current_page: d.current_page || 1, last_page: d.last_page || 1, total: d.total || 0, per_page: d.per_page || perPage });
-        setTotals(d.totals || null);
+        
+        let apiTotals = d.totals || null;
+        const hasValidTotals = apiTotals && typeof apiTotals === 'object' && 'count' in apiTotals && Number(apiTotals.count) > 0;
+        
+        if (!hasValidTotals && d.data && d.data.length > 0) {
+          const taxable = d.data.reduce((sum, row) => sum + Number(row.taxable_amount || 0), 0);
+          const gst = d.data.reduce((sum, row) => sum + (Number(row.cgst_amount || 0) + Number(row.sgst_amount || 0) + Number(row.igst_amount || 0)), 0);
+          const grand = d.data.reduce((sum, row) => sum + Number(row.grand_total || row.total_amount || 0), 0);
+          apiTotals = {
+            count: d.total || d.data.length,
+            taxable_amount: taxable,
+            gst_amount: gst,
+            grand_total: grand
+          };
+        }
+        setTotals(apiTotals);
         setTypeCounts(d.type_counts || null);
       })
       .catch(console.error)
@@ -215,7 +266,7 @@ export default function BillingDashboard() {
         <h2 style={{ margin: 0, flex: 1 }}>All Documents</h2>
         <CreateDocumentDropdown profile={profile} />
         <button type="button" className="bp-btn bp-btn-outline" onClick={exportCsv} disabled={!meta.total}>
-          ⭳ Export Report
+          <DownloadIcon /> Export Report
         </button>
       </div>
 
@@ -243,8 +294,8 @@ export default function BillingDashboard() {
           onClear={applyFilters}
         />
         {msg && <p style={{ margin: '0 0 10px', color: 'var(--bp-green)', fontSize: 13 }}>{msg}</p>}
-        {loading ? <p>Loading…</p> : (
-          <div style={{ overflowX: 'auto' }}>
+        {loading ? <LoadingBlock /> : (
+          <div className="bp-table-wrapper" style={{ overflowX: 'auto' }}>
             <table className="bp-table bp-docs-table bp-doc-table">
               <thead>
                 <tr>
@@ -290,26 +341,28 @@ export default function BillingDashboard() {
           </div>
         )}
 
-        {totals && totals.count > 0 && (
-          <div className="bp-doc-totals-bar">
-            <span className="bp-doc-totals-label">
-              <span className="bp-doc-totals-rupee" aria-hidden="true">₹</span>
-              Total (Filtered Results)
-            </span>
-            <div className="bp-doc-totals-stats">
-              <div className="bp-doc-totals-stat"><strong>{money(totals.taxable_amount)}</strong>Taxable Value</div>
-              <div className="bp-doc-totals-stat"><strong>{money(totals.gst_amount)}</strong>GST</div>
-              <div className="bp-doc-totals-stat"><strong>{money(totals.grand_total)}</strong>Total</div>
+        <div className="bp-table-footer">
+          {totals && totals.count > 0 && (
+            <div className="bp-doc-totals-bar">
+              <span className="bp-doc-totals-label">
+                <span className="bp-doc-totals-rupee" aria-hidden="true">₹</span>
+                Total (Filtered Results)
+              </span>
+              <div className="bp-doc-totals-stats">
+                <div className="bp-doc-totals-stat"><strong>{money(totals.taxable_amount)}</strong>Taxable Value</div>
+                <div className="bp-doc-totals-stat"><strong>{money(totals.gst_amount)}</strong>GST</div>
+                <div className="bp-doc-totals-stat"><strong>{money(totals.grand_total)}</strong>Total</div>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <NumberedPagination
-          meta={meta}
-          perPage={perPage}
-          onPerPage={(v) => { setPerPage(v); setPage(1); }}
-          onPage={setPage}
-        />
+          <NumberedPagination
+            meta={meta}
+            perPage={perPage}
+            onPerPage={(v) => { setPerPage(v); setPage(1); }}
+            onPage={setPage}
+          />
+        </div>
       </div>
       {cancelTarget && (
         <CancelDocumentModal

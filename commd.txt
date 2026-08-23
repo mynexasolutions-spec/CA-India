@@ -1,0 +1,5 @@
+ssh -i "nexa.pem" ec2-user@ec2-13-127-122-172.ap-south-1.compute.amazonaws.com
+
+
+sudo dnf install -y php php-fpm php-mysqlnd php-gd php-xml php-mbstring php-bcmath php-zip php-intl php-opcache php-pdo
+

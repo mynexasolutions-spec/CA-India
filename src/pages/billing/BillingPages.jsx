@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import GstRateSelect from '../../components/GstRateSelect';
+import { LoadingBlock } from '../../components/Spinner';
 import GstSummaryMatrix, { resolveGstMatrix } from './GstSummaryMatrix';
 
 const card = {
@@ -270,7 +271,7 @@ export function BillingDocumentView() {
   useEffect(() => {
     api(`/billing/documents/${id}`).then(setDoc).catch(console.error);
   }, [id]);
-  if (!doc) return <p>Loading…</p>;
+  if (!doc) return <LoadingBlock />;
   return (
     <div style={card}>
       <h1 style={{ marginTop: 0 }}>{doc.type.replace('_', ' ')} {doc.number}</h1>

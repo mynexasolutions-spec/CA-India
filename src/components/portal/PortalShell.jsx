@@ -2,10 +2,73 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { Navigate, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 import { api } from '../../api/client';
+import { LoadingBlock } from '../Spinner';
 import BillingSubNav from '../../pages/billing/BillingSubNav';
 import ReportsSubNav from '../../pages/billing/ReportsSubNav';
 import { billingMode } from '../../pages/billing/billingProfile';
 import { buildFyOptions, currentFyLabel, currentFyRange, fyDateRange } from '../../pages/billing/billingUtils';
+
+function HomeIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function InvoiceIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+function ShieldCheckIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 11 2 2 4-4" />
+    </svg>
+  );
+}
+
+function EditIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
+function ReportIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 10, flexShrink: 0 }}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="9" y1="9" x2="15" y2="9" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="13" y2="17" />
+      <polyline points="7 9 7.01 9 7 13 7.01 13 7 17 7.01 17" />
+    </svg>
+  );
+}
 
 /** Financial Year + Refresh Data are global controls, shared by every Client Portal page via
  * this context (provided by ClientPortalLayout, rendered in the shared topbar) — not owned by
@@ -59,9 +122,17 @@ function NavGroup({ item, location, closeSidebar }) {
         className={`bp-nav-group-header${hasActiveChild ? ' has-active' : ''}`}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
       >
-        <span>{item.label}</span>
-        <span className="bp-nav-chevron">▸</span>
+        <span style={{ display: 'flex', alignItems: 'center' }}>
+          {item.icon && <item.icon />}
+          {item.label}
+        </span>
+        <span className="bp-nav-chevron" style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-flex', alignItems: 'center' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </span>
       </button>
       <div className="bp-nav-children">
         {item.children.map((child) => (
@@ -301,16 +372,22 @@ function NeedHelpCard() {
   return (
     <div className="bp-help-card">
       <div className="bp-help-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 13a8 8 0 1 1 16 0v4a2 2 0 0 1-2 2h-1v-6h3" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M4 13v3a2 2 0 0 0 2 2h1v-6H4z" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M9 19a2 2 0 0 0 2 2h1" stroke="#fff" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" style={{ display: 'none' }} />
+          <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z" />
+          <path d="M16 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-5Z" />
+          <path d="M3 14c0-4.97 4.03-9 9-9s9 4.03 9 9" />
+          <path d="M21 14v1a1 1 0 0 1-1 1h-1" />
         </svg>
       </div>
       <p className="bp-help-title">Need Help?</p>
       <p className="bp-help-text">We're here to help you with any queries.</p>
       <a href="/contact" target="_blank" rel="noreferrer" className="bp-help-btn">
-        💬 Contact Support <span className="bp-help-arrow" aria-hidden="true">›</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        Contact Support
+        <span className="bp-help-arrow" aria-hidden="true" style={{ marginLeft: 'auto', fontWeight: 'bold' }}>&rsaquo;</span>
       </a>
     </div>
   );
@@ -318,7 +395,7 @@ function NeedHelpCard() {
 
 export function RequireAuth({ roles }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="section container">Loading…</div>;
+  if (loading) return <div className="section container"><LoadingBlock /></div>;
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -365,7 +442,9 @@ function PortalFrame({
                 to={item.to}
                 className={isItemActive(item, location) ? 'active' : undefined}
                 onClick={closeSidebar}
+                style={{ display: 'flex', alignItems: 'center' }}
               >
+                {item.icon && <item.icon />}
                 {item.label}
               </Link>
             )
@@ -382,7 +461,7 @@ function PortalFrame({
       </aside>
       <div className="bp-main">
         <header className="bp-topbar">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div className="bp-topbar-left" style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
             <button type="button" className="bp-mobile-toggle" onClick={() => setOpen((v) => !v)} aria-label="Open menu">☰</button>
             {headerContent || (
               <div>
@@ -423,13 +502,13 @@ function ClientTopbarHeader() {
   const name = profile?.business_name || user?.name || 'Client';
 
   return (
-    <div>
-      <h1>Client Portal</h1>
-      <div style={{ fontSize: 12, color: 'var(--bp-muted)' }}>
+    <div className="bp-topbar-title-block" style={{ minWidth: 0 }}>
+      <h1 className="bp-topbar-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Client Portal</h1>
+      <div className="bp-topbar-subtitle" style={{ fontSize: 12, color: 'var(--bp-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${name} · (${gstModeLabel(profile)})`}>
         {name} <span style={{ opacity: 0.5 }}>·</span> ({gstModeLabel(profile)})
       </div>
       {profile?.has_gst && profile?.gstin && (
-        <span style={{ display: 'inline-block', marginTop: 6, background: '#dcfce7', color: '#15803d', fontSize: 12, fontWeight: 800, padding: '4px 12px', borderRadius: 20, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-block', marginTop: 6, background: '#dcfce7', color: '#15803d', fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 20, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
           GSTIN: {profile.gstin}
         </span>
       )}
@@ -454,11 +533,11 @@ function ClientTopbarControls() {
 
   return (
     <>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, color: 'var(--bp-text)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+      <span className="bp-fy-label" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 17, color: 'var(--bp-text)', fontWeight: 700, whiteSpace: 'nowrap' }}>
         <CalendarIcon size={22} />
         Financial Year
       </span>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 52, boxSizing: 'border-box', border: '1px solid var(--bp-border)', borderRadius: 8, padding: '0 14px', lineHeight: 1.3 }}>
+      <div className="bp-fy-select-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 52, boxSizing: 'border-box', border: '1px solid var(--bp-border)', borderRadius: 8, padding: '0 14px', lineHeight: 1.3 }}>
         <select
           className="bp-select"
           style={{ border: 'none', padding: 0, fontWeight: 800, fontSize: 15, color: 'var(--bp-navy)', background: 'transparent', height: 'auto', textAlign: 'center' }}
@@ -467,18 +546,25 @@ function ClientTopbarControls() {
         >
           {ctx.fyOptions.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
-        <span style={{ fontSize: 10, color: 'var(--bp-muted)', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 10, color: 'var(--bp-muted)', whiteSpace: 'nowrap' }} className="bp-fy-dates">
           {ddMonYyyy(ctx.range.from)} - {ddMonYyyy(ctx.range.to)}
         </span>
       </div>
       <button
         type="button"
-        className="bp-btn bp-btn-outline"
+        className="bp-btn bp-btn-outline bp-refresh-btn"
         style={{ height: 52, boxSizing: 'border-box', padding: '0 14px', fontSize: 12, whiteSpace: 'nowrap' }}
         onClick={ctx.triggerRefresh}
         disabled={ctx.refreshing}
       >
-        {ctx.refreshing ? 'Refreshing…' : '↻ Refresh Data'}
+        {ctx.refreshing ? (
+          'Refreshing…'
+        ) : (
+          <>
+            <span className="bp-refresh-text">↻ Refresh Data</span>
+            <span className="bp-refresh-icon-only">↻</span>
+          </>
+        )}
       </button>
     </>
   );
@@ -519,16 +605,18 @@ export function ClientPortalLayout() {
   const portalCtx = { fy, setFy, fyOptions, range, refreshing, triggerRefresh, registerRefresh };
 
   const nav = [
-    { to: '/portal', label: 'Dashboard', end: true },
-    { to: '/portal/billing/parties', label: 'Parties' },
+    { to: '/portal', label: 'Dashboard', end: true, icon: HomeIcon },
+    { to: '/portal/billing/parties', label: 'Parties', icon: UsersIcon },
     {
       to: '/portal/billing',
       label: 'Billing',
+      icon: InvoiceIcon,
       isActive: (_, { pathname }) =>
         pathname.startsWith('/portal/billing') && !pathname.startsWith('/portal/billing/parties'),
     },
     hasGst && {
       label: 'GST Compliance',
+      icon: ShieldCheckIcon,
       children: [
         { to: '/portal/gstr-2b', label: 'GSTR-2B' },
         { to: '/portal/gst-returns', label: 'GST Returns' },
@@ -537,6 +625,7 @@ export function ClientPortalLayout() {
     },
     {
       label: 'Document Change',
+      icon: EditIcon,
       children: [
         { to: '/portal/edit-requests', label: 'Edit Request' },
         { to: '/portal/amendments', label: 'Amendment Request' },
@@ -544,7 +633,9 @@ export function ClientPortalLayout() {
     },
     {
       label: 'Reports',
+      icon: ReportIcon,
       children: [
+        { to: '/portal/reports', label: 'Report Dashboard', end: true },
         hasGst && { to: '/portal/reports/gst-summary', label: 'GST Summary' },
         mode === 'regular' && { to: '/portal/reports/gst-liability', label: 'GST Liability / ITC' },
         hasGst && { to: '/portal/reports/hsn-summary', label: 'HSN / SAC Summary' },
@@ -592,13 +683,6 @@ export function ClientBillingLayout() {
 export function ClientReportsLayout() {
   return (
     <div className="bp-section-wrap">
-      <div className="bp-section-head">
-        <div>
-          <div className="bp-section-kicker">Reports Section</div>
-          <p className="bp-section-desc">Data extraction, filtering, and ledger summary matrices.</p>
-        </div>
-      </div>
-      <ReportsSubNav />
       <Outlet />
     </div>
   );

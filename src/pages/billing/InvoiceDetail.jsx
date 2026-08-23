@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
+import { LoadingBlock } from '../../components/Spinner';
 import CancelDocumentModal from './CancelDocumentModal';
 import { billingDocEditPath, billingDocPath, docTypeLabel, formatDMY, formatDMYTime } from './billingUtils';
 
@@ -32,7 +33,7 @@ export default function InvoiceDetail() {
       </div>
     );
   }
-  if (!doc) return <p>Loading…</p>;
+  if (!doc) return <LoadingBlock />;
 
   const listBack = {
     tax_invoice: '/portal/billing/invoices',

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import StateSelect from '../../components/StateSelect';
+import { LoadingBlock } from '../../components/Spinner';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
@@ -127,7 +128,7 @@ export default function PartyForm() {
     }
   };
 
-  if (!loaded) return <p>Loading…</p>;
+  if (!loaded) return <LoadingBlock />;
 
   return (
     <div className="bp-section-wrap">

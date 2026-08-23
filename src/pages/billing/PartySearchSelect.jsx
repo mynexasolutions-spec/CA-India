@@ -39,14 +39,31 @@ export default function PartySearchSelect({ parties, value, onSelect }) {
           <SearchIcon />
           <input
             className="bp-input"
-            style={{ paddingLeft: 30 }}
+            style={{ paddingLeft: 30, height: 40, boxSizing: 'border-box' }}
             placeholder="Search and select party…"
             value={open ? query : (selected?.name || '')}
             onFocus={() => { setOpen(true); setQuery(''); }}
             onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
           />
         </div>
-        <a className="bp-btn bp-btn-outline" href="/portal/billing/parties/new" target="_blank" rel="noreferrer" style={{ padding: '9px 14px', whiteSpace: 'nowrap' }}>
+        <a
+          className="bp-btn bp-btn-outline"
+          href="/portal/billing/parties/new"
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            height: 40,
+            boxSizing: 'border-box',
+            display: 'inline-flex',
+            alignItems: 'center',
+            whiteSpace: 'nowrap',
+            border: '1.5px solid #2563eb',
+            color: '#2563eb',
+            fontWeight: 700,
+            borderRadius: 8,
+            padding: '0 16px'
+          }}
+        >
           + New
         </a>
       </div>

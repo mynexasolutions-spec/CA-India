@@ -43,26 +43,25 @@ export const CURRENCIES = [
   { code: 'AED', label: 'AED - UAE Dirham' },
 ];
 
-/** Billing Module spec §2 — mandatory DD:MM:YYYY, e.g. 15:08:2026. Accepts 'YYYY-MM-DD...' or Date. */
+/** Billing Module spec §2 — modified to display as DD MMM YYYY (e.g. 14 Aug 2026) for premium UI. */
 export function formatDMY(value) {
   if (!value) return '—';
-  const s = String(value).slice(0, 10);
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-  if (m) return `${m[3]}:${m[2]}:${m[1]}`;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}:${mm}:${d.getFullYear()}`;
+  const day = d.getDate();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
-/** DD:MM:YYYY, hh:mm AM/PM — for "Created" timestamp columns. */
+/** DD MMM YYYY hh:mm AM/PM — for "Created" timestamp columns. */
 export function formatDMYTime(value) {
   if (!value) return '—';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
-  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  return `${formatDMY(d)}, ${time}`;
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${formatDMY(d)} ${time}`;
 }
 
 /** Indian FY labels e.g. 2025-26 (Apr–Mar) */
