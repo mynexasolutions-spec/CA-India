@@ -8,7 +8,14 @@ use App\Models\CommercialDocument;
 
 class GstLiabilityService
 {
-    /** @return array<string, float|string> */
+    /**
+     * Single source of truth for the GST Liability / ITC report — the KPI cards, the
+     * Output GST Breakdown table and the Output-GST-vs-ITC chart all read from this
+     * one calculation, so they can never disagree. total_output_gst is derived from
+     * the same cgst/sgst/igst figures returned here, not computed independently.
+     *
+     * @return array<string, float|string>
+     */
     public function calculate(int $clientProfileId, string $from, string $to): array
     {
         $output = CommercialDocument::where('client_profile_id', $clientProfileId)
@@ -16,11 +23,10 @@ class GstLiabilityService
             ->whereIn('status', ['issued', 'paid', 'partial'])
             ->whereIn('type', ['tax_invoice', 'debit_note', 'credit_note'])
             ->selectRaw(
-                'COALESCE(SUM(
-                    CASE WHEN type = ? THEN -1 ELSE 1 END
-                    * (COALESCE(cgst_amount, 0) + COALESCE(sgst_amount, 0) + COALESCE(igst_amount, 0))
-                ), 0) AS total_output_gst',
-                ['credit_note']
+                'COALESCE(SUM(CASE WHEN type = ? THEN -1 ELSE 1 END * COALESCE(cgst_amount, 0)), 0) AS cgst,
+                 COALESCE(SUM(CASE WHEN type = ? THEN -1 ELSE 1 END * COALESCE(sgst_amount, 0)), 0) AS sgst,
+                 COALESCE(SUM(CASE WHEN type = ? THEN -1 ELSE 1 END * COALESCE(igst_amount, 0)), 0) AS igst',
+                ['credit_note', 'credit_note', 'credit_note']
             )
             ->first();
 
@@ -30,19 +36,28 @@ class GstLiabilityService
             ->where('match_status', ClientGstr2bInvoice::MATCH_STATUS_MATCHED)
             ->sum('total_gst');
 
-        $totalOutputGst = round((float) ($output?->total_output_gst ?? 0), 2);
+        $cgst = round((float) ($output?->cgst ?? 0), 2);
+        $sgst = round((float) ($output?->sgst ?? 0), 2);
+        $igst = round((float) ($output?->igst ?? 0), 2);
+        $totalOutputGst = round($cgst + $sgst + $igst, 2);
         $totalEligibleItc = round((float) $eligibleItc, 2);
         $netLiability = round($totalOutputGst - $totalEligibleItc, 2);
         $result = $netLiability > 0
             ? 'gst_payable'
             : ($netLiability < 0 ? 'excess_itc' : 'no_liability');
+        // Negating a zero float in PHP yields -0.0, which json_encode() renders as "-0" —
+        // normalize away the sign so a no-data period consistently shows plain 0.
+        $noSignZero = fn (float $v): float => $v == 0.0 ? 0.0 : $v;
 
         return [
+            'cgst' => $cgst,
+            'sgst' => $sgst,
+            'igst' => $igst,
             'total_output_gst' => $totalOutputGst,
             'total_eligible_itc' => $totalEligibleItc,
             'net_gst_liability' => $netLiability,
-            'gst_payable' => max($netLiability, 0),
-            'itc_carry_forward' => max(-$netLiability, 0),
+            'gst_payable' => $noSignZero(max($netLiability, 0)),
+            'itc_carry_forward' => $noSignZero(max(-$netLiability, 0)),
             'result' => $result,
             'result_label' => match ($result) {
                 'gst_payable' => 'GST Payable',

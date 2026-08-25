@@ -245,6 +245,9 @@ td, th { vertical-align: top; }
     return rtrim(rtrim(number_format((float) $r, 2), '0'), '.');
   };
   $billAddr = $c?->billing_address;
+  // Consignee / Ship To only prints when a genuinely distinct shipping address is
+  // configured — never duplicate Bill To into a second identical box (spec §5).
+  $hasDistinctShipping = filled($c?->shipping_address) && trim((string) $c->shipping_address) !== trim((string) $billAddr);
   $shipAddr = $c?->shipping_address ?: $billAddr;
   $customerLabel = trim(($c?->name ?? '') . ($c?->phone ? ' ('.$c->phone.')' : ($c?->contact_person ? ' ('.$c->contact_person.')' : '')));
   $stateLine = function ($state, $code) {
@@ -329,6 +332,9 @@ td, th { vertical-align: top; }
     $metaLabel = 'Bill';
   }
 
+  $fyStartYear = $doc->document_date ? ($doc->document_date->month >= 4 ? $doc->document_date->year : $doc->document_date->year - 1) : null;
+  $financialYear = $fyStartYear ? ($fyStartYear.'-'.substr((string) ($fyStartYear + 1), -2)) : '—';
+
   $wordsRaw = trim((string) ($doc->amount_in_words ?: ''));
   if ($wordsRaw === '') {
     $wordsDisplay = '—';
@@ -339,21 +345,22 @@ td, th { vertical-align: top; }
     $wordsDisplay = 'Rupees '.$core.' Only.';
   }
 
-  $colSno = 5;
-  $colHsn = ($showTax || $p->has_gst) ? 8 : 0;
+  // Invoice Item Table spec §3/§5 — Sr.No | Particulars | HSN/SAC | Qty | UQC | Rate |
+  // GST % | Taxable Value. Disc.% and any per-line CGST/SGST/IGST/Total columns are
+  // removed here; the GST breakup lives only in the aggregate Totals box below.
+  $colSno = 6;
+  $colHsn = ($showTax || $p->has_gst) ? 12 : 0;
   $colQty = 8;
-  $colRate = 10;
-  $colDisc = 4;
-  $colTaxable = 12;
-  $colTax = $showTax ? 20 : 0;
-  $colTotal = 11;
-  $colDesc = 100 - $colSno - $colHsn - $colQty - $colRate - $colDisc - $colTaxable - $colTax - $colTotal;
+  $colUqc = 9;
+  $colRate = 13;
+  $colGstPct = $showTax ? 9 : 0;
+  $colTaxable = 15;
+  $colDesc = 100 - $colSno - $colHsn - $colQty - $colUqc - $colRate - $colGstPct - $colTaxable;
   $showSplitTax = $showTax && ! $doc->is_inter_state;
+  $totalCols = 6 + ($colHsn ? 1 : 0) + ($showTax ? 1 : 0);
 
   $roundOffVal = (float) $doc->round_off;
   $roundOffDisplay = ($roundOffVal < 0 ? '- ' : '').'&#8377; '.number_format(abs($roundOffVal), 0);
-
-  $totalCols = 6 + ($colHsn ? 1 : 0) + ($showTax ? 1 : 0);
 @endphp
 
 <div class="frame">
@@ -426,6 +433,11 @@ td, th { vertical-align: top; }
           <td class="val-plain">{{ $doc->document_date?->format('d/m/Y') }}</td>
         </tr>
         <tr>
+          <td class="lab">Financial Year</td>
+          <td class="colon">:</td>
+          <td class="val-plain">{{ $financialYear }}</td>
+        </tr>
+        <tr>
           <td class="lab">Place of Supply</td>
           <td class="colon">:</td>
           <td class="val-plain">{{ $posLine }}</td>
@@ -449,10 +461,12 @@ td, th { vertical-align: top; }
 
 <hr class="hdr-rule">
 
-{{-- BILL TO / SHIP TO with navy header bars --}}
+{{-- BILL TO / SHIP TO with navy header bars — Ship To only prints when a genuinely
+     distinct shipping address is configured (spec §5: "Display when configured/required;
+     keep separate from Bill To"), never a duplicate of Bill To. --}}
 <table class="party-wrap">
   <tr>
-    <td class="party-cell">
+    <td class="party-cell" @if(! $hasDistinctShipping) style="width:100%;" @endif>
       <div class="party-box">
       <div class="party-head">Details of Receiver | Bill To</div>
       <div class="party-body">
@@ -471,52 +485,46 @@ td, th { vertical-align: top; }
       </div>
       </div>
     </td>
+    @if($hasDistinctShipping)
     <td class="col-spacer"></td>
     <td class="party-cell">
       <div class="party-box">
       <div class="party-head">Details of Consignee | Ship To</div>
       <div class="party-body">
-        @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
             <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->name ?: '—' }}</td></tr>
-            @if($shipAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>@endif
+            <tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($shipStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipStateLine }}</td></tr>@endif
             @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
-        @else
-          <div class="party-line">—</div>
-        @endif
       </div>
       </div>
     </td>
+    @endif
   </tr>
 </table>
 
-{{-- LINE ITEMS --}}
+{{-- LINE ITEMS — Invoice Item Table spec §3/§5: Sr.No | Particulars | HSN/SAC | Qty |
+     UQC | Rate | GST % | Taxable Value. No Disc.%, no per-line CGST/SGST/IGST/Total —
+     the GST breakup is shown once, in the aggregate Totals box below. --}}
 <div class="items-wrap">
 <table class="items">
   <thead>
     <tr>
-      <th style="width:{{ $colSno }}%;">S.No.</th>
-      <th style="width:{{ $colDesc }}%;">Product / Service<br>Dis.</th>
+      <th style="width:{{ $colSno }}%;">Sr. No.</th>
+      <th style="width:{{ $colDesc }}%;">Particulars</th>
       @if($colHsn)
       <th style="width:{{ $colHsn }}%;">HSN /<br>SAC</th>
       @endif
       <th style="width:{{ $colQty }}%;">Qty</th>
+      <th style="width:{{ $colUqc }}%;">UQC</th>
       <th style="width:{{ $colRate }}%;">Rate<br>(&#8377;)</th>
-      <th style="width:{{ $colDisc }}%;">Disc<br>(&#8377;)</th>
-      <th style="width:{{ $colTaxable }}%;">Taxable Value<br>(&#8377;)</th>
       @if($showTax)
-        @if($showSplitTax)
-      <th style="width:{{ $colTax / 2 }}%;">CGST<br>(&#8377;)</th>
-      <th style="width:{{ $colTax / 2 }}%;">SGST<br>(&#8377;)</th>
-        @else
-      <th style="width:{{ $colTax }}%;">IGST<br>(&#8377;)</th>
-        @endif
+      <th style="width:{{ $colGstPct }}%;">GST %</th>
       @endif
-      <th style="width:{{ $colTotal }}%;">Total<br>(&#8377;)</th>
+      <th style="width:{{ $colTaxable }}%;">Taxable Value<br>(&#8377;)</th>
     </tr>
   </thead>
   <tbody>
@@ -531,22 +539,13 @@ td, th { vertical-align: top; }
         @if($colHsn)
         <td class="center"><strong>{{ $item->hsn_sac ?: '—' }}</strong></td>
         @endif
-        <td class="center" style="white-space: nowrap;">
-          <span class="qty-num">{{ number_format((float) $item->qty, 0) }}</span>
-          <span class="qty-num" style="margin-left:3px;">{{ strtoupper($item->unit ?: 'NOS') }}</span>
-        </td>
+        <td class="center qty-num">{{ number_format((float) $item->qty, 0) }}</td>
+        <td class="center qty-num">{{ strtoupper($item->unit ?: 'NOS') }}</td>
         <td class="amt">{{ number_format((float) $item->rate, 0) }}</td>
-        <td class="amt">{{ number_format((float) $item->discount_amount, 0) }}</td>
-        <td class="amt">{{ number_format((float) $item->taxable_amount, 0) }}</td>
         @if($showTax)
-          @if($showSplitTax)
-        <td class="amt">{{ number_format((float) $item->cgst_amount, 0) }}</td>
-        <td class="amt">{{ number_format((float) $item->sgst_amount, 0) }}</td>
-          @else
-        <td class="amt">{{ number_format((float) $item->igst_amount, 0) }}</td>
-          @endif
+        <td class="amt">{{ $fmtRate($item->gst_rate) }}%</td>
         @endif
-        <td class="amt">{{ number_format((float) $item->total_amount, 0) }}</td>
+        <td class="amt">{{ number_format((float) $item->taxable_amount, 0) }}</td>
       </tr>
     @empty
       <tr><td colspan="{{ $totalCols }}" class="center" style="color:#94a3b8;">No line items</td></tr>
@@ -607,8 +606,12 @@ td, th { vertical-align: top; }
           @if($showTax)
             @if($showSplitTax)
             <tr>
-              <td class="lab">GST{{ ($cgstRate !== null && $sgstRate !== null) ? ' ('. $fmtRate($cgstRate + $sgstRate).'%)' : '' }}</td>
-              <td class="val">&#8377; {{ number_format((float) $doc->cgst_amount + (float) $doc->sgst_amount, 0) }}</td>
+              <td class="lab">CGST{{ $cgstRate !== null ? ' ('.$fmtRate($cgstRate).'%)' : '' }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->cgst_amount, 0) }}</td>
+            </tr>
+            <tr>
+              <td class="lab">SGST/UTGST{{ $sgstRate !== null ? ' ('.$fmtRate($sgstRate).'%)' : '' }}</td>
+              <td class="val">&#8377; {{ number_format((float) $doc->sgst_amount, 0) }}</td>
             </tr>
             @else
             <tr>

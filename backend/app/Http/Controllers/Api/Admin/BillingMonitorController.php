@@ -7,6 +7,7 @@ use App\Models\ActivityLog;
 use App\Models\ClientProfile;
 use App\Models\CommercialDocument;
 use App\Models\User;
+use App\Services\Billing\BillingPolicy;
 use App\Services\Billing\InvoiceService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -31,7 +32,7 @@ class BillingMonitorController extends Controller
 
         $monthly = CommercialDocument::where('type', 'tax_invoice')->where('status', 'issued')
             ->where('document_date', '>=', now()->subMonths(11)->startOfMonth())
-            ->selectRaw('DATE_FORMAT(document_date, "%Y-%m") as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(taxable_amount) as taxable, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+            ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(taxable_amount) as taxable, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
             ->groupBy('month')->orderBy('month')->get();
 
         $topClients = CommercialDocument::where('type', 'tax_invoice')->where('status', 'issued')
@@ -152,7 +153,7 @@ class BillingMonitorController extends Controller
         $data = match ($type) {
             'client_wise_register' => (clone $base)->with(['customer:id,name', 'clientProfile:id,business_name'])->orderBy('document_date')->get(),
             'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
-                ->selectRaw('DATE_FORMAT(document_date, "%Y-%m") as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
+                ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
                 ->groupBy('month')->orderBy('month')->get(),
             'gst_summary' => $this->gstSummaryMatrixFirm($base),
             'hsn_summary' => DB::table('document_line_items as li')

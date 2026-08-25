@@ -23,11 +23,12 @@ class DashboardController extends Controller
         return $profile;
     }
 
-    /** Indian FY: 1 Apr – 31 Mar. Switches automatically on 1 April. */
+    /** Indian FY: 1 Apr – 31 Mar. Switches automatically on 1 April.
+     * Never earlier than FY 2026-27 — the Billing module's launch FY. */
     private function currentFyRange(): array
     {
         $now = now();
-        $y1 = $now->month >= 4 ? $now->year : $now->year - 1;
+        $y1 = max($now->month >= 4 ? $now->year : $now->year - 1, BillingPolicy::MIN_BILLING_FY_START_YEAR);
 
         return ["{$y1}-04-01", ($y1 + 1).'-03-31'];
     }
@@ -136,7 +137,7 @@ class DashboardController extends Controller
         $profile = $this->profile($request);
         $pid = $profile->id;
         [$defaultFrom, $defaultTo] = $this->currentFyRange();
-        $from = $request->input('from', $defaultFrom);
+        $from = BillingPolicy::clampFromDate($request->input('from', $defaultFrom));
         $to = $request->input('to', $defaultTo);
 
         $base = CommercialDocument::where('client_profile_id', $pid)->where('status', '!=', 'cancelled');

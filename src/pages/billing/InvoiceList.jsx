@@ -12,25 +12,31 @@ import {
   docTypeLabel, formatDMY, formatDMYTime, money, paymentStatusBadge, paymentStatusLabel,
 } from './billingUtils';
 
-/** Billing Module spec §10 — the exact action set per document type, in order. */
+/** Billing Module spec §10 — the exact action set per document type, in order.
+ * Edit Request spec: an issued document is directly editable (no admin approval)
+ * as long as its month isn't locked (GST Filing Confirmation submitted, or the GST
+ * Return actually filed) — matches the backend's InvoiceService::updateDraft(). */
 function buildActions(d, { onConvert, onDuplicate, onSend, onMarkPaid, onCancel }) {
   const editPath = billingDocEditPath(d.type, d.id);
+  const isIssuedFamily = ['issued', 'partial', 'paid'].includes(d.status);
   const canEditDraft = d.status === 'draft' && editPath;
-  const canEditUnlocked = d.edit_allowed && ['issued', 'partial', 'paid'].includes(d.status) && editPath;
+  const canDirectEdit = isIssuedFamily && !d.direct_edit_locked && editPath;
+  const canAdminUnlockedEdit = isIssuedFamily && d.edit_allowed && editPath;
   const cancellable = d.status !== 'cancelled' && d.status !== 'draft' && !(d.type === 'quotation' && d.converted_document_id);
   const editOrRequest = canEditDraft
     ? { label: 'Edit', to: editPath }
-    : canEditUnlocked
+    : canAdminUnlockedEdit
       ? { label: 'Edit Allowed', to: editPath }
-      : ['issued', 'partial', 'paid'].includes(d.status) && !d.edit_allowed
-        ? (d.gst_return_filed
-          ? { label: 'Request Edit', disabled: true, disabledReason: 'GST Return for this period has already been filed. Use Credit Note, Debit Note, or Amendment instead.' }
-          : { label: 'Request Edit', to: '/portal/edit-requests' })
-        : null;
+      : canDirectEdit
+        ? { label: 'Edit', to: editPath }
+        : isIssuedFamily
+          ? (d.gst_return_filed
+            ? { label: 'Request Edit', disabled: true, disabledReason: 'GST Return for this period has already been filed. Use Credit Note, Debit Note, or Amendment instead.' }
+            : { label: 'Request Edit', to: '/portal/edit-requests' })
+          : null;
 
   const view = { label: `View ${docTypeLabel(d.type)}`, to: billingDocPath(d.type, d.id) };
   const downloadPdf = { label: 'Download PDF', onClick: () => api(`/billing/documents/${d.id}/pdf`).then((r) => window.open(r.url, '_blank')) };
-  const print = { label: 'Print', onClick: () => api(`/billing/documents/${d.id}/pdf`).then((r) => window.open(r.url, '_blank')) };
   const send = { label: 'Send', onClick: () => onSend(d) };
   const duplicate = { label: 'Duplicate', onClick: () => onDuplicate(d) };
   const markPaid = ['issued', 'partial'].includes(d.status) ? { label: 'Mark as Paid', onClick: () => onMarkPaid(d) } : null;
@@ -38,19 +44,19 @@ function buildActions(d, { onConvert, onDuplicate, onSend, onMarkPaid, onCancel 
 
   if (d.type === 'quotation') {
     const convert = !d.converted_document_id && d.status !== 'cancelled' ? { label: 'Convert to Tax Invoice', onClick: () => onConvert(d) } : null;
-    return [view, editOrRequest, downloadPdf, print, send, duplicate, convert, cancel];
+    return [view, editOrRequest, downloadPdf, send, duplicate, convert, cancel];
   }
   if (d.type === 'bill_of_supply') {
-    return [view, downloadPdf, print, editOrRequest, send, cancel];
+    return [view, downloadPdf, editOrRequest, send, cancel];
   }
   if (d.type === 'debit_note') {
-    return [view, downloadPdf, print, editOrRequest, markPaid, cancel];
+    return [view, downloadPdf, editOrRequest, markPaid, cancel];
   }
   if (d.type === 'credit_note') {
-    return [view, downloadPdf, print, editOrRequest, cancel];
+    return [view, downloadPdf, editOrRequest, cancel];
   }
   // tax_invoice / amendment / default
-  return [view, downloadPdf, print, editOrRequest, duplicate, send, markPaid, cancel];
+  return [view, downloadPdf, editOrRequest, duplicate, send, markPaid, cancel];
 }
 
 export default function InvoiceList({ type = 'tax_invoice', title = 'Tax Invoices', newPath, createLabel }) {

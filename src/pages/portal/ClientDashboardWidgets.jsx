@@ -252,7 +252,9 @@ export function ComplianceStatus({ compliance, financialYear }) {
       </div>
     );
   }
-  const cycle = compliance.frequency === 'quarterly' ? 'Quarterly' : 'Monthly';
+  // GSTR-1 and GSTR-3B are tracked on independent cycles (QRMP allows monthly GSTR-1 via IFF
+  // alongside quarterly GSTR-3B) — each row's label reflects only its own frequency.
+  const cycleLabel = (f) => (f === 'quarterly' ? 'Quarterly' : 'Monthly');
   return (
     <div>
       <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginBottom: 12, fontWeight: 600 }}>
@@ -263,8 +265,8 @@ export function ComplianceStatus({ compliance, financialYear }) {
         <ComplianceRow label="CMP-08 (Quarterly)" row={compliance.cmp08} />
       ) : (
         <>
-          <ComplianceRow label={`GSTR-1 (${cycle})`} row={compliance.gstr1} />
-          <ComplianceRow label={`GSTR-3B (${cycle})`} row={compliance.gstr3b} />
+          <ComplianceRow label={`GSTR-1 (${cycleLabel(compliance.gstr1_frequency)})`} row={compliance.gstr1} />
+          <ComplianceRow label={`GSTR-3B (${cycleLabel(compliance.gstr3b_frequency)})`} row={compliance.gstr3b} />
         </>
       )}
     </div>

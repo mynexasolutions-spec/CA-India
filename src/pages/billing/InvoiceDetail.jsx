@@ -44,7 +44,12 @@ export default function InvoiceDetail() {
     amendment: '/portal/amendments',
   }[doc.type] || '/portal/billing';
   const editPath = billingDocEditPath(doc.type, doc.id);
-  const canEdit = doc.status === 'draft' || (doc.edit_allowed && ['issued', 'partial', 'paid'].includes(doc.status));
+  // Edit Request spec: an issued document is directly editable, no admin approval needed,
+  // as long as its month isn't locked (GST Filing Confirmation submitted, or the GST
+  // Return actually filed). doc.edit_allowed is the separate one-time admin-approved
+  // exception for an otherwise-locked month.
+  const isIssuedFamily = ['issued', 'partial', 'paid'].includes(doc.status);
+  const canEdit = doc.status === 'draft' || (isIssuedFamily && (!doc.direct_edit_locked || doc.edit_allowed));
   const cancellable = doc.status !== 'cancelled' && doc.status !== 'draft' && !(doc.type === 'quotation' && doc.converted_document_id);
 
   const confirmCancel = async (reason) => {
@@ -144,7 +149,7 @@ export default function InvoiceDetail() {
               Delete
             </button>
           )}
-          {['issued', 'partial', 'paid'].includes(doc.status) && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && !doc.edit_allowed && (
+          {isIssuedFamily && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && !canEdit && (
             doc.gst_return_filed ? (
               <span
                 className="bp-btn bp-btn-amber"
@@ -199,16 +204,6 @@ export default function InvoiceDetail() {
           </button>
           <button
             type="button"
-            className="bp-btn bp-btn-outline"
-            onClick={async () => {
-              const r = await api(`/billing/documents/${doc.id}/pdf`);
-              window.open(r.url, '_blank');
-            }}
-          >
-            Print
-          </button>
-          <button
-            type="button"
             className="bp-btn bp-btn-amber"
             onClick={async () => {
               const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
@@ -249,7 +244,7 @@ export default function InvoiceDetail() {
 
       <div className="bp-split" style={{ marginTop: 14 }}>
         <div>
-          <h3 style={{ marginTop: 0 }}>Business</h3>
+          <h3 style={{ marginTop: 0 }}>From (Seller)</h3>
           <p style={{ margin: '4px 0' }}><strong>{doc.client_profile?.business_name || '—'}</strong></p>
           <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--bp-muted)' }}>
             GSTIN: {doc.client_profile?.gstin || '—'} · PAN: {doc.client_profile?.pan || '—'}
@@ -257,7 +252,7 @@ export default function InvoiceDetail() {
           <p style={{ margin: '4px 0', fontSize: 13 }}>{doc.client_profile?.address || ''}</p>
         </div>
         <div>
-          <h3 style={{ marginTop: 0 }}>Party</h3>
+          <h3 style={{ marginTop: 0 }}>To (Buyer)</h3>
           <p style={{ margin: '4px 0' }}><strong>{doc.customer?.name || '—'}</strong></p>
           <p style={{ margin: '4px 0', fontSize: 13, color: 'var(--bp-muted)' }}>
             GSTIN: {doc.customer?.gstin_display || doc.customer?.gstin || 'Unregistered'} · State: {doc.customer?.state || doc.customer?.state_code || '—'}
@@ -289,32 +284,14 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      <table className="bp-table bp-invoice-table" style={{ marginTop: 16 }}>
-        <colgroup>
-          <col style={{ width: '3%' }} />
-          <col style={{ width: '20%' }} />
-          <col style={{ width: '9%' }} />
-          <col style={{ width: '6%' }} />
-          <col style={{ width: '8%' }} />
-          <col style={{ width: '5%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '6%' }} />
-          {doc.is_inter_state ? (
-            <col style={{ width: '21%' }} />
-          ) : (
-            <>
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '12%' }} />
-            </>
-          )}
-          <col style={{ width: doc.is_inter_state ? '12%' : '9%' }} />
-        </colgroup>
+      {/* Read-only, professional item table — same column set as the Create/Edit form
+          (Invoice Item Table spec §3, Disc.% removed), just without the Action column
+          and with no inputs/dropdowns of any kind. */}
+      <table className="bp-table bp-doc-table" style={{ marginTop: 16 }}>
         <thead>
           <tr>
-            <th>#</th><th>Particulars</th><th>HSN</th><th>Qty</th><th>Rate</th><th>Disc%</th>
-            <th>Taxable</th><th>GST%</th>
-            {doc.is_inter_state ? <th>IGST</th> : <><th>CGST</th><th>SGST</th></>}
-            <th>Total</th>
+            <th>Sr. No.</th><th>Particulars</th><th>HSN/SAC</th><th>Qty</th><th>UCQ</th>
+            <th>Rate (₹)</th><th>GST %</th><th>Taxable Value (₹)</th>
           </tr>
         </thead>
         <tbody>
@@ -323,29 +300,24 @@ export default function InvoiceDetail() {
               <td>{i + 1}</td>
               <td>{l.description}</td>
               <td>{l.hsn_sac}</td>
-              <td>{l.qty} {l.unit}</td>
+              <td>{l.qty}</td>
+              <td>{l.unit}</td>
               <td>{money(l.rate)}</td>
-              <td>{l.discount_percent}</td>
-              <td>{money(l.taxable_amount)}</td>
-              <td>{l.gst_rate}</td>
-              {doc.is_inter_state ? (
-                <td>{money(l.igst_amount)}</td>
-              ) : (
-                <>
-                  <td>{money(l.cgst_amount)}</td>
-                  <td>{money(l.sgst_amount)}</td>
-                </>
-              )}
-              <td>{money(l.total_amount)}</td>
+              <td>{l.gst_rate}%</td>
+              <td className="bp-doc-total">{money(l.taxable_amount)}</td>
             </tr>
           ))}
-          {!doc.line_items?.length && <tr><td colSpan={doc.is_inter_state ? 10 : 11}>No line items</td></tr>}
+          {!doc.line_items?.length && <tr><td colSpan={8} className="bp-table-empty">No line items</td></tr>}
         </tbody>
       </table>
 
       <div className="bp-gst-box" style={{ maxWidth: 360, marginTop: 16, marginLeft: 'auto' }}>
-        <div className="bp-gst-row"><span>Discount</span><strong>{money(doc.discount_total)}</strong></div>
-        <div className="bp-gst-row"><span>Taxable</span><strong>{money(doc.taxable_amount)}</strong></div>
+        {/* Disc.% is removed from item entry (Invoice Item Table spec §3) — new documents
+            never carry a discount, so this row only shows for older documents that do. */}
+        {Number(doc.discount_total) > 0 && (
+          <div className="bp-gst-row"><span>Discount</span><strong>{money(doc.discount_total)}</strong></div>
+        )}
+        <div className="bp-gst-row"><span>Total Taxable Value</span><strong>{money(doc.taxable_amount)}</strong></div>
         {doc.is_inter_state ? (
           <div className="bp-gst-row"><span>IGST</span><strong>{money(doc.igst_amount)}</strong></div>
         ) : (
@@ -372,7 +344,12 @@ export default function InvoiceDetail() {
             <div className="bp-gst-row"><span>Grand Total</span><strong>{money(doc.grand_total || doc.total_amount)}</strong></div>
           </>
         )}
-        {doc.amount_in_words && <p style={{ fontSize: 12 }}><em>{doc.amount_in_words}</em></p>}
+        {doc.amount_in_words && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--bp-border)' }}>
+            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Amount in Words</span>
+            <span style={{ fontSize: 12.5 }}>{doc.amount_in_words}</span>
+          </div>
+        )}
       </div>
       {msg && <p style={{ color: 'var(--bp-green)' }}>{msg}</p>}
       {cancelling && (

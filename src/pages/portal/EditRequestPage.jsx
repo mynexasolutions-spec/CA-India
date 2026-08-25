@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { isRetail } from '../billing/billingProfile';
@@ -63,31 +63,6 @@ function IllustrationIcon() {
   );
 }
 
-function GreenCheck() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function BlueCheck() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 2 }}>
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
-    </svg>
-  );
-}
-
 function ArrowRightIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 4 }}>
@@ -99,7 +74,6 @@ function ArrowRightIcon() {
 
 export default function EditRequestPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const retail = isRetail(user?.client_profile);
   const types = DOC_TYPES.filter((t) => !(retail && t.value !== 'tax_invoice'));
 
@@ -200,22 +174,11 @@ export default function EditRequestPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          className="bp-btn bp-btn-outline"
-          style={{ height: 38, borderRadius: 8, borderColor: '#2563eb', color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
-          onClick={() => navigate('/portal')}
-        >
-          <ArrowLeftIcon /> Back to Dashboard
-        </button>
       </div>
 
-      {/* Main Grid Wrapper */}
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', width: '100%', alignItems: 'flex-start' }}>
-        
-        {/* Left Hand Column (Forms & Table Grid) */}
-        <div style={{ flex: '1 1 70%', minWidth: 320, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
+      {/* Main Content — full width; side informational panels removed per spec */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+
           {/* Create Edit Request Form & Info Box */}
           <div className="bp-card" style={{ padding: 20 }}>
             <div style={{ marginBottom: 16 }}>
@@ -478,93 +441,6 @@ export default function EditRequestPage() {
             </div>
           </div>
 
-        </div>
-
-        {/* Right Hand Column (Side Panels) */}
-        <div style={{ flex: '1 1 25%', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          
-          {/* Card 1: About this Screen */}
-          <div className="bp-card" style={{ padding: 16, borderLeft: '4px solid #2563eb' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: 14, color: '#2563eb', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>i</span> About this Screen
-            </h4>
-            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: 'var(--bp-text)', fontWeight: 500 }}>
-              Create and track edit requests for issued documents. All requests require Admin approval before changes can be applied.
-            </p>
-          </div>
-
-          {/* Card 2: Key Points */}
-          <div className="bp-card" style={{ padding: 16 }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--bp-navy)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="6" />
-                <circle cx="12" cy="12" r="2" />
-              </svg>
-              Key Points
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <GreenCheck /> <span>Select document and reason for edit.</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <GreenCheck /> <span>Provide clear remarks for faster approval.</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <GreenCheck /> <span>Track request status in My Edit Requests.</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <GreenCheck /> <span>Approved requests will be updated in the document.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Status Guide */}
-          <div className="bp-card" style={{ padding: 16 }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--bp-navy)', fontWeight: 800 }}>
-              Status Guide
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#fff7ed', color: '#f97316', fontWeight: 600, border: '1px solid #ffedd5', width: 70, textAlign: 'center', padding: '2px 0', borderRadius: 999 }}>Pending</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Waiting for admin approval</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 600, border: '1px solid #dcfce7', width: 70, textAlign: 'center', padding: '2px 0', borderRadius: 999 }}>Approved</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Request approved by admin</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#fef2f2', color: '#ef4444', fontWeight: 600, border: '1px solid #fee2e2', width: 70, textAlign: 'center', padding: '2px 0', borderRadius: 999 }}>Rejected</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Request rejected by admin</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 4: Date & Time Format */}
-          <div className="bp-card" style={{ padding: 16 }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--bp-navy)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
-              Date &amp; Time Format
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <BlueCheck /> <span>Date Format: DD/MM/YYYY</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <BlueCheck /> <span>Time Format: 12-hour (hh:mm AM/PM)</span>
-              </div>
-              <div style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.4, fontWeight: 600 }}>
-                <BlueCheck /> <span>All times shown in your local time zone</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
       </div>
     </div>
   );

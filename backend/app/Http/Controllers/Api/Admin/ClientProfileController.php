@@ -284,7 +284,7 @@ class ClientProfileController extends Controller
         $sum = fn ($type = null) => (clone $base)->when($type, fn ($q) => $q->where('type', $type));
 
         $monthly = (clone $base)
-            ->selectRaw('DATE_FORMAT(document_date, "%Y-%m") as month,
+            ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month,
                 SUM(CASE WHEN type = "tax_invoice" THEN 1 ELSE 0 END) as tax_invoices,
                 SUM(CASE WHEN type = "bill_of_supply" THEN 1 ELSE 0 END) as bill_of_supply,
                 SUM(CASE WHEN type = "debit_note" THEN 1 ELSE 0 END) as debit_notes,
@@ -495,7 +495,7 @@ class ClientProfileController extends Controller
         if ($type === 'monthly_report') {
             $rows = CommercialDocument::where('client_profile_id', $profile->id)
                 ->whereBetween('document_date', [$from, $to])->where('status', 'issued')
-                ->selectRaw('DATE_FORMAT(document_date, "%Y-%m") as month,
+                ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month,
                     SUM(CASE WHEN type = "tax_invoice" THEN 1 ELSE 0 END) as tax_invoices,
                     SUM(CASE WHEN type = "bill_of_supply" THEN 1 ELSE 0 END) as bill_of_supply,
                     SUM(CASE WHEN type = "debit_note" THEN 1 ELSE 0 END) as debit_notes,
@@ -607,6 +607,7 @@ class ClientProfileController extends Controller
             'has_gst' => 'nullable|boolean',
             'dealer_type' => 'nullable|in:regular,composition',
             'gst_filing_frequency' => 'nullable|in:monthly,quarterly',
+            'gstr1_filing_frequency' => 'nullable|in:monthly,quarterly',
             'composition_rate' => 'nullable|numeric|min:0|max:99.99',
             'pan' => 'nullable|string',
             'aadhaar' => 'nullable|string',
@@ -657,17 +658,27 @@ class ClientProfileController extends Controller
         if (! $hasGst) {
             $data['dealer_type'] = null;
             $data['gst_filing_frequency'] = null;
+            $data['gstr1_filing_frequency'] = null;
         } else {
             if (empty($data['dealer_type'])) {
                 $data['dealer_type'] = 'regular';
             }
             if ($data['dealer_type'] === 'composition') {
+                // Composition dealers file CMP-08, not GSTR-1/GSTR-3B — the split doesn't apply.
                 $data['gst_filing_frequency'] = 'quarterly';
+                $data['gstr1_filing_frequency'] = null;
                 if (empty($data['composition_rate'])) {
                     $data['composition_rate'] = 1.00; // default: traders/manufacturers rate
                 }
-            } elseif (empty($data['gst_filing_frequency'])) {
-                $data['gst_filing_frequency'] = 'monthly'; // default for regular if omitted
+            } else {
+                if (empty($data['gst_filing_frequency'])) {
+                    $data['gst_filing_frequency'] = 'monthly'; // default for regular if omitted
+                }
+                // GSTR-1 defaults to GSTR-3B's cycle unless the admin explicitly diverges
+                // (e.g. QRMP: GSTR-3B quarterly but GSTR-1 filed monthly via IFF).
+                if (empty($data['gstr1_filing_frequency'])) {
+                    $data['gstr1_filing_frequency'] = $data['gst_filing_frequency'];
+                }
             }
         }
 
@@ -681,7 +692,7 @@ class ClientProfileController extends Controller
             'client_name', 'business_name', 'constitution_type', 'business_type',
             'date_of_incorporation', 'date_of_birth', 'mobile', 'alt_mobile', 'alt_email',
             'email', 'address', 'city', 'state', 'state_code', 'pincode', 'country', 'website',
-            'gstin', 'has_gst', 'dealer_type', 'gst_filing_frequency', 'composition_rate', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
+            'gstin', 'has_gst', 'dealer_type', 'gst_filing_frequency', 'gstr1_filing_frequency', 'composition_rate', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
             'iec', 'cin', 'llpin', 'pt_reg', 'esic', 'pf',
             'bank_name', 'bank_branch', 'bank_account', 'account_holder_name', 'bank_ifsc',
             'swift_code', 'account_type', 'upi_id', 'signatory_name', 'terms_conditions', 'client_code',

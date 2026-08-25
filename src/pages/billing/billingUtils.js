@@ -43,42 +43,50 @@ export const CURRENCIES = [
   { code: 'AED', label: 'AED - UAE Dirham' },
 ];
 
-/** Billing Module spec §2 — modified to display as DD MMM YYYY (e.g. 14 Aug 2026) for premium UI. */
+/** Billing Module spec §2 — mandatory DD:MM:YYYY, e.g. 15:08:2026. Accepts 'YYYY-MM-DD...' or Date. */
 export function formatDMY(value) {
   if (!value) return '—';
+  const s = String(value).slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) return `${m[3]}:${m[2]}:${m[1]}`;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
-  const day = d.getDate();
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const month = months[d.getMonth()];
-  const year = d.getFullYear();
-  return `${day} ${month} ${year}`;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}:${mm}:${d.getFullYear()}`;
 }
 
-/** DD MMM YYYY hh:mm AM/PM — for "Created" timestamp columns. */
+/** DD:MM:YYYY, hh:mm AM/PM — for "Created" timestamp columns. */
 export function formatDMYTime(value) {
   if (!value) return '—';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
-  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  return `${formatDMY(d)} ${time}`;
+  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return `${formatDMY(d)}, ${time}`;
 }
 
-/** Indian FY labels e.g. 2025-26 (Apr–Mar) */
+/** Billing Module lower bound — the module starts at FY 2026-27; no earlier FY may ever
+ * be shown or selected in any Billing dashboard/selector/filter. */
+export const MIN_BILLING_FY_START_YEAR = 2026;
+
+/** Indian FY labels e.g. 2026-27 (Apr–Mar), never earlier than MIN_BILLING_FY_START_YEAR. */
 export function buildFyOptions(count = 6) {
   const now = new Date();
-  const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const rawStartYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const startYear = Math.max(rawStartYear, MIN_BILLING_FY_START_YEAR);
+  const span = Math.min(count, startYear - MIN_BILLING_FY_START_YEAR + 1);
   const options = [];
-  for (let i = 0; i < count; i += 1) {
+  for (let i = 0; i < span; i += 1) {
     const y1 = startYear - i;
     options.push(`${y1}-${String(y1 + 1).slice(-2)}`);
   }
   return options;
 }
 
-/** Current Indian FY start year (April–March). Auto-switches on 1 April. */
+/** Current Indian FY start year (April–March), clamped to MIN_BILLING_FY_START_YEAR. */
 export function currentFyStartYear(date = new Date()) {
-  return date.getMonth() >= 3 ? date.getFullYear() : date.getFullYear() - 1;
+  const y1 = date.getMonth() >= 3 ? date.getFullYear() : date.getFullYear() - 1;
+  return Math.max(y1, MIN_BILLING_FY_START_YEAR);
 }
 
 /** e.g. 2025-26 */

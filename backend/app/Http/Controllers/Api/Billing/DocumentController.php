@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Services\Billing\BillingPolicy;
 use App\Services\Billing\InvoiceService;
+use Carbon\Carbon;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,10 @@ class DocumentController extends Controller
      *  filters without being narrowed by the Document Type filter itself (spec §24). */
     private function applyCommonFilters($q, Request $request)
     {
+        // Billing launched at FY 2026-27 — an unconditional floor, independent of
+        // whatever from/fy filter (or none) the request sends.
+        $q->whereDate('document_date', '>=', BillingPolicy::MIN_BILLING_FY_START_DATE);
+
         if ($request->filled('status')) {
             $q->where('status', $request->status);
         } else {
@@ -49,8 +54,10 @@ class DocumentController extends Controller
             $q->whereDate('document_date', '<=', $request->to);
         }
         if ($request->filled('month')) {
-            // YYYY-MM
-            $q->whereRaw('DATE_FORMAT(document_date, "%Y-%m") = ?', [$request->month]);
+            // YYYY-MM — real date bounds instead of a MySQL-only DATE_FORMAT() compare,
+            // so this works identically on SQLite (current) and MySQL (per README).
+            $start = Carbon::createFromFormat('Y-m-d', $request->month.'-01')->startOfMonth();
+            $q->whereBetween('document_date', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()]);
         }
         if ($request->filled('fy')) {
             // FY like 2025-26 → Apr 1 2025 – Mar 31 2026
@@ -107,9 +114,14 @@ class DocumentController extends Controller
         $paginated = $q->paginate($perPage);
 
         $filedPeriods = BillingPolicy::filedPeriods($profile);
-        $paginated->getCollection()->each(function (CommercialDocument $doc) use ($profile, $filedPeriods) {
-            $doc->gst_return_filed = $doc->document_date
+        $submittedPeriods = BillingPolicy::submittedFilingPeriods($profile->id);
+        $paginated->getCollection()->each(function (CommercialDocument $doc) use ($profile, $filedPeriods, $submittedPeriods) {
+            $filed = $doc->document_date
                 && in_array(BillingPolicy::periodOf($profile, $doc->document_date->toDateString()), $filedPeriods, true);
+            $confirmationSubmitted = $doc->document_date
+                && in_array($doc->document_date->format('Y-m'), $submittedPeriods, true);
+            $doc->gst_return_filed = $filed;
+            $doc->direct_edit_locked = $filed || $confirmationSubmitted;
         });
 
         $result = $paginated->toArray();
@@ -274,6 +286,7 @@ class DocumentController extends Controller
             ->with(['lineItems', 'customer', 'clientProfile', 'referenceDocument', 'tdsTcsSection'])
             ->findOrFail($id);
         $doc->gst_return_filed = BillingPolicy::isPeriodFiled($profile, $doc->document_date?->toDateString());
+        $doc->direct_edit_locked = BillingPolicy::isDirectEditLocked($profile, $doc->document_date?->toDateString());
 
         return response()->json($doc);
     }

@@ -40,25 +40,11 @@ class GstReturnController extends Controller
     }
 
     /**
-     * Filing status grid across a financial year, driven entirely by the client's saved GST
-     * configuration and the ClientGstReturn rows admins have marked filed. Used by the
-     * dashboard's Compliance Status widget.
-     *
-     * - Composition dealers: a single CMP-08 row, always quarterly (the composition compliance
-     *   cycle is quarterly by law, independent of gst_filing_frequency).
-     * - Regular dealers: GSTR-1 + GSTR-3B rows, monthly or quarterly per gst_filing_frequency.
+     * Period grid (quarterly or monthly) for one return type, independent of any other
+     * return's cycle — the due-date column selected depends only on $type.
      */
-    public function compliance(Request $request)
+    private function buildPeriods(bool $quarterly, int $startYear, string $dueField): array
     {
-        $profile = $request->user()->clientProfile;
-        abort_unless($profile, 404, 'Profile not found');
-        abort_unless($profile->has_gst, 400, 'GST is not enabled on this profile');
-
-        $startYear = $this->fyStartYear($request->input('financial_year'));
-        $isComposition = $profile->dealer_type === 'composition';
-        $frequency = $profile->gst_filing_frequency ?? 'monthly';
-        $quarterly = $isComposition || $frequency === 'quarterly';
-
         $periods = [];
         if ($quarterly) {
             // Indian GST quarters follow the FY: Apr-Jun, Jul-Sep, Oct-Dec, Jan-Mar.
@@ -72,12 +58,11 @@ class GstReturnController extends Controller
                 // GSTR-1 (QRMP): 13th of the month after the quarter. GSTR-3B (QRMP): 22nd.
                 // CMP-08: 18th of the month after the quarter.
                 $after = \Carbon\Carbon::createFromDate($q['endYear'], $q['endMonth'], 1)->addMonth();
+                $day = ['due_gstr1' => 13, 'due_gstr3b' => 22, 'due_cmp08' => 18][$dueField];
                 $periods[] = [
                     'period' => "{$q['year']}-Q{$q['q']}",
                     'label' => $q['label'],
-                    'due_gstr1' => $after->copy()->day(13)->toDateString(),
-                    'due_gstr3b' => $after->copy()->day(22)->toDateString(),
-                    'due_cmp08' => $after->copy()->day(18)->toDateString(),
+                    'due_date' => $after->copy()->day($day)->toDateString(),
                 ];
             }
         } else {
@@ -90,43 +75,63 @@ class GstReturnController extends Controller
                 }
                 // GSTR-1 (Monthly): 11th of the following month. GSTR-3B (Monthly): 20th.
                 $after = \Carbon\Carbon::createFromDate($year, $month, 1)->addMonth();
+                $day = $dueField === 'due_gstr3b' ? 20 : 11;
                 $periods[] = [
                     'period' => sprintf('%04d-%02d', $year, $month),
                     'label' => \Carbon\Carbon::createFromDate($year, $month, 1)->format('M \'y'),
-                    'due_gstr1' => $after->copy()->day(11)->toDateString(),
-                    'due_gstr3b' => $after->copy()->day(20)->toDateString(),
+                    'due_date' => $after->copy()->day($day)->toDateString(),
                 ];
             }
         }
 
-        $periodKeys = array_column($periods, 'period');
-        $filed = ClientGstReturn::where('client_profile_id', $profile->id)
-            ->whereIn('tax_period', $periodKeys)
-            ->where('status', 'filed')
-            ->get()
-            ->groupBy('return_type')
-            ->map(fn ($rows) => $rows->pluck('tax_period')->all());
+        return $periods;
+    }
+
+    /**
+     * Filing status grid across a financial year, driven entirely by the client's saved GST
+     * configuration and the ClientGstReturn rows admins have marked filed. Used by the
+     * dashboard's Compliance Status widget.
+     *
+     * - Composition dealers: a single CMP-08 row, always quarterly (the composition compliance
+     *   cycle is quarterly by law, independent of gst_filing_frequency).
+     * - Regular dealers: GSTR-1 and GSTR-3B are tracked on INDEPENDENT cycles — under QRMP a
+     *   client may file GSTR-1 monthly (via IFF) while GSTR-3B stays quarterly, or vice versa.
+     *   gst_filing_frequency drives GSTR-3B's cycle (and continues to drive the existing
+     *   invoice-period-lock logic elsewhere); gstr1_filing_frequency drives GSTR-1's, falling
+     *   back to gst_filing_frequency when not explicitly set.
+     */
+    public function compliance(Request $request)
+    {
+        $profile = $request->user()->clientProfile;
+        abort_unless($profile, 404, 'Profile not found');
+        abort_unless($profile->has_gst, 400, 'GST is not enabled on this profile');
+
+        $startYear = $this->fyStartYear($request->input('financial_year'));
+        $isComposition = $profile->dealer_type === 'composition';
+        $gstr3bFrequency = $profile->gst_filing_frequency ?? 'monthly';
+        $gstr1Frequency = $profile->gstr1_filing_frequency ?? $gstr3bFrequency;
+        $gstr3bQuarterly = $isComposition || $gstr3bFrequency === 'quarterly';
+        $gstr1Quarterly = $gstr1Frequency === 'quarterly';
 
         $today = now()->toDateString();
-        $dueFieldFor = [
-            ClientGstReturn::TYPE_GSTR1 => 'due_gstr1',
-            ClientGstReturn::TYPE_GSTR3B => 'due_gstr3b',
-            ClientGstReturn::TYPE_CMP08 => 'due_cmp08',
-        ];
-        $buildRow = function (string $type) use ($periods, $filed, $today, $dueFieldFor) {
-            $filedPeriods = $filed->get($type, []);
-            $dueField = $dueFieldFor[$type];
-            $rows = array_map(function ($p) use ($filedPeriods, $dueField, $today) {
-                $dueDate = $p[$dueField] ?? null;
+        $buildRow = function (string $type, array $periods) use ($profile, $today) {
+            $filedPeriods = ClientGstReturn::where('client_profile_id', $profile->id)
+                ->where('return_type', $type)
+                ->whereIn('tax_period', array_column($periods, 'period'))
+                ->where('status', 'filed')
+                ->pluck('tax_period')
+                ->all();
+
+            $rows = array_map(function ($p) use ($filedPeriods, $today) {
                 $filedStatus = in_array($p['period'], $filedPeriods, true);
                 // filed: admin has marked it filed. pending: due date has passed and it's
                 // still not filed (overdue). upcoming: due date hasn't arrived yet.
-                $status = $filedStatus ? 'filed' : ($dueDate && $today > $dueDate ? 'pending' : 'upcoming');
+                $status = $filedStatus ? 'filed' : ($p['due_date'] && $today > $p['due_date'] ? 'pending' : 'upcoming');
 
                 return [
                     'period' => $p['period'],
                     'label' => $p['label'],
-                    'due_date' => $dueDate,
+                    'due_date' => $p['due_date'],
                     'status' => $status,
                 ];
             }, $periods);
@@ -140,15 +145,26 @@ class GstReturnController extends Controller
 
         $payload = [
             'financial_year' => sprintf('%d-%02d', $startYear, ($startYear + 1) % 100),
-            'frequency' => $quarterly ? 'quarterly' : 'monthly',
             'dealer_type' => $profile->dealer_type,
         ];
 
         if ($isComposition) {
-            $payload['cmp08'] = $buildRow(ClientGstReturn::TYPE_CMP08);
+            $payload['cmp08_frequency'] = 'quarterly';
+            $payload['cmp08'] = $buildRow(
+                ClientGstReturn::TYPE_CMP08,
+                $this->buildPeriods(true, $startYear, 'due_cmp08')
+            );
         } else {
-            $payload['gstr1'] = $buildRow(ClientGstReturn::TYPE_GSTR1);
-            $payload['gstr3b'] = $buildRow(ClientGstReturn::TYPE_GSTR3B);
+            $payload['gstr1_frequency'] = $gstr1Quarterly ? 'quarterly' : 'monthly';
+            $payload['gstr3b_frequency'] = $gstr3bQuarterly ? 'quarterly' : 'monthly';
+            $payload['gstr1'] = $buildRow(
+                ClientGstReturn::TYPE_GSTR1,
+                $this->buildPeriods($gstr1Quarterly, $startYear, 'due_gstr1')
+            );
+            $payload['gstr3b'] = $buildRow(
+                ClientGstReturn::TYPE_GSTR3B,
+                $this->buildPeriods($gstr3bQuarterly, $startYear, 'due_gstr3b')
+            );
         }
 
         return response()->json($payload);

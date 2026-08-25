@@ -5,11 +5,28 @@ namespace App\Services\Billing;
 use App\Models\ClientGstReturn;
 use App\Models\ClientProfile;
 use App\Models\CommercialDocument;
+use App\Models\GstFilingRequest;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class BillingPolicy
 {
     public const GST_RATES = [0, 1, 5, 6, 12, 18, 28, 40];
+
+    /** The Billing module starts at FY 2026-27 — no document date, dashboard stat, report,
+     * or FY selector may ever go earlier than this, regardless of what a request sends. */
+    public const MIN_BILLING_FY_START_DATE = '2026-04-01';
+    public const MIN_BILLING_FY_START_YEAR = 2026;
+
+    /** Clamp a requested "from" date (or none) so it never precedes the Billing floor. */
+    public static function clampFromDate(?string $from): string
+    {
+        if (!$from || $from < self::MIN_BILLING_FY_START_DATE) {
+            return self::MIN_BILLING_FY_START_DATE;
+        }
+
+        return $from;
+    }
 
     public static function mode(ClientProfile $profile): string
     {
@@ -129,10 +146,8 @@ class BillingPolicy
 
     public static function assertUniqueNumber(ClientProfile $profile, string $number, ?int $exceptId = null): void
     {
-        if (str_starts_with($number, 'DRAFT-')) {
-            return;
-        }
-
+        // Draft numbers are gap-filled by InvoiceService::draftNumber() so they shouldn't
+        // collide in normal use — this check remains as a race-condition safety net.
         $exists = CommercialDocument::where('client_profile_id', $profile->id)
             ->where('number', $number)
             ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
@@ -191,5 +206,64 @@ class BillingPolicy
         if (self::isPeriodFiled($profile, $documentDate)) {
             abort(422, 'Request Edit is not available because the GST Return for this document\'s period has already been filed. Please issue a Credit Note, Debit Note, or Amendment instead.');
         }
+    }
+
+    /**
+     * Billing / Edit Request spec — has the client already submitted a GST Filing
+     * Confirmation for this document's month? This is the client's own pre-filing
+     * confirmation/review submission (GstFilingRequest), a distinct, earlier stage
+     * than the admin actually filing the return with the government (ClientGstReturn).
+     * Always month-scoped (filing_period is stored as Y-m), independent of the
+     * client's overall monthly/quarterly gst_filing_frequency.
+     */
+    public static function isFilingConfirmationSubmitted(int $clientProfileId, ?string $documentDate): bool
+    {
+        if (! $documentDate) {
+            return false;
+        }
+
+        $period = Carbon::parse($documentDate)->format('Y-m');
+
+        return in_array($period, self::submittedFilingPeriods($clientProfileId), true);
+    }
+
+    /** All filing_period (Y-m) values with an active GST Filing Confirmation for this
+     *  client — for bulk-tagging a list of documents without an N+1 query per row. */
+    public static function submittedFilingPeriods(int $clientProfileId): array
+    {
+        return GstFilingRequest::where('client_profile_id', $clientProfileId)
+            ->whereIn('status', ['Pending CA Review', 'Approved for Filing', 'GST Filed'])
+            ->pluck('filing_period')
+            ->all();
+    }
+
+    /**
+     * Whether an issued document can be edited directly without going through
+     * Request Edit → Admin approval. Locked once either:
+     *  - the client has submitted a GST Filing Confirmation for the month (earlier,
+     *    client-initiated stage — Request Edit still works here), or
+     *  - the GST Return has actually been filed by the admin (later, final stage —
+     *    Request Edit is also disabled at that point, per assertEditRequestAllowed).
+     */
+    public static function isDirectEditLocked(ClientProfile $profile, ?string $documentDate): bool
+    {
+        return self::isPeriodFiled($profile, $documentDate)
+            || self::isFilingConfirmationSubmitted($profile->id, $documentDate);
+    }
+
+    /**
+     * Database-portable "YYYY-MM" grouping expression for a date column, for use in
+     * selectRaw()/groupBy() month-wise aggregates. DATE_FORMAT() is MySQL-only and
+     * fails on SQLite — this app's actual database engine in both local dev and
+     * production (README's stated MySQL target is aspirational, not what's deployed).
+     * Filtering by a single month should use a whereBetween on real date bounds
+     * instead (see GstFilingController::periodBounds()) — this helper is only for
+     * the SELECT/GROUP BY expression itself, which has no such portable equivalent.
+     */
+    public static function monthGroupExpr(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y-%m', {$column})"
+            : "DATE_FORMAT({$column}, '%Y-%m')";
     }
 }

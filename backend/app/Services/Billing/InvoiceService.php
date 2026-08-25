@@ -36,7 +36,7 @@ class InvoiceService
             $allocateNumber = $status === 'issued';
             $number = $data['number'] ?? ($allocateNumber
                 ? $this->nextNumber($profile, $type)
-                : $this->draftNumber($profile, $type));
+                : $this->draftNumber($profile, $type, $data['document_date'] ?? null));
             BillingPolicy::assertUniqueNumber($profile, $number);
 
             $doc = CommercialDocument::create($this->docPayload($profile, $data, $calc, $type, $number, $isInter, $isRcm, $status, $allocateNumber, $taxDeductionType, $tdsSection, $tdsRate));
@@ -50,12 +50,21 @@ class InvoiceService
         });
     }
 
+    /**
+     * Billing / Edit Request spec — an issued document is directly editable, no
+     * admin approval needed, as long as its month isn't locked (no GST Filing
+     * Confirmation submitted, GST Return not yet filed). Once locked, only an
+     * admin-approved Request Edit (edit_allowed) can unlock a single save.
+     */
     public function updateDraft(CommercialDocument $doc, ClientProfile $profile, array $data): CommercialDocument
     {
-        $unlockedIssued = in_array($doc->status, ['issued', 'partial', 'paid'], true) && $doc->edit_allowed;
-        abort_unless($doc->status === 'draft' || $unlockedIssued, 422, 'Only drafts or admin-approved documents can be updated');
+        $isIssuedFamily = in_array($doc->status, ['issued', 'partial', 'paid'], true);
+        $directEditable = $isIssuedFamily && ! BillingPolicy::isDirectEditLocked($profile, $doc->document_date?->toDateString());
+        $unlockedIssued = $isIssuedFamily && $doc->edit_allowed;
+        $keepIssued = $directEditable || $unlockedIssued;
+        abort_unless($doc->status === 'draft' || $keepIssued, 422, 'This document is locked for direct edits — a GST Filing Confirmation has been submitted (or the GST Return filed) for its period. Please use Request Edit.');
 
-        return DB::transaction(function () use ($doc, $profile, $data, $unlockedIssued) {
+        return DB::transaction(function () use ($doc, $profile, $data, $keepIssued, $unlockedIssued) {
             $isInter = (bool) ($data['is_inter_state'] ?? $doc->is_inter_state);
             $type = $doc->type; // type cannot change on update
             BillingPolicy::assertDocumentType($profile, $type);
@@ -72,10 +81,14 @@ class InvoiceService
                 $taxDeductionType,
                 $tdsRate
             );
-            $status = $unlockedIssued ? $doc->status : 'draft';
-            $payload = $this->docPayload($profile, $data, $calc, $type, $doc->number, $isInter, $isRcm, $status, $unlockedIssued, $taxDeductionType, $tdsSection, $tdsRate);
+            $status = $keepIssued ? $doc->status : 'draft';
+            $payload = $this->docPayload($profile, $data, $calc, $type, $doc->number, $isInter, $isRcm, $status, $keepIssued, $taxDeductionType, $tdsSection, $tdsRate);
             if ($unlockedIssued) {
+                // The one-time admin-approved unlock is consumed on save; a direct edit
+                // of an already-unlocked period doesn't touch edit_allowed at all.
                 $payload['edit_allowed'] = false;
+            }
+            if ($keepIssued) {
                 $payload['issued_at'] = $doc->issued_at;
             }
             $doc->update($payload);
@@ -83,7 +96,7 @@ class InvoiceService
             $this->syncLines($doc, $calc['lines']);
 
             $doc = $doc->fresh()->load(['lineItems', 'customer', 'clientProfile', 'referenceDocument']);
-            if ($unlockedIssued) {
+            if ($keepIssued) {
                 $this->generatePdf($doc);
             }
 
@@ -275,11 +288,63 @@ class InvoiceService
         return $this->formatNumber($prefix, $seq);
     }
 
-    public function draftNumber(ClientProfile $profile, string $type): string
+    /** Fixed short code per document type for draft numbers — distinct from the
+     *  admin-configurable prefixes used for issued numbers (nextNumber()/prefixFor()). */
+    private function draftPrefixFor(string $type): string
     {
-        $n = CommercialDocument::where('client_profile_id', $profile->id)->where('status', 'draft')->count() + 1;
+        return match ($type) {
+            'tax_invoice' => 'TAX',
+            'debit_note' => 'DN',
+            'credit_note' => 'CN',
+            'bill_of_supply' => 'BOS',
+            'quotation' => 'QT',
+            'amendment' => 'AMD',
+            default => strtoupper(substr($type, 0, 3)),
+        };
+    }
 
-        return sprintf('DRAFT-%s-%04d', strtoupper(substr($type, 0, 3)), $n);
+    /**
+     * Draft number: DRAFT-{PREFIX}-NN, always exactly 2 digits (01-99), sequenced
+     * independently per document type, scoped to the client and financial year.
+     *
+     * Reuses the lowest currently-unused number rather than an ever-incrementing
+     * counter — once a draft is issued or deleted its slot is freed for reuse, so a
+     * normal workflow (create → issue, repeat) never approaches the 99 ceiling.
+     * Existing drafts are never renumbered; only a brand-new draft calls this.
+     */
+    public function draftNumber(ClientProfile $profile, string $type, ?string $documentDate = null): string
+    {
+        $prefix = $this->draftPrefixFor($type);
+        $date = $documentDate ? \Carbon\Carbon::parse($documentDate) : now();
+        $fyStartYear = $date->month >= 4 ? $date->year : $date->year - 1;
+        $from = "{$fyStartYear}-04-01";
+        $to = ($fyStartYear + 1).'-03-31';
+
+        $used = CommercialDocument::where('client_profile_id', $profile->id)
+            ->where('type', $type)
+            ->where('status', 'draft')
+            ->whereBetween('document_date', [$from, $to])
+            ->pluck('number')
+            ->map(function ($number) use ($prefix) {
+                if (preg_match('/^DRAFT-'.preg_quote($prefix, '/').'-(\d+)$/', (string) $number, $m)) {
+                    return (int) $m[1];
+                }
+
+                return null;
+            })
+            ->filter(fn ($n) => $n !== null)
+            ->all();
+
+        for ($seq = 1; $seq <= 99; $seq++) {
+            if (! in_array($seq, $used, true)) {
+                return sprintf('DRAFT-%s-%02d', $prefix, $seq);
+            }
+        }
+
+        // Controlled business rule at the 99 boundary — never silently produce a 3-digit
+        // draft number. 99 simultaneous open drafts of one type in one FY means existing
+        // ones need to be issued or removed before another can be created.
+        abort(422, "Draft {$prefix} numbers for this financial year are exhausted (DRAFT-{$prefix}-01 through DRAFT-{$prefix}-99 are all in use). Issue or delete an existing draft before creating another.");
     }
 
     private function prefixFor(ClientProfile $profile, string $type): string

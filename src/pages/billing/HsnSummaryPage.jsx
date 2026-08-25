@@ -318,8 +318,8 @@ export default function HsnSummaryPage({
       {/* ── KPI Cards ──────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20 }}>
         {/* Total HSN Codes */}
-        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#eff6ff,#dbeafe)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#eff6ff,#dbeafe)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 10 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
             </svg>
@@ -332,8 +332,8 @@ export default function HsnSummaryPage({
         </div>
 
         {/* Total SAC Codes */}
-        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#f0fdf4,#dcfce7)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#f0fdf4,#dcfce7)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 10 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
               <path d="M14 17h3m0 0h3m-3 0v-3m0 3v3"/>
@@ -347,8 +347,8 @@ export default function HsnSummaryPage({
         </div>
 
         {/* Total Quantity */}
-        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#fff7ed,#fed7aa)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#fff7ed,#fed7aa)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 10 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
             </svg>
@@ -361,8 +361,8 @@ export default function HsnSummaryPage({
         </div>
 
         {/* Total Taxable Value */}
-        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#faf5ff,#e9d5ff)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#faf5ff,#e9d5ff)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 10 }}>
             <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="16" cy="16" r="12" stroke="white" strokeWidth="1.8" fill="none"/>
               <text x="16" y="21" textAnchor="middle" fontSize="14" fontWeight="800" fill="white" stroke="none">₹</text>
@@ -376,8 +376,8 @@ export default function HsnSummaryPage({
         </div>
 
         {/* Total GST Amount */}
-        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#eff6ff,#dbeafe)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#eff6ff,#dbeafe)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginBottom: 10 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
               <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>
@@ -402,11 +402,11 @@ export default function HsnSummaryPage({
           {/* Legend */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 12, fontWeight: 600 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 20, height: 20, borderRadius: 4, background: '#eff6ff', border: '1.5px solid #2563eb', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>H</span>
+              <span style={{ width: 22, height: 22, borderRadius: 4, boxSizing: 'border-box', background: '#eff6ff', border: '1.5px solid #2563eb', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, lineHeight: 1 }}>H</span>
               = HSN Code
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 20, height: 20, borderRadius: 4, background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800 }}>S</span>
+              <span style={{ width: 22, height: 22, borderRadius: 4, boxSizing: 'border-box', background: '#f0fdf4', border: '1.5px solid #16a34a', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, lineHeight: 1 }}>S</span>
               = SAC Code
             </div>
           </div>
@@ -419,9 +419,17 @@ export default function HsnSummaryPage({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid var(--bp-border)' }}>
-                  {['Code Type', 'HSN / SAC Code', 'GST Rate (%)', 'QTY', 'UQC', 'Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)'].map((h) => (
-                    <th key={h} style={{ padding: '11px 14px', textAlign: h === 'Code Type' || h === 'HSN / SAC Code' ? 'left' : 'right', fontSize: 12, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
+                  {['Code Type', 'HSN / SAC Code', 'GST Rate (%)', 'QTY', 'UQC', 'Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)'].map((h) => {
+                    const centered = ['Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)'].includes(h);
+                    return (
+                      <th key={h} style={{
+                        padding: '13px 14px',
+                        textAlign: h === 'Code Type' || h === 'HSN / SAC Code' ? 'left' : centered ? 'center' : 'right',
+                        fontSize: 12, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap',
+                        verticalAlign: 'middle', lineHeight: 1.3,
+                      }}>{h}</th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -433,26 +441,26 @@ export default function HsnSummaryPage({
                     const isSacRow = type === 'S';
                     return (
                       <tr key={`${r.hsn_sac}-${i}`} style={{ borderBottom: '1px solid var(--bp-border)', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                        <td style={{ padding: '11px 14px' }}>
+                        <td style={{ padding: '14px', verticalAlign: 'middle' }}>
                           <span style={{
-                            width: 22, height: 22, borderRadius: 5,
+                            width: 24, height: 24, borderRadius: 5, boxSizing: 'border-box',
                             background: isSacRow ? '#f0fdf4' : '#eff6ff',
                             border: `1.5px solid ${isSacRow ? '#16a34a' : '#2563eb'}`,
                             color: isSacRow ? '#16a34a' : '#2563eb',
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 11, fontWeight: 800,
+                            fontSize: 11, fontWeight: 800, lineHeight: 1, verticalAlign: 'middle',
                           }}>{type}</span>
                         </td>
-                        <td style={{ padding: '11px 14px', fontSize: 13, fontWeight: 500, color: 'var(--bp-navy)' }}>{r.hsn_sac || '—'}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13 }}>
+                        <td style={{ padding: '14px', fontSize: 13, fontWeight: 500, color: 'var(--bp-navy)', verticalAlign: 'middle', lineHeight: 1.4, whiteSpace: 'nowrap' }}>{r.hsn_sac || '—'}</td>
+                        <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>
                           {r.gst_rate != null ? `${Number(r.gst_rate).toFixed(0)}%` : '—'}
                         </td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13 }}>{numFmt(r.qty, 2)}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13, color: '#64748b' }}>{r.unit || r.uqc || 'NOS'}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13 }}>{numFmt(r.taxable || r.taxable_value, 2)}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13 }}>{numFmt(r.igst, 2)}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13 }}>{numFmt(r.cgst, 2)}</td>
-                        <td style={{ padding: '11px 14px', textAlign: 'right', fontSize: 13 }}>{numFmt(r.sgst, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.qty, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, color: '#64748b', verticalAlign: 'middle', lineHeight: 1.4 }}>{r.unit || r.uqc || 'NOS'}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.taxable || r.taxable_value, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.igst, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.cgst, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.sgst, 2)}</td>
                       </tr>
                     );
                   })
@@ -460,13 +468,13 @@ export default function HsnSummaryPage({
                 {/* Total row */}
                 {filtered.length > 0 && (
                   <tr style={{ borderTop: '2px solid #bfdbfe', background: '#f0f9ff' }}>
-                    <td colSpan={3} style={{ padding: '12px 14px', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>Total</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{numFmt(totQty, 2)}</td>
+                    <td colSpan={3} style={{ padding: '14px', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>Total</td>
+                    <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totQty, 2)}</td>
                     <td />
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{numFmt(totTaxable, 2)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{numFmt(totIgst, 2)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{numFmt(totCgst, 2)}</td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{numFmt(totSgst, 2)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totTaxable, 2)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totIgst, 2)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totCgst, 2)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totSgst, 2)}</td>
                   </tr>
                 )}
               </tbody>

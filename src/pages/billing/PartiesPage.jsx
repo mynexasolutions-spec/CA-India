@@ -23,33 +23,6 @@ function initialsOf(name) {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-const HELP_ICON_PROPS = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
-function StarIcon() {
-  return <svg {...HELP_ICON_PROPS} width="18" height="18"><path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6L12 3Z" /></svg>;
-}
-function SearchIcon() {
-  return <svg {...HELP_ICON_PROPS}><circle cx="10" cy="10" r="6.5" /><path d="m20 20-4.5-4.5" /></svg>;
-}
-function ShieldCheckIcon() {
-  return <svg {...HELP_ICON_PROPS}><path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3Z" /><path d="m9 12 2 2 4-4" /></svg>;
-}
-function EditIcon() {
-  return <svg {...HELP_ICON_PROPS}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" /></svg>;
-}
-function PlusCircleIcon() {
-  return <svg {...HELP_ICON_PROPS}><circle cx="12" cy="12" r="9" /><path d="M12 8v8M8 12h8" /></svg>;
-}
-function InfoBadgeIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7.5v.01" /></svg>;
-}
-
-const HIGHLIGHTS = [
-  { Icon: SearchIcon, title: 'Search & Filter', desc: 'Search companies by name, GSTIN, phone and filter by State or GST Status.' },
-  { Icon: ShieldCheckIcon, title: 'GST Status', desc: 'Quickly identify Registered and Unregistered companies.' },
-  { Icon: EditIcon, title: 'Edit Company', desc: 'Click on Edit to view and update company details.' },
-  { Icon: PlusCircleIcon, title: 'Add New Company', desc: 'Add a new company to manage GST compliance and invoicing.' },
-];
-
 /** Parties Dashboard — displays every company/party created by the logged-in client (the
  * backend scopes every query to the authenticated client's own client_profile_id, so this
  * list can never show another client's parties). Add New Company / Edit Company are their
@@ -232,73 +205,6 @@ export default function PartiesPage() {
             </div>
           </div>
         )}
-      </div>
-
-      <div className="bp-parties-columns" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 20 }}>
-        <div className="bp-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--bp-blue)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><StarIcon /></span>
-            Key Highlights
-          </h3>
-          <div className="bp-parties-highlights" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-            {HIGHLIGHTS.map(({ Icon, title, desc }) => (
-              <div key={title}>
-                <span style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--bp-sky)', color: 'var(--bp-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                  <Icon />
-                </span>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-blue)', marginBottom: 4 }}>{title}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)', lineHeight: 1.5 }}>{desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bp-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--bp-navy)' }}>GST Status Guide</h3>
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ marginTop: 5, width: 8, height: 8, borderRadius: '50%', background: '#15803d', flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#15803d' }}>Registered</div>
-                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Company is registered under GST.</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ marginTop: 5, width: 8, height: 8, borderRadius: '50%', background: '#6b8499', flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-text)' }}>Unregistered</div>
-                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Company is not registered under GST.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bp-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--bp-navy)' }}>Actions Available</h3>
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ color: 'var(--bp-blue)', flexShrink: 0 }}><EditIcon /></span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-blue)' }}>Edit</div>
-                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Update company information anytime.</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ color: 'var(--bp-blue)', flexShrink: 0 }}><PlusCircleIcon /></span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-blue)' }}>New Company</div>
-                <div style={{ fontSize: 11.5, color: 'var(--bp-muted)' }}>Add a new company to manage compliance.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 16px' }}>
-        <span style={{ color: '#92400e', flexShrink: 0 }}><InfoBadgeIcon /></span>
-        <span style={{ fontSize: 12.5, color: '#92400e' }}>
-          <strong>Note:</strong> Only authorised client users can add or edit companies. Each company will be used for GST compliance, invoicing and reporting.
-        </span>
       </div>
     </div>
   );

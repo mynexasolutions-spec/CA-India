@@ -7,11 +7,24 @@ import { api } from '../../api/client';
 import StateSelect from '../../components/StateSelect';
 import HsnSacSelect from '../../components/HsnSacSelect';
 import GstRateSelect from '../../components/GstRateSelect';
+import UnitSelect from '../../components/UnitSelect';
 import DocTypeTiles from './DocTypeTiles';
 import PartySearchSelect from './PartySearchSelect';
 
+/** Digits-only, capped at maxDigits, clamped to [min, max] — used for Qty/Rate per the
+ * Invoice Item Table spec ("whole numbers only", "maximum N digits", "reject extra digits"). */
+function sanitizeWholeNumber(raw, { maxDigits, min, max }) {
+  const digits = String(raw).replace(/[^0-9]/g, '').slice(0, maxDigits);
+  if (digits === '') return '';
+  const n = Math.min(max, Math.max(min, parseInt(digits, 10)));
+  return String(n);
+}
+
+// Disc.% removed from the item row entirely (Invoice Item Table spec) — new lines never
+// carry a discount. mapDocLines() below still reads a legacy discount_percent when editing
+// an older saved document, so that historical value isn't silently discarded on re-save.
 const emptyLine = () => ({
-  description: '', hsn_sac: '', qty: 1, unit: 'NOS', rate: 0, discount_percent: 0, gst_rate: 18,
+  description: '', hsn_sac: '', qty: 1, unit: 'NOS', rate: 0, gst_rate: 18,
 });
 
 function mapDocLines(items) {
@@ -266,11 +279,6 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
 
       if (Number(line.rate) < 0) {
         return `Line ${rowNo}: Rate cannot be negative.`;
-      }
-
-      const discount = Number(line.discount_percent || 0);
-      if (Number.isNaN(discount) || discount < 0 || discount > 100) {
-        return `Line ${rowNo}: Discount must be between 0 and 100.`;
       }
     }
 
@@ -655,31 +663,30 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
           <table className="bp-table bp-invoice-lines-table">
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                <th style={{ width: 50, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>#</th>
-                <th style={{ color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Particulars <span className="bp-required">*</span></th>
-                {hsnEnabled && <th style={{ width: 180, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>HSN / SAC <span className="bp-required">*</span></th>}
-                <th style={{ width: 70, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Qty <span className="bp-required">*</span></th>
-                <th style={{ width: 85, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Unit</th>
-                <th style={{ width: 110, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Rate (₹) <span className="bp-required">*</span></th>
-                <th style={{ width: 75, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Disc.%</th>
-                {taxesEnabled && <th style={{ width: 100, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>GST % <span className="bp-required">*</span></th>}
-                <th style={{ width: 130, color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Taxable Value (₹)</th>
-                <th style={{ width: 60, color: 'var(--bp-text)', fontWeight: 700 }}>Action</th>
+                <th style={{ width: 60, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Sr. No.</th>
+                <th style={{ width: 260, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Particulars <span className="bp-required">*</span></th>
+                {hsnEnabled && <th style={{ minWidth: 150, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>HSN / SAC <span className="bp-required">*</span></th>}
+                <th style={{ width: 90, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Qty <span className="bp-required">*</span></th>
+                <th style={{ width: 95, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>UCQ</th>
+                <th style={{ minWidth: 140, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Rate (₹) <span className="bp-required">*</span></th>
+                {taxesEnabled && <th style={{ width: 100, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>GST % <span className="bp-required">*</span></th>}
+                <th style={{ width: 140, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Taxable Value (₹)</th>
+                <th style={{ width: 70, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700 }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {lines.map((l, idx) => {
-                const gross = Number(l.qty || 0) * Number(l.rate || 0);
-                const disc = (gross * Number(l.discount_percent || 0)) / 100;
-                const lineTaxable = Math.max(0, gross - disc);
+                // Disc.% removed from the item row — Taxable Value is simply Qty × Rate.
+                // GST is calculated separately (in the Totals box), never folded in here.
+                const lineTaxable = Number(l.qty || 0) * Number(l.rate || 0);
 
                 return (
                   <tr key={idx}>
-                    <td style={{ fontWeight: 600, borderRight: '1px solid var(--bp-border)' }}>{idx + 1}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 600, borderRight: '1px solid var(--bp-border)' }}>{idx + 1}</td>
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
                       <textarea
                         className="bp-textarea"
-                        style={{ height: 38, resize: 'none', padding: '6px 8px', fontSize: 13, border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        style={{ height: 38, resize: 'none', padding: '6px 8px', fontSize: 13, border: '1px solid var(--bp-border)', borderRadius: 8, textAlign: 'center' }}
                         value={l.description}
                         onChange={(e) => setLine(idx, 'description', e.target.value)}
                         placeholder="Description of product / service"
@@ -691,52 +698,47 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                         <HsnSacSelect
                           value={l.hsn_sac}
                           onChange={(code) => setLine(idx, 'hsn_sac', code)}
-                          placeholder="Search HSN / SAC"
+                          placeholder="Enter HSN / SAC"
+                          numericOnly
                           required
                         />
                       </td>
                     )}
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
                       <input
-                        className="bp-input"
+                        className="bp-input bp-no-spinner"
                         type="number"
+                        min="1"
+                        max="9999999"
+                        step="1"
                         style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
                         required
                         value={l.qty}
-                        onChange={(e) => setLine(idx, 'qty', +e.target.value)}
+                        onChange={(e) => setLine(idx, 'qty', sanitizeWholeNumber(e.target.value, { maxDigits: 7, min: 1, max: 9999999 }))}
                       />
                     </td>
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
-                      <input
+                      <UnitSelect
                         className="bp-input"
-                        style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
                         value={l.unit}
-                        onChange={(e) => setLine(idx, 'unit', e.target.value)}
+                        onChange={(u) => setLine(idx, 'unit', u)}
                       />
                     </td>
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
                       <input
-                        className="bp-input"
+                        className="bp-input bp-no-spinner"
                         type="number"
-                        step="0.01"
-                        style={{ textAlign: 'right', border: '1px solid var(--bp-border)', borderRadius: 8 }}
+                        min="0"
+                        max="99999999"
+                        step="1"
+                        style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
                         required
                         value={l.rate}
-                        onChange={(e) => setLine(idx, 'rate', +e.target.value)}
-                      />
-                    </td>
-                    <td style={{ borderRight: '1px solid var(--bp-border)' }}>
-                      <input
-                        className="bp-input"
-                        type="number"
-                        style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
-                        required
-                        value={l.discount_percent}
-                        onChange={(e) => setLine(idx, 'discount_percent', +e.target.value)}
+                        onChange={(e) => setLine(idx, 'rate', sanitizeWholeNumber(e.target.value, { maxDigits: 8, min: 0, max: 99999999 }))}
                       />
                     </td>
                     {taxesEnabled && (
-                      <td style={{ borderRight: '1px solid var(--bp-border)' }}>
+                      <td style={{ borderRight: '1px solid var(--bp-border)', textAlign: 'center' }}>
                         <GstRateSelect
                           value={rcm ? 0 : l.gst_rate}
                           onChange={(rate) => setLine(idx, 'gst_rate', rate)}
@@ -744,7 +746,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                         />
                       </td>
                     )}
-                    <td style={{ fontWeight: 600, borderRight: '1px solid var(--bp-border)' }}>
+                    <td style={{ textAlign: 'center', fontWeight: 600, borderRight: '1px solid var(--bp-border)' }}>
                       {money(lineTaxable)}
                     </td>
                     <td style={{ textAlign: 'center' }}>

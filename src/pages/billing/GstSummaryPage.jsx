@@ -435,6 +435,7 @@ export default function GstSummaryPage({
               borderRadius: 14,
               border: '1.5px solid rgba(0,0,0,0.06)',
               boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
             }}
           >
             <div
@@ -488,15 +489,15 @@ export default function GstSummaryPage({
                   </th>
                   {/* Column headers */}
                   {GST_MATRIX_COLS.map(([colKey, colLabel]) => (
-                    <th key={colKey} style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: COL_COLORS[colKey], whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
+                    <th key={colKey} style={{ padding: '12px 16px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: COL_COLORS[colKey], whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}>
                         {COL_ICONS[colKey]} {colLabel}
                       </div>
                     </th>
                   ))}
                   {/* Total header */}
-                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: 13, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}>
                       {TOTAL_ICON} Total
                     </div>
                   </th>
@@ -522,11 +523,11 @@ export default function GstSummaryPage({
                         {rowLabel}
                       </td>
                       {GST_MATRIX_COLS.map(([colKey]) => (
-                        <td key={colKey} style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: isGross ? 800 : 500, color: isGross ? '#2563eb' : 'var(--bp-text)' }}>
+                        <td key={colKey} style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: isGross ? 800 : 500, color: isGross ? '#2563eb' : 'var(--bp-text)' }}>
                           {money(matrix[colKey]?.[rowKey] ?? 0)}
                         </td>
                       ))}
-                      <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: isGross ? 800 : 700, color: isGross ? '#2563eb' : 'var(--bp-navy)' }}>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: isGross ? 800 : 700, color: isGross ? '#2563eb' : 'var(--bp-navy)' }}>
                         {money(rowTotal(rowKey))}
                       </td>
                     </tr>

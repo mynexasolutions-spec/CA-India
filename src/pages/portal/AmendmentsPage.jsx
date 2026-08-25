@@ -146,12 +146,9 @@ export default function AmendmentsPage() {
         </div>
       </div>
 
-      {/* Main Grid Wrapper */}
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', width: '100%', alignItems: 'flex-start' }}>
-        
-        {/* Left Column (Filters, Table, Link) */}
-        <div style={{ flex: '1 1 70%', minWidth: 320, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          
+      {/* Main Content — full width; side informational panels removed per spec */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+
           {/* Filters Card */}
           <div className="bp-card" style={{ padding: 20 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -358,75 +355,11 @@ export default function AmendmentsPage() {
             </div>
           </div>
 
-          {/* Bottom Info Banner */}
+          {/* Bottom Info Banner — admin/compliance notice, kept per spec */}
           <div style={{ background: '#f0f7ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--bp-navy)', fontWeight: 600 }}>
             <span style={{ fontSize: 14 }}>ⓘ</span>
             <span>Only admin-approved amendments will be applied to the documents. Rejected requests can be handled through Amendment Request.</span>
           </div>
-
-        </div>
-
-        {/* Right Column (Side Panels) */}
-        <div style={{ flex: '1 1 25%', minWidth: 260, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          
-          {/* Card 1: About this Screen */}
-          <div className="bp-card" style={{ padding: 16, borderLeft: '4px solid #2563eb' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: 14, color: '#2563eb', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#2563eb', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>i</span> About this screen
-            </h4>
-            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.5, color: 'var(--bp-text)', fontWeight: 500 }}>
-              Create and manage amendments for documents. Track amendment status and proceed with admin approval for changes.
-            </p>
-          </div>
-
-          {/* Card 2: Status Guide */}
-          <div className="bp-card" style={{ padding: 16 }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--bp-navy)', fontWeight: 800 }}>
-              Status Guide
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#eff6ff', color: '#2563eb', fontWeight: 700, border: '1px solid #bfdbfe', width: 100, textAlign: 'center', padding: '2px 0', borderRadius: 999, fontSize: 11 }}>Available</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Amendment can be created</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#faf5ff', color: '#7c3aed', fontWeight: 700, border: '1px solid #e9d5ff', width: 100, textAlign: 'center', padding: '2px 0', borderRadius: 999, fontSize: 11 }}>Draft</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Amendment in progress</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#fff7ed', color: '#f97316', fontWeight: 700, border: '1px solid #ffedd5', width: 100, textAlign: 'center', padding: '2px 0', borderRadius: 999, fontSize: 11 }}>Pending Approval</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Waiting for admin approval</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700, border: '1px solid #dcfce7', width: 100, textAlign: 'center', padding: '2px 0', borderRadius: 999, fontSize: 11 }}>Approved</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Amendment approved</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span className="bp-badge" style={{ background: '#fef2f2', color: '#ef4444', fontWeight: 700, border: '1px solid #fee2e2', width: 100, textAlign: 'center', padding: '2px 0', borderRadius: 999, fontSize: 11 }}>Rejected</span>
-                <span style={{ fontSize: 11.5, color: 'var(--bp-muted)', fontWeight: 600 }}>Amendment rejected</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Key Points */}
-          <div className="bp-card" style={{ padding: 16 }}>
-            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--bp-navy)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="6" />
-                <circle cx="12" cy="12" r="2" />
-              </svg>
-              Key Points
-            </h4>
-            <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.6, color: 'var(--bp-text)', display: 'flex', flexDirection: 'column', gap: 8, fontWeight: 550 }}>
-              <li>Search by document no. or customer.</li>
-              <li>Filter by document type, date range, amendment status and edit request status.</li>
-              <li>Create, continue, view and track amendment requests.</li>
-              <li>Admin approval is required before changes are applied.</li>
-            </ul>
-          </div>
-
-        </div>
 
       </div>
     </div>

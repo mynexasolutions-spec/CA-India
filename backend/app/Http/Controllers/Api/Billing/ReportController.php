@@ -25,20 +25,22 @@ class ReportController extends Controller
 
     private function dateRange(Request $request): array
     {
+        // Billing launched at FY 2026-27 — no report may reach earlier than that,
+        // even an intentionally "open-ended" one like Outstanding/Pending Dues.
         $openEnded = in_array($request->input('type'), ['outstanding_report', 'outstanding', 'pending_dues', 'paid_invoices'], true)
             && ! $request->filled('from') && ! $request->filled('to');
 
         if ($openEnded) {
-            return ['1970-01-01', '2999-12-31'];
+            return [BillingPolicy::MIN_BILLING_FY_START_DATE, '2999-12-31'];
         }
 
         $now = now();
-        $y1 = $now->month >= 4 ? $now->year : $now->year - 1;
+        $y1 = max($now->month >= 4 ? $now->year : $now->year - 1, BillingPolicy::MIN_BILLING_FY_START_YEAR);
         $fyFrom = "{$y1}-04-01";
         $fyTo = ($y1 + 1).'-03-31';
 
         return [
-            $request->input('from', $fyFrom),
+            BillingPolicy::clampFromDate($request->input('from', $fyFrom)),
             $request->input('to', $fyTo),
         ];
     }
@@ -47,9 +49,7 @@ class ReportController extends Controller
     {
         $type = $request->input('type', 'gst_summary');
         $pid = $this->profileId($request);
-        $period = $type === 'gst_liability'
-            ? $this->liabilityPeriod($request)
-            : array_combine(['from', 'to'], $this->dateRange($request));
+        $period = array_combine(['from', 'to'], $this->dateRange($request));
         $data = $this->build($type, $pid, $period['from'], $period['to']);
 
         return response()->json([
@@ -65,9 +65,7 @@ class ReportController extends Controller
         $format = $request->input('format', 'csv');
         $type = $request->input('type', 'gst_summary');
         $pid = $this->profileId($request);
-        $period = $type === 'gst_liability'
-            ? $this->liabilityPeriod($request)
-            : array_combine(['from', 'to'], $this->dateRange($request));
+        $period = array_combine(['from', 'to'], $this->dateRange($request));
         $data = $this->build($type, $pid, $period['from'], $period['to']);
         $rows = $this->flattenRows($data);
 
@@ -97,74 +95,6 @@ class ReportController extends Controller
         $request->merge(['format' => 'csv']);
 
         return $this->export($request);
-    }
-
-    /** @return array{period_type: string, financial_year: string, period_label: string, from: string, to: string} */
-    private function liabilityPeriod(Request $request): array
-    {
-        $data = $request->validate([
-            'period_type' => 'required|in:month,quarter,financial_year',
-            'financial_year' => ['required', 'regex:/^\d{4}-\d{2}$/'],
-            'month' => ['nullable', 'required_if:period_type,month', 'regex:/^\d{4}-\d{2}$/'],
-            'quarter' => 'nullable|required_if:period_type,quarter|in:Q1,Q2,Q3,Q4',
-        ]);
-
-        $financialYear = $data['financial_year'];
-        $startYear = (int) substr($financialYear, 0, 4);
-        $expectedFinancialYear = $startYear.'-'.substr((string) ($startYear + 1), -2);
-        abort_unless($financialYear === $expectedFinancialYear, 422, 'Invalid financial year.');
-
-        if ($data['period_type'] === 'month') {
-            $month = $data['month'];
-            $firstMonth = $startYear.'-04';
-            $lastMonth = ($startYear + 1).'-03';
-            $monthStart = \DateTimeImmutable::createFromFormat('!Y-m-d', $month.'-01');
-            abort_unless(
-                $monthStart && $monthStart->format('Y-m') === $month,
-                422,
-                'Invalid month.'
-            );
-            abort_unless(
-                $month >= $firstMonth && $month <= $lastMonth,
-                422,
-                'The selected month is outside the financial year.'
-            );
-
-            return [
-                'period_type' => 'month',
-                'financial_year' => $financialYear,
-                'period_label' => $monthStart->format('F Y'),
-                'from' => $monthStart->format('Y-m-d'),
-                'to' => $monthStart->modify('last day of this month')->format('Y-m-d'),
-            ];
-        }
-
-        if ($data['period_type'] === 'quarter') {
-            $quarter = $data['quarter'];
-            $ranges = [
-                'Q1' => [$startYear.'-04-01', $startYear.'-06-30', 'April–June'],
-                'Q2' => [$startYear.'-07-01', $startYear.'-09-30', 'July–September'],
-                'Q3' => [$startYear.'-10-01', $startYear.'-12-31', 'October–December'],
-                'Q4' => [($startYear + 1).'-01-01', ($startYear + 1).'-03-31', 'January–March'],
-            ];
-            [$from, $to, $months] = $ranges[$quarter];
-
-            return [
-                'period_type' => 'quarter',
-                'financial_year' => $financialYear,
-                'period_label' => "{$quarter} {$financialYear} ({$months})",
-                'from' => $from,
-                'to' => $to,
-            ];
-        }
-
-        return [
-            'period_type' => 'financial_year',
-            'financial_year' => $financialYear,
-            'period_label' => 'FY '.$financialYear,
-            'from' => $startYear.'-04-01',
-            'to' => ($startYear + 1).'-03-31',
-        ];
     }
 
     private function build(string $type, int $pid, string $from, string $to)
@@ -202,7 +132,7 @@ class ReportController extends Controller
                 ->select('customer_id', DB::raw('COUNT(*) as invoices'), DB::raw('SUM(taxable_amount) as taxable'), DB::raw('SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total'))
                 ->groupBy('customer_id')->with('customer:id,name')->get(),
             'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
-                ->selectRaw('DATE_FORMAT(document_date, "%Y-%m") as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
+                ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
                 ->groupBy('month')->orderBy('month')->get(),
             'outstanding', 'pending_dues', 'outstanding_report' => (clone $base)
                 ->whereIn('type', ['tax_invoice', 'bill_of_supply'])

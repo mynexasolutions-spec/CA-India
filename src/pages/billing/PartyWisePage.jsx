@@ -384,11 +384,11 @@ export default function PartyWisePage({
                   <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Documents <InfoIcon /></span>
                   </th>
-                  <th style={{ padding: '11px 16px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Taxable Value (₹)</th>
-                  <th style={{ padding: '11px 16px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, float: 'right' }}>Total GST (₹) <InfoIcon /></span>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Taxable Value (₹)</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>Total GST (₹) <InfoIcon /></span>
                   </th>
-                  <th style={{ padding: '11px 16px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Total Amount (₹)</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Total Amount (₹)</th>
                   <th style={{ padding: '11px 20px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>View Details</th>
                 </tr>
               </thead>
@@ -417,9 +417,9 @@ export default function PartyWisePage({
                             </button>
                           ) : count || '—'}
                         </td>
-                        <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13 }}>{fmt(taxable)}</td>
-                        <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13 }}>{fmt(gst)}</td>
-                        <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{fmt(total)}</td>
+                        <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13 }}>{fmt(taxable)}</td>
+                        <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13 }}>{fmt(gst)}</td>
+                        <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 600 }}>{fmt(total)}</td>
                         <td style={{ padding: '13px 20px', textAlign: 'center' }}>
                           <button type="button" onClick={() => openParty(r)}
                             style={{ height: 32, padding: '0 14px', borderRadius: 8, border: '1.5px solid #2563eb', background: '#fff', color: '#2563eb', fontWeight: 600, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5, cursor: canOpen ? 'pointer' : 'default', opacity: canOpen ? 1 : 0.4 }}
@@ -436,9 +436,9 @@ export default function PartyWisePage({
                   <tr style={{ borderTop: '2px solid #bfdbfe', background: '#f0f9ff' }}>
                     <td colSpan={2} style={{ padding: '13px 20px', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>Total</td>
                     <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{totDocs}</td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{fmt(totTaxable)}</td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{fmt(totGst)}</td>
-                    <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{fmt(totTotal)}</td>
+                    <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{fmt(totTaxable)}</td>
+                    <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{fmt(totGst)}</td>
+                    <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{fmt(totTotal)}</td>
                     <td style={{ padding: '13px 20px', textAlign: 'center', fontSize: 13, color: '#94a3b8' }}>—</td>
                   </tr>
                 )}

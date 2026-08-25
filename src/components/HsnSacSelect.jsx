@@ -15,6 +15,9 @@ export default function HsnSacSelect({
   className = 'bp-input',
   required = false,
   name,
+  // Invoice Item Table spec: the per-row HSN/SAC field is manual numeric entry only,
+  // max 8 digits, extra digits rejected — not a free-text description search.
+  numericOnly = false,
 }) {
   const [query, setQuery] = useState(value || '');
   const [options, setOptions] = useState([]);
@@ -93,8 +96,14 @@ export default function HsnSacSelect({
         aria-required={required || undefined}
         placeholder={placeholder}
         autoComplete="off"
+        inputMode={numericOnly ? 'numeric' : undefined}
+        maxLength={numericOnly ? 8 : undefined}
         onFocus={() => setOpen(true)}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onChange={(e) => {
+          const raw = numericOnly ? e.target.value.replace(/[^0-9]/g, '').slice(0, 8) : e.target.value;
+          setQuery(raw);
+          setOpen(true);
+        }}
         onKeyDown={onKeyDown}
       />
       {open && (

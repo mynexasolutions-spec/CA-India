@@ -2646,27 +2646,6 @@ select.bp-filter-control {
   }
 }
 
-/* Parties: Key Highlights strip, 4-up on desktop, collapsing only once it can't fit. */
-@media (max-width: 700px) {
-  .bp-parties-highlights {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
-
-@media (max-width: 480px) {
-  .bp-parties-highlights {
-    grid-template-columns: 1fr !important;
-  }
-}
-
-/* Parties: bottom Key Highlights / GST Status Guide / Actions Available row —
-   stacks once the 3fr/1fr/1fr split can no longer fit side by side. */
-@media (max-width: 900px) {
-  .bp-parties-columns {
-    grid-template-columns: 1fr !important;
-  }
-}
-
 /* Settings: underline tabs (jump-to-section shortcuts, not a show/hide switcher). */
 .bp-uline-tabs {
   display: flex;
@@ -2793,10 +2772,23 @@ select.bp-filter-control {
 }
 
 .bp-invoice-lines-table td textarea.bp-textarea,
-.bp-invoice-lines-table td input.bp-input {
+.bp-invoice-lines-table td input.bp-input,
+.bp-invoice-lines-table td select.bp-input {
   width: 100%;
   box-sizing: border-box;
   margin: 0;
+  text-align: center;
+}
+
+/* Invoice Item Table spec — Qty/Rate are manual whole-number entry with no spinner arrows. */
+.bp-no-spinner::-webkit-outer-spin-button,
+.bp-no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bp-no-spinner {
+  -moz-appearance: textfield;
 }
 
 .bp-global-hsn-search input.bp-input {

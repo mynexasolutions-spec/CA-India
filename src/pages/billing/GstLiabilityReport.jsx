@@ -188,7 +188,12 @@ export default function GstLiabilityReport() {
     const qs = new URLSearchParams({ type: 'gst_liability', from, to });
     api(`/billing/reports?${qs}`)
       .then(setReport)
-      .catch((e) => setErr(e.message || 'Failed to load GST liability report.'))
+      .catch((e) => {
+        // Don't leave stale figures from a previous period on screen once the fetch
+        // for the newly selected period has failed — cards/table/chart fall back to 0.
+        setReport(null);
+        setErr(e.message || 'Failed to load GST liability report.');
+      })
       .finally(() => setLoading(false));
   }, [from, to]);
 
@@ -248,15 +253,20 @@ export default function GstLiabilityReport() {
   }
 
   const data = report?.data || {};
+  // Single source of truth: every figure below reads straight from the backend's one
+  // GstLiabilityService::calculate() result, so cards, table and chart can never disagree.
   const outputGst  = Number(data.total_output_gst   ?? 0);
   const eligibleItc= Number(data.total_eligible_itc ?? 0);
-  const netLiability = Number(data.net_gst_liability ?? outputGst - eligibleItc ?? 0);
-  const gstPayable   = Math.max(0, netLiability);
+  const netLiability = Number(data.net_gst_liability ?? (outputGst - eligibleItc));
+  const gstPayable   = Number(data.gst_payable ?? Math.max(0, netLiability));
 
   const cgst  = Number(data.cgst  ?? 0);
   const sgst  = Number(data.sgst  ?? 0);
   const igst  = Number(data.igst  ?? 0);
-  const totalOutput = cgst + sgst + igst || outputGst;
+  // Same source as the "Total Output GST" KPI card (data.total_output_gst) — the backend
+  // derives it from these same cgst/sgst/igst figures, so the breakdown table's total and
+  // the card can never disagree.
+  const totalOutput = outputGst;
   const pct = (v) => totalOutput > 0 ? `${((v / totalOutput) * 100).toFixed(2)}%` : '0.00%';
 
   return (
@@ -384,12 +394,12 @@ export default function GstLiabilityReport() {
           {/* ── KPI Cards ──────────────────────────────────── */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
             {/* Total Output GST */}
-            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#eff6ff,#dbeafe)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #2563eb55' }}>
+            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#eff6ff,#dbeafe)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #2563eb55', marginBottom: 12 }}>
                 <OutputGstIcon />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#1e293b', fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 12, color: '#1e293b', fontWeight: 700, marginBottom: 4 }}>
                   Total Output GST <span style={{ color: '#94a3b8', display: 'inline-flex', cursor: 'pointer' }}><InfoIcon /></span>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--bp-navy)', letterSpacing: '-0.5px' }}>{fmt(outputGst)}</div>
@@ -398,12 +408,12 @@ export default function GstLiabilityReport() {
             </div>
 
             {/* Total Eligible ITC */}
-            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#f0fdf4,#dcfce7)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #16a34a55' }}>
+            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#f0fdf4,#dcfce7)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #16a34a55', marginBottom: 12 }}>
                 <ItcIcon />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#16a34a', fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 12, color: '#16a34a', fontWeight: 700, marginBottom: 4 }}>
                   Total Eligible ITC <span style={{ color: '#94a3b8', display: 'inline-flex', cursor: 'pointer' }}><InfoIcon /></span>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a', letterSpacing: '-0.5px' }}>{fmt(eligibleItc)}</div>
@@ -412,12 +422,12 @@ export default function GstLiabilityReport() {
             </div>
 
             {/* Net GST Liability */}
-            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#fff7ed,#fed7aa)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #ea580c55' }}>
+            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#fff7ed,#fed7aa)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #ea580c55', marginBottom: 12 }}>
                 <NetLiabilityIcon />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#ea580c', fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 12, color: '#ea580c', fontWeight: 700, marginBottom: 4 }}>
                   Net GST Liability <span style={{ color: '#94a3b8', display: 'inline-flex', cursor: 'pointer' }}><InfoIcon /></span>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#ea580c', letterSpacing: '-0.5px' }}>{fmt(netLiability)}</div>
@@ -426,12 +436,12 @@ export default function GstLiabilityReport() {
             </div>
 
             {/* GST Payable */}
-            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#faf5ff,#e9d5ff)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #7c3aed55' }}>
+            <div style={{ padding: '16px 18px', background: 'linear-gradient(145deg,#faf5ff,#e9d5ff)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: 48, height: 48, borderRadius: 12, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #7c3aed55', marginBottom: 12 }}>
                 <PayableIcon />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#7c3aed', fontWeight: 700, marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 12, color: '#7c3aed', fontWeight: 700, marginBottom: 4 }}>
                   GST Payable <span style={{ color: '#94a3b8', display: 'inline-flex', cursor: 'pointer' }}><InfoIcon /></span>
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: '#7c3aed', letterSpacing: '-0.5px' }}>{fmt(gstPayable)}</div>
@@ -453,8 +463,8 @@ export default function GstLiabilityReport() {
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
                     <th style={{ padding: '10px 18px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b', borderBottom: '1px solid var(--bp-border)' }}>GST Component</th>
-                    <th style={{ padding: '10px 18px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#64748b', borderBottom: '1px solid var(--bp-border)' }}>Amount (₹)</th>
-                    <th style={{ padding: '10px 18px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#64748b', borderBottom: '1px solid var(--bp-border)' }}>% to Total</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b', borderBottom: '1px solid var(--bp-border)' }}>Amount (₹)</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b', borderBottom: '1px solid var(--bp-border)' }}>% to Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,15 +475,15 @@ export default function GstLiabilityReport() {
                   ].map(({ label, val }, i) => (
                     <tr key={label} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa', borderBottom: '1px solid var(--bp-border)' }}>
                       <td style={{ padding: '12px 18px', fontSize: 13, color: 'var(--bp-navy)', fontWeight: 500 }}>{label}</td>
-                      <td style={{ padding: '12px 18px', textAlign: 'right', fontSize: 13 }}>{val.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td style={{ padding: '12px 18px', textAlign: 'right', fontSize: 13 }}>{pct(val)}</td>
+                      <td style={{ padding: '12px 18px', textAlign: 'center', fontSize: 13 }}>{val.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td style={{ padding: '12px 18px', textAlign: 'center', fontSize: 13 }}>{pct(val)}</td>
                     </tr>
                   ))}
                   {/* Total row */}
                   <tr style={{ background: '#f0f9ff', borderTop: '2px solid #bfdbfe' }}>
                     <td style={{ padding: '13px 18px', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>TOTAL OUTPUT GST</td>
-                    <td style={{ padding: '13px 18px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{totalOutput.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style={{ padding: '13px 18px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>100.00%</td>
+                    <td style={{ padding: '13px 18px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>{totalOutput.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td style={{ padding: '13px 18px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb' }}>100.00%</td>
                   </tr>
                 </tbody>
               </table>

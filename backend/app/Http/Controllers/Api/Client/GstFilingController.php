@@ -10,6 +10,16 @@ use Carbon\Carbon;
 
 class GstFilingController extends Controller
 {
+    /** Start/end date bounds (YYYY-MM-DD) for a "YYYY-MM" filing period.
+     * whereBetween on real date bounds works identically on MySQL and SQLite,
+     * unlike a MySQL-only DATE_FORMAT() comparison. */
+    private static function periodBounds(string $period): array
+    {
+        $start = Carbon::createFromFormat('Y-m-d', $period.'-01')->startOfMonth();
+
+        return [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()];
+    }
+
     public function preview(Request $request)
     {
         $request->validate([
@@ -20,14 +30,15 @@ class GstFilingController extends Controller
 
         $clientProfileId = $request->user()->clientProfile->id;
         $period = $request->filing_period;
-        
+        [$periodStart, $periodEnd] = self::periodBounds($period);
+
         // Allowed types for GST calculation
         $types = ['tax_invoice', 'credit_note', 'debit_note'];
 
         $bills = CommercialDocument::where('client_profile_id', $clientProfileId)
             ->whereIn('type', $types)
             ->whereIn('status', ['issued', 'paid'])
-            ->whereRaw("DATE_FORMAT(document_date, '%Y-%m') = ?", [$period])
+            ->whereBetween('document_date', [$periodStart, $periodEnd])
             ->get();
 
         $taxableValue = 0;
@@ -81,11 +92,12 @@ class GstFilingController extends Controller
         // Fetch bills again
         $period = $request->filing_period;
         $types = ['tax_invoice', 'credit_note', 'debit_note'];
-        
+        [$periodStart, $periodEnd] = self::periodBounds($period);
+
         $bills = CommercialDocument::where('client_profile_id', $clientProfileId)
             ->whereIn('type', $types)
             ->whereIn('status', ['issued', 'paid'])
-            ->whereRaw("DATE_FORMAT(document_date, '%Y-%m') = ?", [$period])
+            ->whereBetween('document_date', [$periodStart, $periodEnd])
             ->get();
 
 
