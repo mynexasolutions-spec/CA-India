@@ -358,7 +358,10 @@ function ReportExportBar({ type, from, to, setFrom, setTo, onRun }) {
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `admin-${type}.${format === 'pdf' ? 'pdf' : 'csv'}`;
+    // Export is legacy SpreadsheetML XML, not real OOXML — must be named .xls, not
+    // .xlsx, or Excel refuses to open it ("file format or extension is not valid").
+    const ext = format === 'pdf' ? 'pdf' : format === 'xlsx' ? 'xls' : 'csv';
+    a.download = `admin-${type}.${ext}`;
     a.click();
   };
 
@@ -374,7 +377,7 @@ function ReportExportBar({ type, from, to, setFrom, setTo, onRun }) {
           <input className="bp-input" style={{ maxWidth: 160 }} type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </label>
         <button type="button" className="bp-btn bp-btn-primary" onClick={onRun}>Apply</button>
-        <button type="button" className="bp-btn bp-btn-green" onClick={() => download('csv')}>Export Excel</button>
+        <button type="button" className="bp-btn bp-btn-green" onClick={() => download('xlsx')}>Export Excel</button>
         <button type="button" className="bp-btn bp-btn-danger" onClick={() => download('pdf')}>Export PDF</button>
       </div>
     </div>

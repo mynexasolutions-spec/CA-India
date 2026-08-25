@@ -183,9 +183,30 @@ class BillingMonitorController extends Controller
             return response()->json(['type' => $type, 'from' => $from, 'to' => $to, 'data' => $data]);
         }
 
-        $rows = is_array($data) && isset($data['taxable']) ? [$data] : (method_exists($data, 'toArray') ? $data->toArray() : (array) $data);
+        // gst_summary's on-screen/JSON shape carries a nested 'matrix' (tax_invoice/
+        // bill_of_supply/debit_note/credit_note buckets) alongside flat top-level
+        // taxable/cgst/sgst/igst/total keys copied from tax_invoice only — fine for the
+        // dashboard widget that reads those directly, but exporting that shape as-is
+        // dumped the raw nested matrix as a single "matrix" column full of JSON. Flatten
+        // it into the same Particulars/Tax Invoices/Bill of Supply/... rows the client
+        // portal's GST Summary export already uses, for every export format.
+        if ($type === 'gst_summary' && is_array($data) && isset($data['matrix'])) {
+            $rows = $this->flattenGstMatrixFirm($data['matrix']);
+        } else {
+            $rows = is_array($data) && isset($data['taxable']) ? [$data] : (method_exists($data, 'toArray') ? $data->toArray() : (array) $data);
+        }
         if ($format === 'pdf') {
-            return Pdf::loadView('pdf.report', ['title' => $type, 'from' => $from, 'to' => $to, 'rows' => $rows])->download("{$type}.pdf");
+            return Pdf::loadView('pdf.report', [
+                'title' => strtoupper(str_replace('_', ' ', $type)),
+                'periodText' => $from.' to '.$to,
+                'rows' => $rows,
+                'meta' => [], // firm-wide report, spans every client — no single business header
+                'moneyHeaders' => $this->computeMoneyHeaders($rows),
+            ])->download("{$type}.pdf");
+        }
+
+        if ($format === 'xlsx') {
+            return $this->xlsxDownload($type, $rows);
         }
 
         return response()->streamDownload(function () use ($rows) {
@@ -199,6 +220,89 @@ class BillingMonitorController extends Controller
             }
             fclose($out);
         }, "{$type}.csv", ['Content-Type' => 'text/csv']);
+    }
+
+    /** Real Excel-openable export (SpreadsheetML) for the Admin Billing Reports "Export
+     *  Excel" button — was previously mislabeled and downloading plain CSV instead.
+     *  Same styling approach as the client portal's ReportController::xlsxDownload(),
+     *  minus the per-client business header since this report spans every client. */
+    private function xlsxDownload(string $type, array $rows)
+    {
+        // $rows[0] can be a stdClass (raw DB::table() query rows, e.g. hsn_summary) rather
+        // than an array — cast before array_keys() or it throws a TypeError.
+        $headers = array_keys((array) ($rows[0] ?? ['value' => '']));
+        $colCount = max(count($headers), 1);
+        $moneyHeaders = $this->computeMoneyHeaders($rows);
+        $esc = fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES | ENT_XML1);
+        $title = strtoupper(str_replace('_', ' ', $type));
+
+        $xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
+        $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+        $xml .= '<Styles>';
+        $xml .= '<Style ss:ID="title"><Font ss:Bold="1" ss:Size="13" ss:Color="#FFFFFF"/><Interior ss:Color="#1E40AF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="colHead"><Font ss:Bold="1" ss:Size="10" ss:Color="#FFFFFF"/><Interior ss:Color="#1E40AF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="cell"><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="cellLabel"><Font ss:Bold="1"/><Alignment ss:Horizontal="Left"/></Style>';
+        $xml .= '<Style ss:ID="cellMoney"><Alignment ss:Horizontal="Center"/><NumberFormat ss:Format="#,##0.00"/></Style>';
+        $xml .= '</Styles>';
+        $xml .= '<Worksheet ss:Name="Report"><Table>';
+
+        $mergeAttr = $colCount > 1 ? ' ss:MergeAcross="'.($colCount - 1).'"' : '';
+        $xml .= '<Row><Cell'.$mergeAttr.' ss:StyleID="title"><Data ss:Type="String">'.$esc($title).'</Data></Cell></Row>';
+        $xml .= '<Row></Row>';
+
+        $xml .= '<Row>';
+        foreach ($headers as $h) {
+            $label = $h.(in_array($h, $moneyHeaders, true) ? ' (₹)' : '');
+            $xml .= '<Cell ss:StyleID="colHead"><Data ss:Type="String">'.$esc($label).'</Data></Cell>';
+        }
+        $xml .= '</Row>';
+
+        foreach ($rows as $row) {
+            $arr = (array) $row;
+            $xml .= '<Row>';
+            foreach ($headers as $ci => $h) {
+                $v = $arr[$h] ?? '';
+                $isMoney = in_array($h, $moneyHeaders, true) && is_numeric($v);
+                $style = $ci === 0 ? 'cellLabel' : ($isMoney ? 'cellMoney' : 'cell');
+                $typeAttr = is_numeric($v) ? 'Number' : 'String';
+                $xml .= '<Cell ss:StyleID="'.$style.'"><Data ss:Type="'.$typeAttr.'">'.$esc(is_scalar($v) ? $v : json_encode($v)).'</Data></Cell>';
+            }
+            $xml .= '</Row>';
+        }
+        $xml .= '</Table></Worksheet></Workbook>';
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/vnd.ms-excel',
+            'Content-Disposition' => "attachment; filename=\"{$type}.xls\"",
+        ]);
+    }
+
+    /** Which columns hold money vs. plain labels/codes/counts — name-based, since codes
+     *  like HSN/SAC are numeric strings too. Same heuristic as the client portal's
+     *  ReportController::computeMoneyHeaders(). */
+    private function computeMoneyHeaders(array $rows): array
+    {
+        if (! count($rows)) {
+            return [];
+        }
+        $nonMoneyExact = ['invoices', 'documents', 'count', 'id'];
+        $nonMoneyPattern = '/code|hsn|sac|qty|quantity|uqc|rate|no\.|number|\bname\b|particular|\btype\b|description|party|customer|date|sr\.|percent|%/i';
+        $out = [];
+        foreach ((array) $rows[0] as $h => $v) {
+            if (! is_numeric($v)) {
+                continue;
+            }
+            if (in_array(strtolower(trim((string) $h)), $nonMoneyExact, true)) {
+                continue;
+            }
+            if (preg_match($nonMoneyPattern, (string) $h)) {
+                continue;
+            }
+            $out[] = $h;
+        }
+
+        return $out;
     }
 
     public function setClientActive(Request $request, int $id)
@@ -227,6 +331,36 @@ class BillingMonitorController extends Controller
     }
 
     /** Firm-wide GST matrix — always 4 columns with actual aggregates. */
+    /** Same row shape as the client portal's ReportController::flattenGstMatrix() —
+     *  used only for exports (CSV/PDF/Excel), not the on-screen dashboard widget. */
+    private function flattenGstMatrixFirm(array $matrix): array
+    {
+        $rows = [
+            'taxable_value' => 'Total Taxable Value',
+            'cgst' => 'CGST Amount',
+            'sgst' => 'SGST/UTGST Amount',
+            'igst' => 'IGST Amount',
+            'total_invoice_value' => 'Total Gross Value',
+        ];
+        $out = [];
+        foreach ($rows as $key => $label) {
+            $taxInvoices = (float) ($matrix['tax_invoice'][$key] ?? 0);
+            $billOfSupply = (float) ($matrix['bill_of_supply'][$key] ?? 0);
+            $debitNotes = (float) ($matrix['debit_note'][$key] ?? 0);
+            $creditNotes = (float) ($matrix['credit_note'][$key] ?? 0);
+            $out[] = [
+                'Particulars' => $label,
+                'Tax Invoices' => $taxInvoices,
+                'Bill of Supply' => $billOfSupply,
+                'Debit Notes' => $debitNotes,
+                'Credit Notes' => $creditNotes,
+                'Total' => $taxInvoices + $billOfSupply + $debitNotes + $creditNotes,
+            ];
+        }
+
+        return $out;
+    }
+
     private function gstSummaryMatrixFirm($base): array
     {
         $bucket = function (string $type) use ($base): array {

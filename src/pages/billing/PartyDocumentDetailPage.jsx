@@ -173,7 +173,9 @@ export default function PartyDocumentDetailPage() {
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `party_docs_${partyName}.${format === 'xlsx' ? 'xlsx' : 'pdf'}`;
+    // Export is legacy SpreadsheetML XML, not real OOXML — must be named .xls, not
+    // .xlsx, or Excel refuses to open it ("file format or extension is not valid").
+    a.download = `party_docs_${partyName}.${format === 'xlsx' ? 'xls' : 'pdf'}`;
     a.click();
   };
 

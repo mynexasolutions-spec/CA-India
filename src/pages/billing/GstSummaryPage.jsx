@@ -246,7 +246,9 @@ export default function GstSummaryPage({
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `gst_summary_${from}_to_${to}.${format === 'xlsx' ? 'xlsx' : 'pdf'}`;
+    // Export is legacy SpreadsheetML XML, not real OOXML — must be named .xls, not
+    // .xlsx, or Excel refuses to open it ("file format or extension is not valid").
+    a.download = `gst_summary_${from}_to_${to}.${format === 'xlsx' ? 'xls' : 'pdf'}`;
     a.click();
   };
 
