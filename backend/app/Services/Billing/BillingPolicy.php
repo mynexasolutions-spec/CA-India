@@ -168,6 +168,21 @@ class BillingPolicy
         return $date->format('Y-m');
     }
 
+    /**
+     * GSTR-1's effective filing cycle for this client. Under QRMP, GSTR-1 can be filed
+     * monthly (via IFF) even when GSTR-3B (gst_filing_frequency) stays quarterly, so
+     * GSTR-1's cycle is tracked independently (gstr1_filing_frequency) and falls back to
+     * GSTR-3B's cycle when not explicitly set — same resolution as
+     * GstReturnController::compliance()'s dashboard widget, reused here for the GST
+     * Filing Confirmation workflow so both stay in sync.
+     */
+    public static function gstr1Frequency(ClientProfile $profile): string
+    {
+        $gstr3b = $profile->gst_filing_frequency ?? 'monthly';
+
+        return $profile->gstr1_filing_frequency ?? $gstr3b;
+    }
+
     public static function isPeriodFiled(ClientProfile $profile, ?string $documentDate): bool
     {
         if (!$documentDate || !$profile->has_gst) {

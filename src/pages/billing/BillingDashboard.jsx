@@ -113,7 +113,12 @@ function buildActions(d, { onConvert, onDuplicate, onSend, onMarkPaid, onCancel 
           : null;
 
   const view = { label: `View ${docTypeLabel(d.type)}`, to: billingDocPath(d.type, d.id) };
-  const downloadPdf = { label: 'Download PDF', onClick: () => api(`/billing/documents/${d.id}/pdf`).then((r) => window.open(r.url, '_blank')) };
+  const downloadPdf = {
+    label: 'Download PDF',
+    onClick: () => api(`/billing/documents/${d.id}/pdf`)
+      .then((r) => window.open(r.url, '_blank'))
+      .catch((e) => alert(e.message || 'Failed to download PDF.')),
+  };
   const send = { label: 'Send', onClick: () => onSend(d) };
   const duplicate = { label: 'Duplicate', onClick: () => onDuplicate(d) };
   const markPaid = ['issued', 'partial'].includes(d.status) ? { label: 'Mark as Paid', onClick: () => onMarkPaid(d) } : null;
@@ -153,6 +158,7 @@ export default function BillingDashboard() {
   const [status, setStatus] = useState('');
   const [docType, setDocType] = useState('');
   const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelBusy, setCancelBusy] = useState(false);
 
@@ -199,30 +205,52 @@ export default function BillingDashboard() {
   const applyFilters = () => { setPage(1); load(1); };
 
   const doConvert = async (d) => {
-    const inv = await api(`/billing/documents/${d.id}/convert`, { method: 'POST', body: {} });
-    window.location.href = `/portal/billing/invoices/${inv.id}`;
+    setMsg(''); setErr('');
+    try {
+      const inv = await api(`/billing/documents/${d.id}/convert`, { method: 'POST', body: {} });
+      window.location.href = `/portal/billing/invoices/${inv.id}`;
+    } catch (e) {
+      setErr(e.message || 'Failed to convert to Tax Invoice.');
+    }
   };
   const doDuplicate = async (d) => {
-    const copy = await api(`/billing/documents/${d.id}/duplicate`, { method: 'POST', body: {} });
-    window.location.href = billingDocEditPath(copy.type, copy.id) || billingDocPath(copy.type, copy.id);
+    setMsg(''); setErr('');
+    try {
+      const copy = await api(`/billing/documents/${d.id}/duplicate`, { method: 'POST', body: {} });
+      window.location.href = billingDocEditPath(copy.type, copy.id) || billingDocPath(copy.type, copy.id);
+    } catch (e) {
+      setErr(e.message || 'Failed to duplicate document.');
+    }
   };
   const doSend = async (d) => {
-    const r = await api(`/billing/documents/${d.id}/email`, { method: 'POST', body: {} });
-    setMsg(r.message || 'Sent');
+    setMsg(''); setErr('');
+    try {
+      const r = await api(`/billing/documents/${d.id}/email`, { method: 'POST', body: {} });
+      setMsg(r.message || 'Email sent successfully.');
+    } catch (e) {
+      setErr(e.message || 'Failed to send email.');
+    }
   };
   const doMarkPaid = async (d) => {
-    await api(`/billing/documents/${d.id}/payment-status`, { method: 'POST', body: { status: 'paid' } });
-    load();
+    setMsg(''); setErr('');
+    try {
+      await api(`/billing/documents/${d.id}/payment-status`, { method: 'POST', body: { status: 'paid' } });
+      setMsg('Marked as Paid.');
+      load();
+    } catch (e) {
+      setErr(e.message || 'Failed to mark as paid.');
+    }
   };
   const confirmCancel = async (reason) => {
     setCancelBusy(true);
+    setMsg(''); setErr('');
     try {
       await api(`/billing/documents/${cancelTarget.id}/cancel`, { method: 'POST', body: { reason } });
       setCancelTarget(null);
       setMsg(`${docTypeLabel(cancelTarget.type)} ${cancelTarget.number} cancelled.`);
       load();
     } catch (e) {
-      setMsg(e.message);
+      setErr(e.message || 'Failed to cancel document.');
     } finally {
       setCancelBusy(false);
     }
@@ -300,6 +328,7 @@ export default function BillingDashboard() {
           onClear={applyFilters}
         />
         {msg && <p style={{ margin: '0 0 10px', color: 'var(--bp-green)', fontSize: 13 }}>{msg}</p>}
+        {err && <p style={{ margin: '0 0 10px', color: 'var(--bp-red)', fontSize: 13 }}>{err}</p>}
         {loading ? <LoadingBlock /> : (
           <div className="bp-table-wrapper" style={{ overflowX: 'auto' }}>
             <table className="bp-table bp-docs-table bp-doc-table">

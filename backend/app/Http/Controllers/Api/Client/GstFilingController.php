@@ -3,33 +3,72 @@
 namespace App\Http\Controllers\Api\Client;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClientProfile;
 use App\Models\CommercialDocument;
 use App\Models\GstFilingRequest;
+use App\Services\Billing\BillingPolicy;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
+/**
+ * GST Filing Confirmation — GSTR-1 only (spec §7: "Under Return Type, only GSTR-1
+ * should be available. Remove other options and enforce the restriction at backend
+ * level."). GSTR-3B has no client-facing confirmation workflow at all.
+ *
+ * QRMP-aware (spec §5): the accepted filing_period FORMAT depends on the client's
+ * resolved GSTR-1 cycle (BillingPolicy::gstr1Frequency()) — "YYYY-MM" for a monthly
+ * filer, "YYYY-Qn" for a client on quarterly GSTR-1. A client can't submit the wrong
+ * shape for their own profile; this is enforced here, not just hidden in the UI.
+ */
 class GstFilingController extends Controller
 {
-    /** Start/end date bounds (YYYY-MM-DD) for a "YYYY-MM" filing period.
-     * whereBetween on real date bounds works identically on MySQL and SQLite,
-     * unlike a MySQL-only DATE_FORMAT() comparison. */
+    /** Start/end date bounds (YYYY-MM-DD) for a filing period — either a "YYYY-MM"
+     * month or a "YYYY-Qn" Indian-FY quarter (Q1 = Apr-Jun … Q4 = Jan-Mar).
+     * whereBetween on real date bounds works identically on MySQL and SQLite, unlike a
+     * MySQL-only DATE_FORMAT() comparison. */
     private static function periodBounds(string $period): array
     {
+        if (preg_match('/^(\d{4})-Q([1-4])$/', $period, $m)) {
+            $year = (int) $m[1];
+            $ranges = [
+                1 => [$year.'-04-01', $year.'-06-30'],
+                2 => [$year.'-07-01', $year.'-09-30'],
+                3 => [$year.'-10-01', $year.'-12-31'],
+                4 => [($year + 1).'-01-01', ($year + 1).'-03-31'],
+            ];
+
+            return $ranges[(int) $m[2]];
+        }
+
         $start = Carbon::createFromFormat('Y-m-d', $period.'-01')->startOfMonth();
 
         return [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()];
+    }
+
+    /** Rejects a filing_period whose shape doesn't match this client's actual GSTR-1
+     * cycle — a quarterly filer can't submit a bare month and vice versa. */
+    private static function assertPeriodMatchesFrequency(ClientProfile $profile, string $period): void
+    {
+        $quarterly = BillingPolicy::gstr1Frequency($profile) === 'quarterly';
+        $isQuarterFormat = (bool) preg_match('/^\d{4}-Q[1-4]$/', $period);
+        $isMonthFormat = (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period);
+
+        abort_if($quarterly && ! $isQuarterFormat, 422, 'Your GSTR-1 is filed quarterly (QRMP) — select a quarter, not a month.');
+        abort_if(! $quarterly && ! $isMonthFormat, 422, 'Your GSTR-1 is filed monthly — select a month, not a quarter.');
     }
 
     public function preview(Request $request)
     {
         $request->validate([
             'financial_year' => 'required|string',
-            'filing_period' => 'required|string', // Format: YYYY-MM
-            'return_type' => 'required|string|in:GSTR-1,GSTR-3B,Both',
+            'filing_period' => 'required|string', // "YYYY-MM" or "YYYY-Qn" — see assertPeriodMatchesFrequency()
+            'return_type' => 'required|string|in:GSTR-1',
         ]);
 
-        $clientProfileId = $request->user()->clientProfile->id;
+        $profile = $request->user()->clientProfile;
+        $clientProfileId = $profile->id;
         $period = $request->filing_period;
+        self::assertPeriodMatchesFrequency($profile, $period);
         [$periodStart, $periodEnd] = self::periodBounds($period);
 
         // Allowed types for GST calculation
@@ -72,12 +111,14 @@ class GstFilingController extends Controller
     {
         $request->validate([
             'financial_year' => 'required|string',
-            'filing_period' => 'required|string',
-            'return_type' => 'required|string',
+            'filing_period' => 'required|string', // "YYYY-MM" or "YYYY-Qn" — see assertPeriodMatchesFrequency()
+            'return_type' => 'required|string|in:GSTR-1',
             'client_declaration' => 'required|accepted',
         ]);
 
-        $clientProfileId = $request->user()->clientProfile->id;
+        $profile = $request->user()->clientProfile;
+        $clientProfileId = $profile->id;
+        self::assertPeriodMatchesFrequency($profile, $request->filing_period);
 
         // Check if there's already an active request for this period
         $existing = GstFilingRequest::where('client_profile_id', $clientProfileId)

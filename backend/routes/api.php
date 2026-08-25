@@ -72,16 +72,26 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/documents', [ClientDashboard::class, 'uploadDocument']);
             Route::get('/documents/{id}', [ClientDashboard::class, 'downloadDocument']);
             Route::get('/compliance', [ClientDashboard::class, 'compliance']);
-            Route::get('/gstr2b', [ClientGstr2bController::class, 'index']);
-            Route::get('/gstr2b/export', [ClientGstr2bController::class, 'export']);
-            Route::patch('/gstr2b/invoices/{invoiceId}/match-status', [ClientGstr2bController::class, 'updateMatchStatus']);
-            Route::get('/gst-returns', [ClientGstReturnController::class, 'index']);
-            Route::get('/gst-compliance', [ClientGstReturnController::class, 'compliance']);
 
-            Route::get('/gst-filing/preview', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'preview']);
-            Route::post('/gst-filing/request', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'store']);
-            Route::get('/gst-filing/requests', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'index']);
-            Route::get('/gst-filing/requests/{id}', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'show']);
+            // Not gated by gst.subscribed — a locked-out client still needs these to
+            // populate the "GST Compliance Not Subscribed" popup itself.
+            Route::get('/gst-compliance/admin-contact', [\App\Http\Controllers\Api\Client\GstComplianceAccessController::class, 'adminContact']);
+            Route::post('/gst-compliance/request-access', [\App\Http\Controllers\Api\Client\GstComplianceAccessController::class, 'requestAccess']);
+
+            // GST Compliance (GSTR-2B, GST Returns, GST Filing Confirmation) is a
+            // separate subscription add-on from core Billing — gated by gst.subscribed.
+            Route::middleware('gst.subscribed')->group(function () {
+                Route::get('/gstr2b', [ClientGstr2bController::class, 'index']);
+                Route::get('/gstr2b/export', [ClientGstr2bController::class, 'export']);
+                Route::patch('/gstr2b/invoices/{invoiceId}/match-status', [ClientGstr2bController::class, 'updateMatchStatus']);
+                Route::get('/gst-returns', [ClientGstReturnController::class, 'index']);
+                Route::get('/gst-compliance', [ClientGstReturnController::class, 'compliance']);
+
+                Route::get('/gst-filing/preview', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'preview']);
+                Route::post('/gst-filing/request', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'store']);
+                Route::get('/gst-filing/requests', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'index']);
+                Route::get('/gst-filing/requests/{id}', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'show']);
+            });
         });
 
         Route::prefix('billing')->group(function () {

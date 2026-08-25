@@ -211,6 +211,7 @@ export function ClientDashboard() {
   const profile = user?.client_profile;
   const mode = billingMode(profile);
   const hasGst = Boolean(profile?.has_gst);
+  const gstComplianceEnabled = profile?.gst_compliance_enabled !== false;
   const isComposition = mode === 'composition';
   // Composition dealers also carry gst_filing_frequency='quarterly' by convention (their CMP-08
   // cycle is quarterly), but the Quarter-selector UI on GST Summary is a Regular-dealer feature
@@ -269,11 +270,11 @@ export function ClientDashboard() {
     return Promise.all([
       api('/client/dashboard').then(setData),
       api(`/billing/dashboard?${qs}`).then(setBilling),
-      hasGst
+      hasGst && gstComplianceEnabled
         ? api(`/client/gst-compliance?financial_year=${fyRef.current}`).then(setCompliance)
         : Promise.resolve(setCompliance(null)),
     ]).catch(console.error);
-  }, [hasGst]);
+  }, [hasGst, gstComplianceEnabled]);
 
   useEffect(() => {
     load();
@@ -454,7 +455,7 @@ export function ClientDashboard() {
       <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', alignItems: 'start' }}>
         {hasGst && (
           <DashCard title="Compliance Status" icon={<ComplianceIcon />} iconColor="#ea580c">
-            <ComplianceStatus compliance={compliance} financialYear={fy} />
+            <ComplianceStatus compliance={compliance} financialYear={fy} locked={!gstComplianceEnabled} />
             <ViewLink to="/portal/gst-returns">View Full Compliance Report</ViewLink>
           </DashCard>
         )}
@@ -515,14 +516,11 @@ export function ClientProfile() {
         <span style={{ margin: '0 6px', opacity: 0.5 }}>›</span>
         Profile
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, color: 'var(--bp-navy)' }}>Business Profile</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
-            View your registered business information.
-          </p>
-        </div>
-        <Link to="/portal" className="bp-btn bp-btn-outline">← Back to Dashboard</Link>
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ margin: 0, fontSize: 22, color: 'var(--bp-navy)' }}>Business Profile</h1>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
+          View your registered business information.
+        </p>
       </div>
 
       <div className="bp-alert" style={{ background: '#eaf1fb', borderColor: '#cfe0f5', color: 'var(--bp-navy)', marginBottom: 20 }}>
@@ -616,14 +614,11 @@ export function ClientResetPassword() {
         <span style={{ margin: '0 6px', opacity: 0.5 }}>›</span>
         Change Password
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, color: 'var(--bp-navy)' }}>Change Password</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
-            Update your account password to keep your account secure.
-          </p>
-        </div>
-        <Link to="/portal" className="bp-btn bp-btn-outline">← Back to Dashboard</Link>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ margin: 0, fontSize: 22, color: 'var(--bp-navy)' }}>Change Password</h1>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
+          Update your account password to keep your account secure.
+        </p>
       </div>
 
       <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'minmax(280px, 1.3fr) minmax(220px, 1fr)', alignItems: 'start' }}>

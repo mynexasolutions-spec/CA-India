@@ -74,3 +74,70 @@ Frequency" field.
 9. Flip this entry to ✅ with today's date once confirmed live
 
 ---
+
+## ⬜ 2026-08-25 — GST Compliance subscription gate
+
+**Migration**: `2026_08_25_000000_add_gst_compliance_enabled_to_client_profiles_table`
+
+**What changed**: Added `gst_compliance_enabled` (boolean, default `true`) to
+`client_profiles`. GST Compliance (GSTR-2B, GST Returns, GST Filing Confirmation) is now
+a separate subscription add-on from core Billing — when an admin sets a client's flag to
+`false`, the client sees a "GST Compliance Not Subscribed" popup instead of those three
+sections, both on the backend (403) and the frontend (route gate before even calling the
+API).
+
+**Why**: Client-provided spec/reference screenshot ("GST Compliance Not Subscribed"
+popup) — the firm wants to sell Billing-only and Billing+GST-Compliance as distinct
+subscription tiers.
+
+**Behavior after this change**:
+- Defaults to `true` for every existing row — **no client loses access** on deploy;
+  only a client an admin explicitly flips to "Not Subscribed" via Admin → Edit Client →
+  Registration tab is restricted.
+- Backend: `EnsureGstComplianceSubscribed` middleware (aliased `gst.subscribed`) guards
+  `/client/gstr2b*`, `/client/gst-returns`, `/client/gst-compliance`, and
+  `/client/gst-filing/*` — returns `{"gst_compliance_locked": true, "message": "..."}`
+  with HTTP 403 when blocked. The unrelated `/client/compliance` (general
+  `ComplianceTask` tracker — ITR/ROC etc., not GST-specific) is untouched.
+- Two new, ungated client routes support the popup itself even while locked:
+  `GET /client/gst-compliance/admin-contact` (looks up the firm's admin dynamically —
+  no hardcoded email) and `POST /client/gst-compliance/request-access` (logs an
+  `ActivityLog` entry an admin can see, so "Request Access" is functionally real).
+- Frontend: `GstComplianceGate` wraps the three routes in `App.jsx`; the dashboard's
+  "Compliance Status" widget also checks the flag before fetching, to avoid an infinite
+  loading skeleton for a locked client.
+
+**Data backfill needed?** No — the `default(true)` on the migration itself backfills
+every existing row to "subscribed" (unchanged behavior) with no separate SQL step.
+
+**Files touched**:
+- `backend/database/migrations/2026_08_25_000000_add_gst_compliance_enabled_to_client_profiles_table.php`
+- `backend/app/Models/ClientProfile.php` (`$fillable`, cast)
+- `backend/app/Http/Middleware/EnsureGstComplianceSubscribed.php` (new)
+- `backend/bootstrap/app.php` (registered `gst.subscribed` alias)
+- `backend/routes/api.php` (gated group + two new ungated routes)
+- `backend/app/Http/Controllers/Api/Client/GstComplianceAccessController.php` (new)
+- `backend/app/Http/Controllers/Api/Admin/ClientProfileController.php` (validation, field list)
+- `src/components/GstComplianceLockedModal.jsx` (new)
+- `src/components/GstComplianceGate.jsx` (new)
+- `src/App.jsx` (wrapped the 3 GST Compliance routes)
+- `src/pages/portal/ClientPages.jsx` / `ClientDashboardWidgets.jsx` (dashboard widget locked-state)
+- `src/pages/admin/ClientProfileForm.jsx` (new "GST Compliance Subscription" toggle)
+
+**Production checklist**:
+1. `git pull origin main`
+2. `cd backend && composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd`
+3. Back up `database.sqlite` (see step 2 in the file header)
+4. `php artisan migrate --force` — applies the migration; **no manual backfill SQL needed**
+   (default `true` covers every existing row)
+5. `php artisan config:clear && php artisan route:clear && php artisan cache:clear`
+6. `cd .. && npm ci && npm run build`
+7. `sudo systemctl restart php8.4-fpm`
+8. Verify: log in as any real client, confirm GSTR-2B/GST Returns/GST Filing Confirmation
+   load exactly as before (unchanged — everyone defaults to subscribed). Then, as Admin,
+   flip one demo client's "GST Compliance Subscription" to "Not Subscribed" and confirm
+   that client now sees the popup on all three sections, "Request Access" appears in
+   Admin → Activity, and flipping it back restores access immediately.
+9. Flip this entry to ✅ with today's date once confirmed live
+
+---

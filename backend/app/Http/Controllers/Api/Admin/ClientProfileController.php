@@ -605,6 +605,7 @@ class ClientProfileController extends Controller
             'website' => 'nullable|string',
             'gstin' => 'nullable|string',
             'has_gst' => 'nullable|boolean',
+            'gst_compliance_enabled' => 'nullable|boolean',
             'dealer_type' => 'nullable|in:regular,composition',
             'gst_filing_frequency' => 'nullable|in:monthly,quarterly',
             'gstr1_filing_frequency' => 'nullable|in:monthly,quarterly',
@@ -653,6 +654,13 @@ class ClientProfileController extends Controller
 
     private function normalizeGstFields(array $data): array
     {
+        // Only touch GST fields when this request actually included has_gst — a narrow
+        // partial update (e.g. toggling just gst_compliance_enabled) must never silently
+        // reset has_gst/dealer_type/filing frequencies to their "not GST registered" state.
+        if (! array_key_exists('has_gst', $data)) {
+            return $data;
+        }
+
         $hasGst = filter_var($data['has_gst'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $data['has_gst'] = $hasGst;
         if (! $hasGst) {
@@ -692,7 +700,7 @@ class ClientProfileController extends Controller
             'client_name', 'business_name', 'constitution_type', 'business_type',
             'date_of_incorporation', 'date_of_birth', 'mobile', 'alt_mobile', 'alt_email',
             'email', 'address', 'city', 'state', 'state_code', 'pincode', 'country', 'website',
-            'gstin', 'has_gst', 'dealer_type', 'gst_filing_frequency', 'gstr1_filing_frequency', 'composition_rate', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
+            'gstin', 'has_gst', 'gst_compliance_enabled', 'dealer_type', 'gst_filing_frequency', 'gstr1_filing_frequency', 'composition_rate', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
             'iec', 'cin', 'llpin', 'pt_reg', 'esic', 'pf',
             'bank_name', 'bank_branch', 'bank_account', 'account_holder_name', 'bank_ifsc',
             'swift_code', 'account_type', 'upi_id', 'signatory_name', 'terms_conditions', 'client_code',

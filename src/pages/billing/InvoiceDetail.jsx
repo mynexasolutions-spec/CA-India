@@ -14,6 +14,11 @@ export default function InvoiceDetail() {
   const [doc, setDoc] = useState(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  // Separate from `err` above (which, when set, replaces the whole page with a
+  // load-failure view) — actionErr is for a failed action (Download/Email/etc.) on an
+  // already-loaded document, shown inline without losing the page.
+  const [actionErr, setActionErr] = useState('');
+  const [busyAction, setBusyAction] = useState(''); // '' | 'download' | 'email' | 'whatsapp' | ...
   const [cancelling, setCancelling] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
 
@@ -91,62 +96,79 @@ export default function InvoiceDetail() {
             <button
               type="button"
               className="bp-btn bp-btn-green"
+              disabled={busyAction === 'issue'}
               onClick={async () => {
-                await api(`/billing/documents/${doc.id}/issue`, { method: 'POST', body: {} });
-                setMsg('Generated');
-                load();
+                setBusyAction('issue'); setMsg(''); setActionErr('');
+                try {
+                  await api(`/billing/documents/${doc.id}/issue`, { method: 'POST', body: {} });
+                  setMsg('Generated');
+                  load();
+                } catch (e) {
+                  setActionErr(e.message || 'Failed to generate document.');
+                } finally {
+                  setBusyAction('');
+                }
               }}
             >
-              Generate / Issue
+              {busyAction === 'issue' ? 'Generating…' : 'Generate / Issue'}
             </button>
           )}
           {doc.type === 'quotation' && !doc.converted_document_id && doc.status !== 'cancelled' && (
             <button
               type="button"
               className="bp-btn bp-btn-primary"
+              disabled={busyAction === 'convert'}
               onClick={async () => {
+                setBusyAction('convert'); setMsg(''); setActionErr('');
                 try {
                   const inv = await api(`/billing/documents/${doc.id}/convert`, { method: 'POST', body: {} });
                   setMsg(`Converted to ${inv.number}`);
                   window.location.href = `/portal/billing/invoices/${inv.id}`;
                 } catch (e) {
-                  setErr(e.message);
+                  setActionErr(e.message || 'Failed to convert document.');
+                  setBusyAction('');
                 }
               }}
             >
-              Convert to Tax Invoice/Bill of Supply
+              {busyAction === 'convert' ? 'Converting…' : 'Convert to Tax Invoice/Bill of Supply'}
             </button>
           )}
           <button
             type="button"
             className="bp-btn bp-btn-outline"
+            disabled={busyAction === 'duplicate'}
             onClick={async () => {
+              setBusyAction('duplicate'); setMsg(''); setActionErr('');
               try {
                 const copy = await api(`/billing/documents/${doc.id}/duplicate`, { method: 'POST', body: {} });
                 setMsg(`Duplicated as ${copy.number}`);
                 window.location.href = billingDocEditPath(copy.type, copy.id) || billingDocPath(copy.type, copy.id);
               } catch (e) {
-                setErr(e.message);
+                setActionErr(e.message || 'Failed to duplicate document.');
+                setBusyAction('');
               }
             }}
           >
-            Duplicate
+            {busyAction === 'duplicate' ? 'Duplicating…' : 'Duplicate'}
           </button>
           {doc.type === 'quotation' && !doc.converted_document_id && (
             <button
               type="button"
               className="bp-btn bp-btn-danger"
+              disabled={busyAction === 'delete'}
               onClick={async () => {
                 if (!window.confirm('Delete this quotation?')) return;
+                setBusyAction('delete'); setMsg(''); setActionErr('');
                 try {
                   await api(`/billing/documents/${doc.id}`, { method: 'DELETE' });
                   window.location.href = '/portal/billing/quotations';
                 } catch (e) {
-                  setErr(e.message);
+                  setActionErr(e.message || 'Failed to delete quotation.');
+                  setBusyAction('');
                 }
               }}
             >
-              Delete
+              {busyAction === 'delete' ? 'Deleting…' : 'Delete'}
             </button>
           )}
           {isIssuedFamily && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && !canEdit && (
@@ -170,47 +192,80 @@ export default function InvoiceDetail() {
               <button
                 type="button"
                 className="bp-btn bp-btn-danger"
+                disabled={busyAction === 'markUnpaid'}
                 onClick={async () => {
-                  await api(`/billing/documents/${doc.id}/payment-status`, { method: 'POST', body: { status: 'unpaid' } });
-                  setMsg('Marked Unpaid — appears in Outstanding');
-                  load();
+                  setBusyAction('markUnpaid'); setMsg(''); setActionErr('');
+                  try {
+                    await api(`/billing/documents/${doc.id}/payment-status`, { method: 'POST', body: { status: 'unpaid' } });
+                    setMsg('Marked Unpaid — appears in Outstanding');
+                    load();
+                  } catch (e) {
+                    setActionErr(e.message || 'Failed to mark unpaid.');
+                  } finally {
+                    setBusyAction('');
+                  }
                 }}
               >
-                Mark Unpaid
+                {busyAction === 'markUnpaid' ? 'Updating…' : 'Mark Unpaid'}
               </button>
             ) : (
               <button
                 type="button"
                 className="bp-btn bp-btn-green"
+                disabled={busyAction === 'markPaid'}
                 onClick={async () => {
-                  await api(`/billing/documents/${doc.id}/payment-status`, { method: 'POST', body: { status: 'paid' } });
-                  setMsg('Marked Paid — removed from Outstanding');
-                  load();
+                  setBusyAction('markPaid'); setMsg(''); setActionErr('');
+                  try {
+                    await api(`/billing/documents/${doc.id}/payment-status`, { method: 'POST', body: { status: 'paid' } });
+                    setMsg('Marked Paid — removed from Outstanding');
+                    load();
+                  } catch (e) {
+                    setActionErr(e.message || 'Failed to mark paid.');
+                  } finally {
+                    setBusyAction('');
+                  }
                 }}
               >
-                Mark Paid
+                {busyAction === 'markPaid' ? 'Updating…' : 'Mark Paid'}
               </button>
             )
           )}
           <button
             type="button"
             className="bp-btn bp-btn-primary"
+            disabled={busyAction === 'download'}
             onClick={async () => {
-              const r = await api(`/billing/documents/${doc.id}/pdf`);
-              window.open(r.url, '_blank');
+              setBusyAction('download'); setMsg(''); setActionErr('');
+              try {
+                const r = await api(`/billing/documents/${doc.id}/pdf`);
+                window.open(r.url, '_blank');
+                setMsg('PDF opened in a new tab.');
+              } catch (e) {
+                setActionErr(e.message || 'Failed to download PDF.');
+              } finally {
+                setBusyAction('');
+              }
             }}
           >
-            Download PDF
+            {busyAction === 'download' ? 'Downloading…' : 'Download PDF'}
           </button>
           <button
             type="button"
             className="bp-btn bp-btn-amber"
+            disabled={busyAction === 'email'}
             onClick={async () => {
-              const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
-              setMsg(r.message);
+              setBusyAction('email'); setMsg(''); setActionErr('');
+              try {
+                const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
+                setMsg(r.message || 'Email sent successfully.');
+              } catch (e) {
+                setActionErr(e.message || 'Failed to send email.');
+              } finally {
+                setBusyAction('');
+              }
             }}
           >
-            Email
+            {busyAction === 'email' ? 'Sending…' : 'Email'}
           </button>
           {cancellable && (
             <button type="button" className="bp-btn bp-btn-danger" onClick={() => setCancelling(true)}>
@@ -220,10 +275,15 @@ export default function InvoiceDetail() {
           {doc.share_token && (
             <a
               className="bp-btn bp-btn-green"
-              href={`https://wa.me/?text=${encodeURIComponent(`Invoice ${doc.number}: https://abkhanassociates.com/api/billing/share/${doc.share_token}`)}`}
-              title="Opens the invoice PDF"
+              // Dynamic origin (not a hardcoded domain) so the shared link is always
+              // correct for wherever the app is actually running — same-origin proxy in
+              // dev, the real production domain in prod — and always points at THIS
+              // specific document's own share_token.
+              href={`https://wa.me/?text=${encodeURIComponent(`${docTypeLabel(doc.type)} ${doc.number}: ${window.location.origin}/api/billing/share/${doc.share_token}`)}`}
+              title="Share this document's PDF via WhatsApp"
               target="_blank"
               rel="noreferrer"
+              onClick={() => setMsg('Opening WhatsApp to share this document…')}
             >
               WhatsApp
             </a>
@@ -352,6 +412,7 @@ export default function InvoiceDetail() {
         )}
       </div>
       {msg && <p style={{ color: 'var(--bp-green)' }}>{msg}</p>}
+      {actionErr && <p style={{ color: 'var(--bp-red)' }}>{actionErr}</p>}
       {cancelling && (
         <CancelDocumentModal
           docLabel={`${docTypeLabel(doc.type)} ${doc.number}`}

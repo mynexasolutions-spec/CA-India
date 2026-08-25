@@ -31,7 +31,7 @@ const empty = () => ({
   date_of_incorporation: '', date_of_birth: '', mobile: '', alt_mobile: '',
   email: '', alt_email: '', address: '', city: '', state: '', state_code: '27',
   pincode: '', country: 'India', website: '',
-  pan: '', aadhaar: '', gstin: '', has_gst: false, dealer_type: '', gst_filing_frequency: 'monthly', gstr1_filing_frequency: 'monthly', composition_rate: '1.00', gst_portal_username: '', gst_portal_password: '',
+  pan: '', aadhaar: '', gstin: '', has_gst: false, gst_compliance_enabled: true, dealer_type: '', gst_filing_frequency: 'monthly', gstr1_filing_frequency: 'monthly', composition_rate: '1.00', gst_portal_username: '', gst_portal_password: '',
   tan: '', tan_portal_password: '', it_portal_password: '',
   udyam: '', shop_establishment: '', iec: '', cin: '', llpin: '', pt_reg: '', esic: '', pf: '',
   bank_name: '', bank_branch: '', bank_account: '', account_holder_name: '',
@@ -83,11 +83,12 @@ export default function ClientProfileForm() {
       Object.entries(form).forEach(([k, v]) => {
         if (k === 'password' && !v) return;
         if (k === 'dealer_type' && !form.has_gst) return;
-        if (k === 'is_active' || k === 'has_gst') return; // sent as 1/0 below
+        if (k === 'is_active' || k === 'has_gst' || k === 'gst_compliance_enabled') return; // sent as 1/0 below
         if (typeof v === 'boolean') return;
         if (v != null && v !== '') fd.append(k, v);
       });
       fd.append('has_gst', form.has_gst ? '1' : '0');
+      fd.append('gst_compliance_enabled', form.gst_compliance_enabled ? '1' : '0');
       fd.append('is_active', form.is_active ? '1' : '0');
 
       const token = getAuthToken();
@@ -198,6 +199,31 @@ export default function ClientProfileForm() {
                     />
                     Yes
                   </label>
+                </div>
+              </Field>
+              <Field label="GST Compliance Subscription (GSTR-2B, GST Returns, GST Filing Confirmation)" full>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 4 }}>
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="radio"
+                      name="gst_compliance_enabled"
+                      checked={!!form.gst_compliance_enabled}
+                      onChange={() => setForm((f) => ({ ...f, gst_compliance_enabled: true }))}
+                    />
+                    Subscribed
+                  </label>
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="radio"
+                      name="gst_compliance_enabled"
+                      checked={!form.gst_compliance_enabled}
+                      onChange={() => setForm((f) => ({ ...f, gst_compliance_enabled: false }))}
+                    />
+                    Not Subscribed (Billing services only)
+                  </label>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 4 }}>
+                  When not subscribed, the client sees a "Not Subscribed" notice instead of GSTR-2B, GST Returns, and GST Filing Confirmation.
                 </div>
               </Field>
               {form.has_gst && (

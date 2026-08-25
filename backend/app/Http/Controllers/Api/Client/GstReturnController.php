@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientGstReturn;
+use App\Services\Billing\BillingPolicy;
 use Illuminate\Http\Request;
 
 class GstReturnController extends Controller
@@ -109,7 +110,7 @@ class GstReturnController extends Controller
         $startYear = $this->fyStartYear($request->input('financial_year'));
         $isComposition = $profile->dealer_type === 'composition';
         $gstr3bFrequency = $profile->gst_filing_frequency ?? 'monthly';
-        $gstr1Frequency = $profile->gstr1_filing_frequency ?? $gstr3bFrequency;
+        $gstr1Frequency = BillingPolicy::gstr1Frequency($profile);
         $gstr3bQuarterly = $isComposition || $gstr3bFrequency === 'quarterly';
         $gstr1Quarterly = $gstr1Frequency === 'quarterly';
 

@@ -241,7 +241,14 @@ function ComplianceRow({ label, row }) {
   );
 }
 
-export function ComplianceStatus({ compliance, financialYear }) {
+export function ComplianceStatus({ compliance, financialYear, locked = false }) {
+  if (locked) {
+    return (
+      <p style={{ color: 'var(--bp-muted)', fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+        GST Compliance isn't included in your current subscription. See "View Full Compliance Report" below for details.
+      </p>
+    );
+  }
   if (!compliance) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

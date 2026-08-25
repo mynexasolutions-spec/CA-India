@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import HtmlPage from './components/HtmlPage';
 import Spinner from './components/Spinner';
 import { AdminPortalLayout, AdminBillingLayout, ClientPortalLayout, ClientBillingLayout, ClientReportsLayout, RequireAuth } from './components/portal/PortalShell';
+import GstComplianceGate from './components/GstComplianceGate';
 import { PAGE_SLUGS } from './data/nav';
 
 /* ── Marketing pages (eagerly loaded — they're the landing pages) ── */
@@ -168,9 +169,9 @@ export default function App() {
           <Route path="billing/parties" element={<PartiesPage />} />
           <Route path="billing/parties/new" element={<PartyForm />} />
           <Route path="billing/parties/:id/edit" element={<PartyForm />} />
-          <Route path="gstr-2b" element={<ClientGstr2b />} />
-          <Route path="gst-returns" element={<ClientGstDashboard />} />
-          <Route path="gst-filing" element={<GstFilingConfirmation />} />
+          <Route path="gstr-2b" element={<GstComplianceGate><ClientGstr2b /></GstComplianceGate>} />
+          <Route path="gst-returns" element={<GstComplianceGate><ClientGstDashboard /></GstComplianceGate>} />
+          <Route path="gst-filing" element={<GstComplianceGate><GstFilingConfirmation /></GstComplianceGate>} />
           <Route path="billing" element={<ClientBillingLayout />}>
             <Route index element={<BillingDashboard />} />
             <Route path="quotation">

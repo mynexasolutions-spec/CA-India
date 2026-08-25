@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../api/client';
+import { useAuth } from '../../auth/AuthContext';
+import { fyQuarterOptions } from '../billing/billingUtils';
 
 function EyeIcon() {
   return (
@@ -11,16 +13,32 @@ function EyeIcon() {
 }
 
 export default function GstFilingConfirmation() {
+  const { user } = useAuth();
+  const profile = user?.client_profile;
+  // QRMP (spec §5): GSTR-1's own cycle (gstr1_filing_frequency) falls back to GSTR-3B's
+  // (gst_filing_frequency) when not explicitly set — same resolution as the backend's
+  // BillingPolicy::gstr1Frequency() and the dashboard's Compliance Status widget, so a
+  // Regular Quarterly client on QRMP never sees a bare month picker where a quarter is
+  // actually required (and vice versa).
+  const gstr1Quarterly = (profile?.gstr1_filing_frequency ?? profile?.gst_filing_frequency ?? 'monthly') === 'quarterly';
+
   const [financialYear, setFinancialYear] = useState('2026-2027');
   const [filingPeriod, setFilingPeriod] = useState('');
+  const [filingQuarter, setFilingQuarter] = useState('');
   const [loading, setLoading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
   const [clientDeclaration, setClientDeclaration] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  
+
   const [pastRequests, setPastRequests] = useState([]);
   const [selectedRequestDetail, setSelectedRequestDetail] = useState(null);
+
+  const fyStartYear = financialYear.split('-')[0];
+  const quarterOptions = fyQuarterOptions(`${fyStartYear}-${String((parseInt(fyStartYear, 10) + 1)).slice(-2)}`);
+  // The actual value sent to the API — "YYYY-MM" for a monthly filer, "YYYY-Qn" for a
+  // client on quarterly GSTR-1 (QRMP), matching what the backend now enforces.
+  const effectivePeriod = gstr1Quarterly ? (filingQuarter ? `${fyStartYear}-${filingQuarter}` : '') : filingPeriod;
 
   useEffect(() => {
     fetchPastRequests();
@@ -38,19 +56,19 @@ export default function GstFilingConfirmation() {
   };
 
   const handleFetchPreview = async () => {
-    if (!filingPeriod) {
-      alert('Please select a filing period.');
+    if (!effectivePeriod) {
+      alert(gstr1Quarterly ? 'Please select a filing quarter.' : 'Please select a filing period.');
       return;
     }
-    
+
     setLoading(true);
     setPreviewData(null);
     setClientDeclaration(false);
-    
+
     try {
       const params = new URLSearchParams({
         financial_year: financialYear,
-        filing_period: filingPeriod,
+        filing_period: effectivePeriod,
         return_type: 'GSTR-1', // Force GSTR-1
       });
       const res = await api(`/client/gst-filing/preview?${params.toString()}`);
@@ -70,7 +88,7 @@ export default function GstFilingConfirmation() {
         method: 'POST',
         body: {
           financial_year: financialYear,
-          filing_period: filingPeriod,
+          filing_period: effectivePeriod,
           return_type: 'GSTR-1',
           client_declaration: clientDeclaration,
         }
@@ -121,6 +139,14 @@ export default function GstFilingConfirmation() {
     const parts = periodStr.split('-');
     if (parts.length < 2) return periodStr;
     const year = parts[0];
+    // QRMP quarterly filers store "YYYY-Qn" — the Apr-Jun/Jul-Sep/etc. label comes from
+    // the same fyQuarterOptions() definitions used to build the picker, so both places
+    // describe the same quarters.
+    if (/^Q[1-4]$/.test(parts[1])) {
+      const fyLabel = `${year}-${String(parseInt(year, 10) + 1).slice(-2)}`;
+      const q = fyQuarterOptions(fyLabel).find((o) => o.value === parts[1]);
+      return q ? `FY${fyLabel} ${q.label}` : `${parts[1]} ${year}`;
+    }
     const monthNum = parseInt(parts[1], 10);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${months[monthNum - 1]} ${year}`;
@@ -156,22 +182,39 @@ export default function GstFilingConfirmation() {
               className="bp-select"
               style={{ height: 40, boxSizing: 'border-box', minWidth: 160 }}
               value={financialYear}
-              onChange={(e) => setFinancialYear(e.target.value)}
+              onChange={(e) => { setFinancialYear(e.target.value); setFilingQuarter(''); setFilingPeriod(''); }}
             >
               <option value="2025-2026">2025-2026</option>
               <option value="2026-2027">2026-2027</option>
             </select>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Period (Month) *</span>
-            <input 
-              type="month" 
-              className="bp-input"
-              style={{ height: 40, boxSizing: 'border-box', minWidth: 160, padding: '0 12px' }}
-              value={filingPeriod}
-              onChange={(e) => setFilingPeriod(e.target.value)}
-            />
-          </div>
+          {gstr1Quarterly ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Quarter (QRMP) *</span>
+              <select
+                className="bp-select"
+                style={{ height: 40, boxSizing: 'border-box', minWidth: 200 }}
+                value={filingQuarter}
+                onChange={(e) => setFilingQuarter(e.target.value)}
+              >
+                <option value="">Select Quarter</option>
+                {quarterOptions.map((q) => (
+                  <option key={q.value} value={q.value}>{q.label}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Period (Month) *</span>
+              <input
+                type="month"
+                className="bp-input"
+                style={{ height: 40, boxSizing: 'border-box', minWidth: 160, padding: '0 12px' }}
+                value={filingPeriod}
+                onChange={(e) => setFilingPeriod(e.target.value)}
+              />
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Return Type</span>
             <select 
@@ -186,7 +229,7 @@ export default function GstFilingConfirmation() {
           <div>
             <button 
               onClick={handleFetchPreview}
-              disabled={loading}
+              disabled={loading || !effectivePeriod}
               className="bp-btn bp-btn-primary"
               style={{ height: 40, borderRadius: 8, fontWeight: 600, background: '#0052cc' }}
             >
@@ -387,7 +430,7 @@ export default function GstFilingConfirmation() {
               </p>
               
               <div style={{ background: '#f0f7ff', padding: 16, borderRadius: 8, display: 'grid', gap: 8, fontSize: 13 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--bp-muted)' }}>Filing Period:</span> <span style={{ fontWeight: 700 }}>{formatPeriod(filingPeriod)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--bp-muted)' }}>Filing Period:</span> <span style={{ fontWeight: 700 }}>{formatPeriod(effectivePeriod)}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--bp-muted)' }}>Total Invoices:</span> <span style={{ fontWeight: 700 }}>{previewData.summary.total_bills}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--bp-muted)' }}>Taxable Value:</span> <span style={{ fontWeight: 700 }}>₹{previewData.summary.taxable_value.toFixed(2)}</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--bp-border)', paddingTop: 8, marginTop: 4 }}>

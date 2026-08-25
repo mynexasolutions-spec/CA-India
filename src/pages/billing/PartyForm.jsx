@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import StateSelect from '../../components/StateSelect';
 import { LoadingBlock } from '../../components/Spinner';
+import ActionConfirmationModal from '../../components/ActionConfirmationModal';
+import DiscardChangesModal from '../../components/DiscardChangesModal';
 
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 
@@ -44,6 +46,8 @@ export default function PartyForm() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [gstinError, setGstinError] = useState('');
+  const [confirmModal, setConfirmModal] = useState(null);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
 
   useEffect(() => {
     if (!editing) return;
@@ -75,12 +79,19 @@ export default function PartyForm() {
       const payload = { ...form, gstin: form.gst_status === 'registered' ? form.gstin.trim().toUpperCase() : '' };
       if (editing) await api(`/billing/parties/${id}`, { method: 'PUT', body: payload });
       else await api('/billing/parties', { method: 'POST', body: payload });
-      navigate('/portal/billing/parties');
+      setConfirmModal(editing
+        ? { title: 'Company Updated Successfully', message: 'The company details have been updated successfully.' }
+        : { title: 'Company Saved Successfully', message: 'The new company has been successfully created and saved.' });
     } catch (ex) {
       setErr(ex.message || 'Could not save this company.');
     } finally {
       setBusy(false);
     }
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmModal(null);
+    navigate('/portal/billing/parties');
   };
 
   if (!loaded) return <LoadingBlock />;
@@ -177,9 +188,23 @@ export default function PartyForm() {
           <button type="submit" className="bp-btn bp-btn-blue" disabled={busy} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <SaveIcon /> {busy ? 'Saving…' : editing ? 'Save Changes' : 'Save Company'}
           </button>
-          <Link to="/portal/billing/parties" className="bp-btn bp-btn-outline">Cancel</Link>
+          <button type="button" className="bp-btn bp-btn-outline" onClick={() => setShowDiscardModal(true)}>Cancel</button>
         </div>
       </form>
+
+      {confirmModal && (
+        <ActionConfirmationModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          onClose={closeConfirmModal}
+        />
+      )}
+      {showDiscardModal && (
+        <DiscardChangesModal
+          onContinueEditing={() => setShowDiscardModal(false)}
+          onConfirmCancel={() => navigate('/portal/billing/parties')}
+        />
+      )}
     </div>
   );
 }

@@ -10,6 +10,8 @@ import GstRateSelect from '../../components/GstRateSelect';
 import UnitSelect from '../../components/UnitSelect';
 import DocTypeTiles from './DocTypeTiles';
 import PartySearchSelect from './PartySearchSelect';
+import ActionConfirmationModal from '../../components/ActionConfirmationModal';
+import DiscardChangesModal from '../../components/DiscardChangesModal';
 
 /** Digits-only, capped at maxDigits, clamped to [min, max] — used for Qty/Rate per the
  * Invoice Item Table spec ("whole numbers only", "maximum N digits", "reject extra digits"). */
@@ -125,6 +127,8 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const [lines, setLines] = useState([emptyLine()]);
   const [msg, setMsg] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmModal, setConfirmModal] = useState(null); // { title, message, refLabel, refValue, redirectTo }
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [docId, setDocId] = useState(id || null);
   const [docNumber, setDocNumber] = useState('');
   const [previewNumber, setPreviewNumber] = useState('');
@@ -285,6 +289,21 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     return '';
   };
 
+  // Action Confirmation Popups spec (§11) — "Invoice No." / "Document No." for tax
+  // invoice / bill of supply specifically (matches the reference), "<Type> No." for
+  // everything else, driven off the existing docTypeLabel() helper — not hardcoded.
+  const refLabelForType = (type) => {
+    if (type === 'tax_invoice') return 'Invoice No.';
+    if (type === 'bill_of_supply') return 'Document No.';
+    return `${docTypeLabel(type)} No.`;
+  };
+
+  const closeConfirmModal = () => {
+    const redirectTo = confirmModal?.redirectTo;
+    setConfirmModal(null);
+    if (redirectTo) navigate(redirectTo);
+  };
+
   const saveDraft = async () => {
     const validationError = validateBeforeSave();
     if (validationError) {
@@ -301,8 +320,18 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       setDocNumber(doc.number || '');
       setDocStatus(doc.status);
       setEditAllowed(!!doc.edit_allowed);
-      setMsg(unlockedEdit ? `Saved corrections: ${doc.number}` : `Draft saved: ${doc.number}`);
-      if (unlockedEdit) navigate(billingDocPath(docType, doc.id));
+      if (unlockedEdit) {
+        setConfirmModal({
+          title: 'Changes Saved Successfully',
+          message: 'Your corrections have been saved successfully.',
+          redirectTo: billingDocPath(docType, doc.id),
+        });
+      } else {
+        setConfirmModal({
+          title: 'Draft Saved Successfully',
+          message: 'Your document draft has been saved successfully.',
+        });
+      }
     } catch (e) { setMsg(e.message); }
     finally { setBusy(false); }
   };
@@ -324,8 +353,13 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       }
       setDocId(doc.id);
       setDocNumber(doc.number || '');
-      setMsg(`Generated ${doc.number}`);
-      navigate(billingDocPath(docType, doc.id));
+      setConfirmModal({
+        title: `${docTypeLabel(docType)} Generated Successfully`,
+        message: `${docTypeLabel(docType)} has been generated successfully.`,
+        refLabel: refLabelForType(docType),
+        refValue: doc.number,
+        redirectTo: billingDocPath(docType, doc.id),
+      });
     } catch (e) { setMsg(e.message); }
     finally { setBusy(false); }
   };
@@ -359,16 +393,16 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           {docType === 'credit_note' ? (
-            <Link className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }} to={backPath}>
+            <button type="button" className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }} onClick={() => setShowDiscardModal(true)}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
               Back to Billing
-            </Link>
+            </button>
           ) : (
             <>
-              <Link className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', fontWeight: 600 }} to={backPath}>Cancel</Link>
+              <button type="button" className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', fontWeight: 600 }} onClick={() => setShowDiscardModal(true)}>Cancel</button>
               <button type="button" className="bp-btn bp-btn-primary" style={{ borderRadius: 8, height: 40, backgroundColor: '#0052cc', fontWeight: 600 }} disabled={busy} onClick={saveDraft}>
                 {unlockedEdit ? 'Save Changes' : 'Save Document'}
               </button>
@@ -412,11 +446,6 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                 }
               }}
             />
-            {taxesEnabled && !rcm && placeOfSupply && (
-              <span className={`bp-tax-type-hint ${inter ? 'inter' : 'intra'}`}>
-                {inter ? 'Inter-state — IGST applies' : 'Intra-state — CGST + SGST applies'}
-              </span>
-            )}
           </label>
           <label>
             Payment Terms
@@ -819,7 +848,23 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
           ))}
         </div>
       </div>
-      {msg && <p style={{ marginTop: 12, color: msg.includes('Generated') || msg.includes('saved') ? 'var(--bp-green)' : 'var(--bp-red)' }}>{msg}</p>}
+      {msg && <p style={{ marginTop: 12, color: 'var(--bp-red)' }}>{msg}</p>}
+
+      {confirmModal && (
+        <ActionConfirmationModal
+          title={confirmModal.title}
+          message={confirmModal.message}
+          refLabel={confirmModal.refLabel}
+          refValue={confirmModal.refValue}
+          onClose={closeConfirmModal}
+        />
+      )}
+      {showDiscardModal && (
+        <DiscardChangesModal
+          onContinueEditing={() => setShowDiscardModal(false)}
+          onConfirmCancel={() => navigate(backPath)}
+        />
+      )}
     </div>
   );
 }

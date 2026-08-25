@@ -2600,6 +2600,23 @@ select.bp-filter-control {
   margin: 0 auto 16px;
 }
 
+.bp-modal-icon-success {
+  background: #e8f7ee;
+  color: var(--bp-green);
+}
+
+.bp-modal-ref-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: var(--bp-green);
+  font-weight: 700;
+  font-size: 12.5px;
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin: 0 0 20px;
+  display: inline-block;
+}
+
 .bp-modal-title {
   margin: 0 0 6px;
   font-size: 16px;

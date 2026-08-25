@@ -69,13 +69,18 @@ class ReportController extends Controller
         $data = $this->build($type, $pid, $period['from'], $period['to']);
         $rows = $this->flattenRows($data);
 
+        $profile = ClientProfile::find($pid);
+        $meta = $this->businessHeaderData($profile);
+        $periodText = $period['period_label'] ?? ($this->fmtReportDate($period['from']).' to '.$this->fmtReportDate($period['to']));
+        $moneyHeaders = $this->computeMoneyHeaders($rows);
+
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('pdf.report', [
-                'title' => strtoupper(str_replace('_', ' ', $type)),
-                'from' => $period['from'],
-                'to' => $period['to'],
-                'periodLabel' => $period['period_label'] ?? null,
+                'title' => $this->reportTitle($type),
+                'periodText' => $periodText,
                 'rows' => $rows,
+                'meta' => $meta,
+                'moneyHeaders' => $moneyHeaders,
             ]);
 
             return $pdf->download("{$type}.pdf");
@@ -83,10 +88,89 @@ class ReportController extends Controller
 
         if ($format === 'xlsx') {
             // Simple XML SpreadsheetML (Excel-openable) without heavy writer dependency usage
-            return $this->xlsxDownload($type, $rows);
+            return $this->xlsxDownload($type, $rows, $meta, $this->reportTitle($type), $periodText, $moneyHeaders);
         }
 
         return $this->csvDownload($type, $rows);
+    }
+
+    /** Which flattened-row columns hold money vs. plain labels/codes/counts — name-based
+     *  (not just is_numeric()) since codes like HSN/SAC are numeric strings too. Shared by
+     *  both the PDF and Excel export so the two never disagree on formatting. */
+    private function computeMoneyHeaders(array $rows): array
+    {
+        if (! count($rows)) {
+            return [];
+        }
+        $nonMoneyExact = ['invoices', 'documents', 'count', 'id'];
+        $nonMoneyPattern = '/code|hsn|sac|qty|quantity|uqc|rate|no\.|number|\bname\b|particular|\btype\b|description|party|customer|date|sr\.|percent|%/i';
+        $out = [];
+        foreach ((array) $rows[0] as $h => $v) {
+            if (! is_numeric($v)) {
+                continue;
+            }
+            if (in_array(strtolower(trim((string) $h)), $nonMoneyExact, true)) {
+                continue;
+            }
+            if (preg_match($nonMoneyPattern, (string) $h)) {
+                continue;
+            }
+            $out[] = $h;
+        }
+
+        return $out;
+    }
+
+    /** Client business details for the branded export header — same fields/fallbacks
+     *  used on the invoice PDF, so exports carry the client's own branding, not the firm's. */
+    private function businessHeaderData(?ClientProfile $p): array
+    {
+        if (! $p) {
+            return ['name' => null, 'address' => '', 'gstin' => null, 'phone' => null, 'email' => null];
+        }
+        $addressParts = array_filter([
+            $p->address,
+            $p->city,
+            trim(($p->state ?: '').($p->pincode ? ' - '.$p->pincode : '')),
+        ], fn ($part) => filled($part));
+
+        return [
+            'name' => $p->business_name ?: ($p->client_name ?: 'Business'),
+            'address' => implode(', ', $addressParts),
+            'gstin' => $p->has_gst ? $p->gstin : null,
+            'phone' => $p->mobile ?: ($p->user?->phone ?? null),
+            'email' => $p->email ?: ($p->user?->email ?? null),
+        ];
+    }
+
+    private function fmtReportDate(?string $iso): string
+    {
+        if (! $iso) {
+            return '';
+        }
+        $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        [$y, $m, $d] = array_pad(explode('-', substr($iso, 0, 10)), 3, null);
+
+        return $m ? ((int) $d).' '.$months[((int) $m) - 1].' '.$y : $iso;
+    }
+
+    /** Friendly report titles for the export header — matches each report page's own heading. */
+    private function reportTitle(string $type): string
+    {
+        return match ($type) {
+            'gst_summary' => 'GST Summary',
+            'gst_liability' => 'GST Liability / ITC',
+            'hsn_summary', 'hsn_wise' => 'HSN / SAC Summary',
+            'party_wise_sales', 'party_wise', 'customer_wise' => 'Party-wise Detail',
+            'sales_register', 'sales_summary' => 'Sales Register',
+            'invoice_register', 'document_register' => 'Invoice Register',
+            'monthly_sales' => 'Monthly Sales',
+            'outstanding', 'pending_dues', 'outstanding_report' => 'Outstanding / Pending Dues',
+            'paid_invoices' => 'Paid Invoices',
+            'credit_notes' => 'Credit Notes',
+            'debit_notes' => 'Debit Notes',
+            default => ucwords(str_replace('_', ' ', $type)),
+        };
     }
 
     /** Back-compat */
@@ -232,12 +316,19 @@ class ReportController extends Controller
         ];
         $out = [];
         foreach ($rows as $key => $label) {
+            $taxInvoices = (float) ($matrix['tax_invoice'][$key] ?? 0);
+            $billOfSupply = (float) ($matrix['bill_of_supply'][$key] ?? 0);
+            $debitNotes = (float) ($matrix['debit_note'][$key] ?? 0);
+            $creditNotes = (float) ($matrix['credit_note'][$key] ?? 0);
             $out[] = [
                 'Particulars' => $label,
-                'Tax Invoices' => (float) ($matrix['tax_invoice'][$key] ?? 0),
-                'Bill of Supply' => (float) ($matrix['bill_of_supply'][$key] ?? 0),
-                'Debit Notes' => (float) ($matrix['debit_note'][$key] ?? 0),
-                'Credit Notes' => (float) ($matrix['credit_note'][$key] ?? 0),
+                'Tax Invoices' => $taxInvoices,
+                'Bill of Supply' => $billOfSupply,
+                'Debit Notes' => $debitNotes,
+                'Credit Notes' => $creditNotes,
+                // Row-wise total across doc types — same figure the live GST Summary
+                // report shows in its own "Total" column, previously missing here.
+                'Total' => $taxInvoices + $billOfSupply + $debitNotes + $creditNotes,
             ];
         }
 
@@ -305,22 +396,80 @@ class ReportController extends Controller
         }, "{$type}.csv", ['Content-Type' => 'text/csv']);
     }
 
-    private function xlsxDownload(string $type, array $rows)
+    /**
+     * SpreadsheetML export — same branded header (business name/address/GSTIN/phone/
+     * email), report title + period, and Total-row highlight as the PDF export, so the
+     * two formats are visually consistent (per the reference designs).
+     */
+    private function xlsxDownload(string $type, array $rows, array $meta, string $title, string $periodText, array $moneyHeaders)
     {
         $headers = array_keys($rows[0] ?? ['value' => '']);
+        $colCount = max(count($headers), 1);
+        $esc = fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES | ENT_XML1);
+
         $xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
-        $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report"><Table>';
+        $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+
+        $xml .= '<Styles>';
+        $xml .= '<Style ss:ID="bizName"><Font ss:Bold="1" ss:Size="14" ss:Color="#1E40AF"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="bizLine"><Font ss:Size="10" ss:Color="#475569"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="bizMeta"><Font ss:Size="10" ss:Color="#334155"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="title"><Font ss:Bold="1" ss:Size="13" ss:Color="#FFFFFF"/><Interior ss:Color="#1E40AF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="period"><Font ss:Italic="1" ss:Size="10" ss:Color="#64748B"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="colHead"><Font ss:Bold="1" ss:Size="10" ss:Color="#FFFFFF"/><Interior ss:Color="#1E40AF" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="cell"><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="cellLabel"><Font ss:Bold="1"/><Alignment ss:Horizontal="Left"/></Style>';
+        $xml .= '<Style ss:ID="cellMoney"><Alignment ss:Horizontal="Center"/><NumberFormat ss:Format="#,##0.00"/></Style>';
+        $xml .= '<Style ss:ID="totalCell"><Font ss:Bold="1" ss:Color="#1E40AF"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/></Style>';
+        $xml .= '<Style ss:ID="totalLabel"><Font ss:Bold="1" ss:Color="#1E40AF"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Left"/></Style>';
+        $xml .= '<Style ss:ID="totalMoney"><Font ss:Bold="1" ss:Color="#1E40AF"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:Horizontal="Center"/><NumberFormat ss:Format="#,##0.00"/></Style>';
+        $xml .= '</Styles>';
+
+        $xml .= '<Worksheet ss:Name="Report"><Table>';
+
+        $mergeAttr = $colCount > 1 ? ' ss:MergeAcross="'.($colCount - 1).'"' : '';
+        if ($meta['name'] ?? null) {
+            $xml .= '<Row><Cell'.$mergeAttr.' ss:StyleID="bizName"><Data ss:Type="String">'.$esc(strtoupper($meta['name'])).'</Data></Cell></Row>';
+            if ($meta['address'] ?? null) {
+                $xml .= '<Row><Cell'.$mergeAttr.' ss:StyleID="bizLine"><Data ss:Type="String">'.$esc($meta['address']).'</Data></Cell></Row>';
+            }
+            $metaLine = implode('   |   ', array_filter([
+                ($meta['gstin'] ?? null) ? 'GSTIN: '.$meta['gstin'] : null,
+                ($meta['phone'] ?? null) ? 'Phone: '.$meta['phone'] : null,
+                ($meta['email'] ?? null) ? 'Email: '.$meta['email'] : null,
+            ]));
+            if ($metaLine) {
+                $xml .= '<Row><Cell'.$mergeAttr.' ss:StyleID="bizMeta"><Data ss:Type="String">'.$esc($metaLine).'</Data></Cell></Row>';
+            }
+            $xml .= '<Row></Row>';
+        }
+
+        $xml .= '<Row><Cell'.$mergeAttr.' ss:StyleID="title"><Data ss:Type="String">'.$esc(strtoupper($title)).'</Data></Cell></Row>';
+        $xml .= '<Row><Cell'.$mergeAttr.' ss:StyleID="period"><Data ss:Type="String">'.$esc('Report Period: '.$periodText).'</Data></Cell></Row>';
+        $xml .= '<Row></Row>';
+
         $xml .= '<Row>';
         foreach ($headers as $h) {
-            $xml .= '<Cell><Data ss:Type="String">'.htmlspecialchars((string) $h).'</Data></Cell>';
+            $label = $h.(in_array($h, $moneyHeaders, true) ? ' (₹)' : '');
+            $xml .= '<Cell ss:StyleID="colHead"><Data ss:Type="String">'.$esc($label).'</Data></Cell>';
         }
         $xml .= '</Row>';
-        foreach ($rows as $row) {
+
+        $lastIndex = count($rows) - 1;
+        foreach ($rows as $i => $row) {
+            $arr = (array) $row;
+            $first = reset($arr);
+            $isTotal = $i === $lastIndex && is_string($first) && stripos($first, 'total') !== false;
             $xml .= '<Row>';
-            foreach ($headers as $h) {
-                $v = $row[$h] ?? '';
+            foreach ($headers as $ci => $h) {
+                $v = $arr[$h] ?? '';
+                $isMoney = in_array($h, $moneyHeaders, true) && is_numeric($v);
+                $isLabelCol = $ci === 0;
+                $style = $isTotal
+                    ? ($isLabelCol ? 'totalLabel' : ($isMoney ? 'totalMoney' : 'totalCell'))
+                    : ($isLabelCol ? 'cellLabel' : ($isMoney ? 'cellMoney' : 'cell'));
                 $typeAttr = is_numeric($v) ? 'Number' : 'String';
-                $xml .= '<Cell><Data ss:Type="'.$typeAttr.'">'.htmlspecialchars((string) $v).'</Data></Cell>';
+                $xml .= '<Cell ss:StyleID="'.$style.'"><Data ss:Type="'.$typeAttr.'">'.$esc($v).'</Data></Cell>';
             }
             $xml .= '</Row>';
         }
