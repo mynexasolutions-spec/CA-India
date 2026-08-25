@@ -156,12 +156,8 @@ export default function App() {
           <Route index element={<ClientDashboard />} />
           <Route path="profile" element={<ClientProfile />} />
           <Route path="profile/reset-password" element={<ClientResetPassword />} />
-          <Route path="quotation">
-            <Route index element={<InvoiceList type="quotation" title="Quotations" newPath="/portal/quotation/new" />} />
-            <Route path="new" element={<InvoiceForm docType="quotation" title="Create Quotation" />} />
-            <Route path=":id" element={<InvoiceDetail />} />
-            <Route path=":id/edit" element={<InvoiceForm docType="quotation" title="Edit Quotation" />} />
-          </Route>
+          <Route path="quotation" element={<Navigate to="/portal/billing/quotation" replace />} />
+          <Route path="quotation/*" element={<Navigate to="/portal/billing/quotation" replace />} />
           <Route path="edit-requests" element={<EditRequestPage />} />
           <Route path="amendments">
             <Route index element={<AmendmentsPage />} />
@@ -177,8 +173,12 @@ export default function App() {
           <Route path="gst-filing" element={<GstFilingConfirmation />} />
           <Route path="billing" element={<ClientBillingLayout />}>
             <Route index element={<BillingDashboard />} />
-            <Route path="quotations" element={<Navigate to="/portal/quotation" replace />} />
-            <Route path="quotations/*" element={<Navigate to="/portal/quotation" replace />} />
+            <Route path="quotation">
+              <Route index element={<InvoiceList type="quotation" title="Quotations" newPath="/portal/billing/quotation/new" />} />
+              <Route path="new" element={<InvoiceForm docType="quotation" title="Create Quotation" />} />
+              <Route path=":id" element={<InvoiceDetail />} />
+              <Route path=":id/edit" element={<InvoiceForm docType="quotation" title="Edit Quotation" />} />
+            </Route>
             <Route path="invoices" element={<InvoiceList type="tax_invoice" title="Tax Invoices" newPath="/portal/billing/invoices/new" />} />
             <Route path="invoices/new" element={<InvoiceForm docType="tax_invoice" title="Create Tax Invoice" />} />
             <Route path="invoices/:id" element={<InvoiceDetail />} />

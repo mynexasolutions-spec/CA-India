@@ -623,17 +623,10 @@ export function ClientPortalLayout() {
       label: 'Billing',
       icon: InvoiceIcon,
       isActive: (_, { pathname }) =>
-        pathname.startsWith('/portal/billing') && !pathname.startsWith('/portal/billing/parties'),
+        (pathname.startsWith('/portal/billing') || pathname.startsWith('/portal/quotation')) &&
+        !pathname.startsWith('/portal/billing/parties'),
     },
-    // Quotation is a separate workflow from Billing (spec: "Quotation — Navigation & Tab
-    // Behavior") — its own sidebar entry/active-state, not a tab inside Billing, and not
-    // shown for retail (non-GST) profiles where quotation isn't available at all.
-    mode !== 'retail' && {
-      to: '/portal/quotation',
-      label: 'Quotation',
-      icon: QuoteIcon,
-      isActive: (_, { pathname }) => pathname.startsWith('/portal/quotation'),
-    },
+    // Quotation has been moved into the Billing Section tabs as requested.
     hasGst && {
       label: 'GST Compliance',
       icon: ShieldCheckIcon,
@@ -691,7 +684,7 @@ export function ClientBillingLayout() {
       <div className="bp-section-head">
         <div>
           <div className="bp-section-kicker">Billing Section</div>
-          <p className="bp-section-desc">Tax invoices, bill of supply, debit notes, and credit notes.</p>
+          <p className="bp-section-desc">Tax invoices, bill of supply, debit notes, credit notes, and quotations.</p>
         </div>
       </div>
       <BillingSubNav />

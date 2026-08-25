@@ -345,7 +345,7 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     debit_note: '/portal/billing/debit-notes',
     credit_note: '/portal/billing/credit-notes',
     bill_of_supply: '/portal/billing/bill-of-supply',
-    quotation: '/portal/quotation',
+    quotation: '/portal/billing/quotation',
     amendment: '/portal/amendments',
   }[docType] || '/portal/billing';
   let sectionNum = 0;

@@ -40,7 +40,7 @@ export default function InvoiceDetail() {
     debit_note: '/portal/billing/debit-notes',
     credit_note: '/portal/billing/credit-notes',
     bill_of_supply: '/portal/billing/bill-of-supply',
-    quotation: '/portal/quotation',
+    quotation: '/portal/billing/quotation',
     amendment: '/portal/amendments',
   }[doc.type] || '/portal/billing';
   const editPath = billingDocEditPath(doc.type, doc.id);
@@ -140,7 +140,7 @@ export default function InvoiceDetail() {
                 if (!window.confirm('Delete this quotation?')) return;
                 try {
                   await api(`/billing/documents/${doc.id}`, { method: 'DELETE' });
-                  window.location.href = '/portal/quotation';
+                  window.location.href = '/portal/billing/quotations';
                 } catch (e) {
                   setErr(e.message);
                 }

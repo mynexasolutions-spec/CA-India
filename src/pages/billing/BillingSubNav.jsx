@@ -11,6 +11,7 @@ const GST_LINKS = [
   { to: '/portal/billing/bill-of-supply', label: 'Bill of Supply', type: 'bill_of_supply' },
   { to: '/portal/billing/debit-notes', label: 'Debit Notes', type: 'debit_note' },
   { to: '/portal/billing/credit-notes', label: 'Credit Notes', type: 'credit_note' },
+  { to: '/portal/billing/quotation', label: 'Quotations', type: 'quotation' },
 ];
 
 const RETAIL_LINKS = [

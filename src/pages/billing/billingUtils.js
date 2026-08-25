@@ -173,7 +173,7 @@ export function billingDocPath(type, id) {
     debit_note: '/portal/billing/debit-notes',
     credit_note: '/portal/billing/credit-notes',
     bill_of_supply: '/portal/billing/bill-of-supply',
-    quotation: '/portal/quotation',
+    quotation: '/portal/billing/quotation',
     amendment: '/portal/amendments',
   }[type] || '/portal/billing/invoices';
   return `${base}/${id}`;
@@ -183,7 +183,7 @@ export function billingDocEditPath(type, id) {
   const base = {
     tax_invoice: '/portal/billing/invoices',
     bill_of_supply: '/portal/billing/bill-of-supply',
-    quotation: '/portal/quotation',
+    quotation: '/portal/billing/quotation',
     debit_note: '/portal/billing/debit-notes',
     credit_note: '/portal/billing/credit-notes',
     amendment: '/portal/amendments',

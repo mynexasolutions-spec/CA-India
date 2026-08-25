@@ -16,7 +16,7 @@ import {
 
 /** Billing Module spec §8/§9 — the only tab with a "+ Create Document ▼" dropdown. */
 const CREATE_OPTIONS = [
-  { type: 'quotation', label: 'Quotation', to: '/portal/quotation/new' },
+  { type: 'quotation', label: 'Quotation', to: '/portal/billing/quotation/new' },
   { type: 'tax_invoice', label: 'Tax Invoice', to: '/portal/billing/invoices/new' },
   { type: 'bill_of_supply', label: 'Bill of Supply', to: '/portal/billing/bill-of-supply/new' },
   { type: 'debit_note', label: 'Debit Note', to: '/portal/billing/debit-notes/new' },

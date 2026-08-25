@@ -21,7 +21,7 @@ How to use this file when deploying:
 
 ---
 
-## ⬜ 2026-08-24 — Independent GSTR-1 / GSTR-3B filing frequency
+## ✅ 2026-08-25 — Independent GSTR-1 / GSTR-3B filing frequency
 
 **Migration**: `2026_08_24_204738_add_gstr1_filing_frequency_to_client_profiles_table`
 
