@@ -80,9 +80,6 @@ td, th { vertical-align: top; }
   width: 48%;
   padding: 0;
   vertical-align: top;
-  border: 1.2px solid #1e40af;
-  border-radius: 11px;
-  background: #ffffff;
 }
 .party-head {
   background: #1e40af;
@@ -92,9 +89,19 @@ td, th { vertical-align: top; }
   letter-spacing: 0.35px;
   text-transform: uppercase;
   padding: 7px 12px;
-  border-radius: 9px 9px 0 0;
+  border-top: 1.2px solid #1e40af;
+  border-left: 1.2px solid #1e40af;
+  border-right: 1.2px solid #1e40af;
+  border-radius: 10px 10px 0 0;
 }
-.party-body { padding: 10px 12px; }
+.party-body {
+  padding: 10px 12px;
+  background: #ffffff;
+  border-bottom: 1.2px solid #1e40af;
+  border-left: 1.2px solid #1e40af;
+  border-right: 1.2px solid #1e40af;
+  border-radius: 0 0 10px 10px;
+}
 .party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 5px; }
 .party-line { color: #334155; font-size: 9.8px; margin: 2px 0; }
 .party-line b { color: #0f172a; }
@@ -464,9 +471,12 @@ td, th { vertical-align: top; }
      Ship To falls back to the billing address/state when no distinct shipping address
      is configured, rather than being hidden (spec: always show two sections). --}}
 @php
-  $leftLines = 2; // Name (1) + GSTIN (1)
+  $customerLabelLen = strlen($customerLabel);
+  $custNameLen = $c ? strlen($c->name) : 0;
+
+  $leftLines = ceil($customerLabelLen / 36) + ceil($custNameLen / 25);
   if (!empty($billAddr)) {
-      $leftLines += ceil(strlen($billAddr) / 40);
+      $leftLines += ceil(strlen($billAddr) / 38);
   }
   if ($billStateLine) {
       $leftLines += 1;
@@ -474,10 +484,11 @@ td, th { vertical-align: top; }
   if ($c && $c->phone) {
       $leftLines += 1;
   }
+  $leftLines += 1; // GSTIN line
 
-  $rightLines = 2; // Name (1) + GSTIN (1)
+  $rightLines = ceil($customerLabelLen / 36) + ceil($custNameLen / 25);
   if (!empty($shipAddr)) {
-      $rightLines += ceil(strlen($shipAddr) / 40);
+      $rightLines += ceil(strlen($shipAddr) / 38);
   }
   if ($shipStateLine) {
       $rightLines += 1;
@@ -485,9 +496,10 @@ td, th { vertical-align: top; }
   if ($c && $c->phone) {
       $rightLines += 1;
   }
+  $rightLines += 1; // GSTIN line
 
   $maxLines = max($leftLines, $rightLines);
-  $bodyHeight = 22 + ($maxLines * 16);
+  $bodyHeight = 20 + ($maxLines * 16.5);
 @endphp
 <table class="party-wrap">
   <tr>
