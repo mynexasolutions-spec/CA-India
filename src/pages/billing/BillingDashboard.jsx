@@ -141,11 +141,6 @@ function buildActions(d, { onConvert, onDuplicate, onSend, onMarkPaid, onCancel 
   return [view, downloadPdf, editOrRequest, duplicate, send, markPaid, cancel];
 }
 
-function csvCell(value) {
-  const s = String(value ?? '');
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
 export default function BillingDashboard() {
   const { user } = useAuth();
   const profile = user?.client_profile;
@@ -263,50 +258,13 @@ export default function BillingDashboard() {
     }
   };
 
-  /** §23 — export must reflect the same filtered result shown on screen, not just
-   *  the current page: re-fetch the full filtered set (up to the API's 500 cap) first. */
-  const exportCsv = async () => {
-    const qs = new URLSearchParams();
-    if (q) qs.set('q', q);
-    if (month) qs.set('month', month);
-    if (fy) qs.set('fy', fy);
-    if (from) qs.set('from', from);
-    if (to) qs.set('to', to);
-    if (status) qs.set('status', status);
-    if (docType) qs.set('type', docType);
-    qs.set('per_page', 500);
-    qs.set('page', 1);
-    const d = await api(`/billing/documents?${qs}`);
-    const allRows = d.data || [];
-    const header = ['Number', 'Date', 'Created', 'Type', 'Party', 'GSTIN', 'Taxable', 'GST', 'Total', 'Status'];
-    const lines = allRows.map((doc) => [
-      doc.number,
-      formatDMY(doc.document_date),
-      formatDMYTime(doc.created_at),
-      docTypeLabel(doc.type),
-      doc.customer?.name || '—',
-      doc.customer?.gstin_display || doc.customer?.gstin || 'Unregistered',
-      doc.taxable_amount,
-      Number(doc.cgst_amount) + Number(doc.sgst_amount) + Number(doc.igst_amount),
-      doc.grand_total || doc.total_amount,
-      paymentStatusLabel(doc.status),
-    ].map(csvCell).join(','));
-    const csv = [header.join(','), ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bills-and-documents_${from || 'all'}_to_${to || 'all'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  /** PDF export uses the shared reports endpoint (branded header, formatted table) —
-   * scoped to the active From/To date range (the reports endpoint doesn't support the
-   * search/status/type filters exportCsv respects). */
-  const exportPdf = async () => {
+  /** Both exports go through the shared reports endpoint (same branded company header,
+   * title box and styled table as the GST Summary export) — scoped to the active From/To
+   * date range, since that endpoint doesn't support the search/status/type filters the
+   * on-screen table respects. */
+  const downloadReport = async (format) => {
     const token = getAuthToken();
-    const qs = new URLSearchParams({ type: 'document_register', from, to, format: 'pdf' });
+    const qs = new URLSearchParams({ type: 'document_register', from, to, format });
     const res = await fetch(`/api/billing/reports/export?${qs}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: '*/*' },
     });
@@ -315,10 +273,13 @@ export default function BillingDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bills-and-documents_${from || 'all'}_to_${to || 'all'}.pdf`;
+    a.download = `bills-and-documents_${from || 'all'}_to_${to || 'all'}.${format === 'xlsx' ? 'xls' : 'pdf'}`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const exportCsv = () => downloadReport('xlsx');
+  const exportPdf = () => downloadReport('pdf');
 
   return (
     <>

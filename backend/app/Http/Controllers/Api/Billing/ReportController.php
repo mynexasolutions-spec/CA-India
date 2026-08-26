@@ -335,6 +335,56 @@ class ReportController extends Controller
         return $out;
     }
 
+    /** Renames the raw hsn_summary query columns to the same human labels the live
+     * HSN / SAC Summary page uses (Code Type, HSN / SAC Code, GST Rate (%), ...) and
+     * appends a Total row, so the export matches the on-screen table instead of dumping
+     * raw DB column names. */
+    private function flattenHsnSummary(array $rows): array
+    {
+        $out = [];
+        $totQty = $totTaxable = $totIgst = $totCgst = $totSgst = 0.0;
+
+        foreach ($rows as $row) {
+            $arr = is_array($row) ? $row : (array) $row;
+            $hsn = (string) ($arr['hsn_sac'] ?? '');
+            $qty = (float) ($arr['qty'] ?? 0);
+            $taxable = (float) ($arr['taxable'] ?? 0);
+            $igst = (float) ($arr['igst'] ?? 0);
+            $cgst = (float) ($arr['cgst'] ?? 0);
+            $sgst = (float) ($arr['sgst'] ?? 0);
+
+            $totQty += $qty;
+            $totTaxable += $taxable;
+            $totIgst += $igst;
+            $totCgst += $cgst;
+            $totSgst += $sgst;
+
+            $out[] = [
+                'Code Type' => str_starts_with($hsn, '99') ? 'SAC' : 'HSN',
+                'HSN / SAC Code' => $hsn,
+                'GST Rate (%)' => round((float) ($arr['gst_rate'] ?? 0)),
+                'QTY' => $qty,
+                'Taxable Value' => $taxable,
+                'IGST' => $igst,
+                'CGST' => $cgst,
+                'SGST' => $sgst,
+            ];
+        }
+
+        $out[] = [
+            'Code Type' => 'Total',
+            'HSN / SAC Code' => '',
+            'GST Rate (%)' => '',
+            'QTY' => $totQty,
+            'Taxable Value' => $totTaxable,
+            'IGST' => $totIgst,
+            'CGST' => $totCgst,
+            'SGST' => $totSgst,
+        ];
+
+        return $out;
+    }
+
     private function availableTypes(): array
     {
         return [
@@ -367,6 +417,9 @@ class ReportController extends Controller
         }
         if (isset($data['taxable']) || isset($data['error'])) {
             return [$data];
+        }
+        if (isset($data[0]) && is_array((array) $data[0]) && array_key_exists('hsn_sac', (array) $data[0])) {
+            return $this->flattenHsnSummary($data);
         }
         $out = [];
         foreach ($data as $row) {

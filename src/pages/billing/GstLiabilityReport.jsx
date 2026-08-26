@@ -13,6 +13,14 @@ function DocIcon() {
     </svg>
   );
 }
+function ExcelIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="14" y2="9"/>
+    </svg>
+  );
+}
 function CalendarIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -285,7 +293,7 @@ export default function GstLiabilityReport() {
         <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
           <button type="button" onClick={() => download('xlsx')}
             style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1.5px solid #16a34a', background: '#fff', color: '#16a34a', fontWeight: 700, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
-            <DocIcon /> Export Excel
+            <ExcelIcon /> Export Excel
           </button>
           <button type="button" onClick={() => download('pdf')}
             style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1.5px solid #ef4444', background: '#fff', color: '#ef4444', fontWeight: 700, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}>
