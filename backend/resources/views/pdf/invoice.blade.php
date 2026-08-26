@@ -74,7 +74,8 @@ td, th { vertical-align: top; }
 .hdr-rule { border: 0; border-top: 1.4px solid #1e40af; margin: 6px 0 12px; }
 
 /* ===== Receiver / Consignee ===== */
-.party-wrap { margin-top: 0; }
+.party-wrap { width: 100%; table-layout: fixed; margin-top: 0; }
+.col-spacer { width: 4%; }
 .party-cell {
   width: 48%;
   padding: 0;
@@ -93,7 +94,7 @@ td, th { vertical-align: top; }
   padding: 7px 12px;
   border-radius: 9px 9px 0 0;
 }
-.party-body { padding: 10px 12px; height: 120px; }
+.party-body { padding: 10px 12px; }
 .party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 5px; }
 .party-line { color: #334155; font-size: 9.8px; margin: 2px 0; }
 .party-line b { color: #0f172a; }
@@ -462,11 +463,37 @@ td, th { vertical-align: top; }
 {{-- BILL TO / SHIP TO with navy header bars — both boxes always print side by side;
      Ship To falls back to the billing address/state when no distinct shipping address
      is configured, rather than being hidden (spec: always show two sections). --}}
+@php
+  $leftLines = 2; // Name (1) + GSTIN (1)
+  if (!empty($billAddr)) {
+      $leftLines += ceil(strlen($billAddr) / 40);
+  }
+  if ($billStateLine) {
+      $leftLines += 1;
+  }
+  if ($c && $c->phone) {
+      $leftLines += 1;
+  }
+
+  $rightLines = 2; // Name (1) + GSTIN (1)
+  if (!empty($shipAddr)) {
+      $rightLines += ceil(strlen($shipAddr) / 40);
+  }
+  if ($shipStateLine) {
+      $rightLines += 1;
+  }
+  if ($c && $c->phone) {
+      $rightLines += 1;
+  }
+
+  $maxLines = max($leftLines, $rightLines);
+  $bodyHeight = 22 + ($maxLines * 16);
+@endphp
 <table class="party-wrap">
   <tr>
     <td class="party-cell">
       <div class="party-head">Details of Receiver | Bill To</div>
-      <div class="party-body">
+      <div class="party-body" style="height: {{ $bodyHeight }}px;">
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
@@ -484,7 +511,7 @@ td, th { vertical-align: top; }
     <td class="col-spacer"></td>
     <td class="party-cell">
       <div class="party-head">Details of Consignee | Ship To</div>
-      <div class="party-body">
+      <div class="party-body" style="height: {{ $bodyHeight }}px;">
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
