@@ -93,7 +93,7 @@ td, th { vertical-align: top; }
   padding: 7px 12px;
   border-radius: 9px 9px 0 0;
 }
-.party-body { padding: 10px 12px; }
+.party-body { padding: 10px 12px; height: 120px; }
 .party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 5px; }
 .party-line { color: #334155; font-size: 9.8px; margin: 2px 0; }
 .party-line b { color: #0f172a; }
