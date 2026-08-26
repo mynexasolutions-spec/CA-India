@@ -83,6 +83,12 @@ td, th { vertical-align: top; }
 .party-box {
   border: 1.2px solid #1e40af;
   border-radius: 11px;
+  /* Classic equal-height-columns trick: a 100%-height block inside a table cell with
+     vertical-align:top stretches to match the taller sibling cell in the same row, so
+     both Bill To / Ship To boxes line up even when their address text wraps differently. */
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 .party-head {
   background: #1e40af;
