@@ -283,6 +283,19 @@ class ClientProfileController extends Controller
 
         $sum = fn ($type = null) => (clone $base)->when($type, fn ($q) => $q->where('type', $type));
 
+        // $base mixes document types unless the caller filtered to exactly one — Credit
+        // Notes reduce value, so only flip their sign when types are actually mixed; a
+        // single-type view (e.g. "Credit Notes" only) should keep its own plain totals.
+        $mixedTypes = ! ($request->filled('document_type') && $request->document_type !== 'all');
+        $signed = fn (string $expr) => $mixedTypes
+            ? "SUM(CASE WHEN type = 'credit_note' THEN -($expr) ELSE ($expr) END)"
+            : "SUM($expr)";
+        // Same sign rule, but unwrapped — for passing straight to Eloquent's own ->sum(),
+        // which already adds its own SUM(...) around whatever expression it's given.
+        $signedExpr = fn (string $expr) => $mixedTypes
+            ? "CASE WHEN type = 'credit_note' THEN -($expr) ELSE ($expr) END"
+            : $expr;
+
         $monthly = (clone $base)
             ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month,
                 SUM(CASE WHEN type = "tax_invoice" THEN 1 ELSE 0 END) as tax_invoices,
@@ -290,12 +303,12 @@ class ClientProfileController extends Controller
                 SUM(CASE WHEN type = "debit_note" THEN 1 ELSE 0 END) as debit_notes,
                 SUM(CASE WHEN type = "credit_note" THEN 1 ELSE 0 END) as credit_notes,
                 COUNT(*) as total_documents,
-                SUM(taxable_amount) as taxable,
-                SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total,
-                SUM(cgst_amount) as cgst,
-                SUM(sgst_amount) as sgst,
-                SUM(igst_amount) as igst,
-                SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+                '.$signed('taxable_amount').' as taxable,
+                '.$signed('COALESCE(NULLIF(grand_total,0), total_amount)').' as total,
+                '.$signed('cgst_amount').' as cgst,
+                '.$signed('sgst_amount').' as sgst,
+                '.$signed('igst_amount').' as igst,
+                '.$signed('cgst_amount+sgst_amount+igst_amount').' as gst')
             ->groupBy('month')->orderBy('month')->get();
 
         $hsn = DB::table('document_line_items as li')
@@ -356,8 +369,8 @@ class ClientProfileController extends Controller
             ->select(
                 'customer_id',
                 DB::raw('COUNT(*) as invoices'),
-                DB::raw('SUM(taxable_amount) as taxable'),
-                DB::raw('SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
+                DB::raw($signed('taxable_amount').' as taxable'),
+                DB::raw($signed('COALESCE(NULLIF(grand_total,0), total_amount)').' as total')
             )
             ->groupBy('customer_id')
             ->with('customer:id,name')
@@ -373,13 +386,13 @@ class ClientProfileController extends Controller
                 'debit_notes' => $sum('debit_note')->count(),
                 'credit_notes' => $sum('credit_note')->count(),
                 'total_documents' => (clone $base)->count(),
-                'total_invoice_value' => (float) (clone $base)->sum(DB::raw('COALESCE(NULLIF(grand_total,0), total_amount)')),
-                'taxable_value' => (float) (clone $base)->sum('taxable_amount'),
-                'cgst' => (float) (clone $base)->sum('cgst_amount'),
-                'sgst' => (float) (clone $base)->sum('sgst_amount'),
-                'igst' => (float) (clone $base)->sum('igst_amount'),
-                'total_gst' => (float) (clone $base)->selectRaw('SUM(cgst_amount+sgst_amount+igst_amount) as t')->value('t'),
-                'net_invoice_value' => (float) (clone $base)->sum(DB::raw('COALESCE(NULLIF(grand_total,0), total_amount)')),
+                'total_invoice_value' => (float) (clone $base)->sum(DB::raw($signedExpr('COALESCE(NULLIF(grand_total,0), total_amount)'))),
+                'taxable_value' => (float) (clone $base)->sum(DB::raw($signedExpr('taxable_amount'))),
+                'cgst' => (float) (clone $base)->sum(DB::raw($signedExpr('cgst_amount'))),
+                'sgst' => (float) (clone $base)->sum(DB::raw($signedExpr('sgst_amount'))),
+                'igst' => (float) (clone $base)->sum(DB::raw($signedExpr('igst_amount'))),
+                'total_gst' => (float) (clone $base)->selectRaw('SUM('.$signedExpr('cgst_amount+sgst_amount+igst_amount').') as t')->value('t'),
+                'net_invoice_value' => (float) (clone $base)->sum(DB::raw($signedExpr('COALESCE(NULLIF(grand_total,0), total_amount)'))),
             ],
             'monthly' => $monthly,
             'monthly_report' => $monthly,
@@ -446,6 +459,9 @@ class ClientProfileController extends Controller
         }
 
         if ($type === 'billing_summary') {
+            // Every document type is mixed together per party here — Credit Notes reduce
+            // a party's business value, so they're subtracted rather than added.
+            $cn = fn (string $expr) => "SUM(CASE WHEN commercial_documents.type = 'credit_note' THEN -($expr) ELSE ($expr) END)";
             $rows = CommercialDocument::query()
                 ->leftJoin('customers as c', 'c.id', '=', 'commercial_documents.customer_id')
                 ->where('commercial_documents.client_profile_id', $profile->id)
@@ -454,11 +470,11 @@ class ClientProfileController extends Controller
                 ->select(
                     DB::raw('COALESCE(MAX(c.name), "No Party") as Party'),
                     DB::raw('COUNT(*) as Documents'),
-                    DB::raw('SUM(commercial_documents.taxable_amount) as Taxable'),
-                    DB::raw('SUM(commercial_documents.cgst_amount) as CGST'),
-                    DB::raw('SUM(commercial_documents.sgst_amount) as SGST'),
-                    DB::raw('SUM(commercial_documents.igst_amount) as IGST'),
-                    DB::raw('SUM(COALESCE(NULLIF(commercial_documents.grand_total,0), commercial_documents.total_amount)) as Total')
+                    DB::raw($cn('commercial_documents.taxable_amount').' as Taxable'),
+                    DB::raw($cn('commercial_documents.cgst_amount').' as CGST'),
+                    DB::raw($cn('commercial_documents.sgst_amount').' as SGST'),
+                    DB::raw($cn('commercial_documents.igst_amount').' as IGST'),
+                    DB::raw($cn('COALESCE(NULLIF(commercial_documents.grand_total,0), commercial_documents.total_amount)').' as Total')
                 )
                 ->groupBy('commercial_documents.customer_id')
                 ->orderByDesc('Total')
@@ -493,6 +509,9 @@ class ClientProfileController extends Controller
         }
 
         if ($type === 'monthly_report') {
+            // Every document type is mixed together per month here — Credit Notes reduce
+            // value, so they're subtracted rather than added.
+            $cn = fn (string $expr) => "SUM(CASE WHEN type = 'credit_note' THEN -($expr) ELSE ($expr) END)";
             $rows = CommercialDocument::where('client_profile_id', $profile->id)
                 ->whereBetween('document_date', [$from, $to])->where('status', 'issued')
                 ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month,
@@ -500,10 +519,10 @@ class ClientProfileController extends Controller
                     SUM(CASE WHEN type = "bill_of_supply" THEN 1 ELSE 0 END) as bill_of_supply,
                     SUM(CASE WHEN type = "debit_note" THEN 1 ELSE 0 END) as debit_notes,
                     SUM(CASE WHEN type = "credit_note" THEN 1 ELSE 0 END) as credit_notes,
-                    SUM(taxable_amount) as taxable_turnover,
-                    SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as invoice_value,
-                    SUM(cgst_amount) as cgst, SUM(sgst_amount) as sgst, SUM(igst_amount) as igst,
-                    SUM(cgst_amount+sgst_amount+igst_amount) as gst_liability')
+                    '.$cn('taxable_amount').' as taxable_turnover,
+                    '.$cn('COALESCE(NULLIF(grand_total,0), total_amount)').' as invoice_value,
+                    '.$cn('cgst_amount').' as cgst, '.$cn('sgst_amount').' as sgst, '.$cn('igst_amount').' as igst,
+                    '.$cn('cgst_amount+sgst_amount+igst_amount').' as gst_liability')
                 ->groupBy('month')->orderBy('month')->get()->map(fn ($r) => (array) $r->toArray())->all();
 
             return $this->respondExport($format, $type, $rows);
@@ -791,8 +810,14 @@ class ClientProfileController extends Controller
 
     private function yearlyTotals($yearly): array
     {
+        // Rows are grouped by (year, type); only flip Credit Notes' sign when more than
+        // one document type is actually present — a single-type view (e.g. filtered to
+        // "Credit Notes" only) should keep its own plain positive totals.
+        $mixedTypes = collect($yearly)->pluck('type')->unique()->count() > 1;
+
         $byYear = [];
         foreach ($yearly as $row) {
+            $sign = ($mixedTypes && $row->type === 'credit_note') ? -1 : 1;
             $y = $row->year;
             if (! isset($byYear[$y])) {
                 $byYear[$y] = [
@@ -812,12 +837,12 @@ class ClientProfileController extends Controller
             }
             $byYear[$y]['total_documents'] += (int) $row->count;
             $byYear[$y][$row->type === 'tax_invoice' ? 'tax_invoices' : ($row->type === 'bill_of_supply' ? 'bill_of_supply' : ($row->type === 'debit_note' ? 'debit_notes' : 'credit_notes'))] += (int) $row->count;
-            $byYear[$y]['taxable_turnover'] += (float) $row->taxable;
-            $byYear[$y]['invoice_value'] += (float) $row->total;
-            $byYear[$y]['cgst'] += (float) ($row->cgst ?? 0);
-            $byYear[$y]['sgst'] += (float) ($row->sgst ?? 0);
-            $byYear[$y]['igst'] += (float) ($row->igst ?? 0);
-            $byYear[$y]['gst_liability'] += (float) ($row->gst ?? 0);
+            $byYear[$y]['taxable_turnover'] += $sign * (float) $row->taxable;
+            $byYear[$y]['invoice_value'] += $sign * (float) $row->total;
+            $byYear[$y]['cgst'] += $sign * (float) ($row->cgst ?? 0);
+            $byYear[$y]['sgst'] += $sign * (float) ($row->sgst ?? 0);
+            $byYear[$y]['igst'] += $sign * (float) ($row->igst ?? 0);
+            $byYear[$y]['gst_liability'] += $sign * (float) ($row->gst ?? 0);
         }
 
         return array_values($byYear);

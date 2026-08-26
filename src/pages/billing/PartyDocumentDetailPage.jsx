@@ -154,12 +154,14 @@ export default function PartyDocumentDetailPage() {
   const safePage  = Math.min(page, pageCount);
   const pageRows  = flatDocs.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  // Totals
-  const totTaxable = flatDocs.reduce((s, r) => s + Number(r.taxable_amount  || 0), 0);
-  const totCgst    = flatDocs.reduce((s, r) => s + Number(r.cgst_amount     || 0), 0);
-  const totSgst    = flatDocs.reduce((s, r) => s + Number(r.sgst_amount     || 0), 0);
-  const totIgst    = flatDocs.reduce((s, r) => s + Number(r.igst_amount     || 0), 0);
-  const totTotal   = flatDocs.reduce((s, r) => s + Number(r.grand_total || r.total_amount || 0), 0);
+  // Totals — Credit Notes reduce this party's business value, so they're subtracted
+  // rather than added when combining across the mixed document types shown here.
+  const sign = (r) => (r.type === 'credit_note' ? -1 : 1);
+  const totTaxable = flatDocs.reduce((s, r) => s + sign(r) * Number(r.taxable_amount  || 0), 0);
+  const totCgst    = flatDocs.reduce((s, r) => s + sign(r) * Number(r.cgst_amount     || 0), 0);
+  const totSgst    = flatDocs.reduce((s, r) => s + sign(r) * Number(r.sgst_amount     || 0), 0);
+  const totIgst    = flatDocs.reduce((s, r) => s + sign(r) * Number(r.igst_amount     || 0), 0);
+  const totTotal   = flatDocs.reduce((s, r) => s + sign(r) * Number(r.grand_total || r.total_amount || 0), 0);
 
   const fyLabel = fy ? `FY ${fy}` : (from ? `FY ${from.slice(0, 4)}-${String(Number(from.slice(0, 4)) + 1).slice(2)}` : '');
 

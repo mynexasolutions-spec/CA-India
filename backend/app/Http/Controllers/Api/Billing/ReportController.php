@@ -210,10 +210,17 @@ class ReportController extends Controller
                     DB::raw('SUM(li.total_amount) as total')
                 )
                 ->groupBy('li.hsn_sac')->get(),
+            // Credit Notes reduce a party's business value — signed -1 here so the mixed
+            // per-customer taxable/total sums net them out instead of adding them on top.
             'party_wise', 'customer_wise', 'party_wise_sales' => (clone $base)
                 ->whereIn('type', ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'])
                 ->where('status', 'issued')
-                ->select('customer_id', DB::raw('COUNT(*) as invoices'), DB::raw('SUM(taxable_amount) as taxable'), DB::raw('SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total'))
+                ->select(
+                    'customer_id',
+                    DB::raw('COUNT(*) as invoices'),
+                    DB::raw("SUM(CASE WHEN type = 'credit_note' THEN -taxable_amount ELSE taxable_amount END) as taxable"),
+                    DB::raw("SUM(CASE WHEN type = 'credit_note' THEN -COALESCE(NULLIF(grand_total,0), total_amount) ELSE COALESCE(NULLIF(grand_total,0), total_amount) END) as total")
+                )
                 ->groupBy('customer_id')->with('customer:id,name')->get(),
             'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
                 ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
@@ -326,9 +333,9 @@ class ReportController extends Controller
                 'Bills of Supply' => $billOfSupply,
                 'Debit Notes' => $debitNotes,
                 'Credit Notes' => $creditNotes,
-                // Row-wise total across doc types — same figure the live GST Summary
-                // report shows in its own "Total" column, previously missing here.
-                'Total' => $taxInvoices + $billOfSupply + $debitNotes + $creditNotes,
+                // Row-wise net across doc types, same as the live GST Summary report's
+                // "Total" column — Credit Notes reduce the value, so they're subtracted.
+                'Total' => $taxInvoices + $billOfSupply + $debitNotes - $creditNotes,
             ];
         }
 

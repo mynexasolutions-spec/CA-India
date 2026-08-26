@@ -254,18 +254,24 @@ export default function GstSummaryPage({
 
   const matrix = resolveGstMatrix(data, profile);
 
+  // Net across all doc-type columns — Credit Notes reduce the value (subtracted),
+  // every other column (Tax Invoices, Bills of Supply, Debit Notes) adds to it.
+  const netAcrossCols = (key) => GST_MATRIX_COLS.reduce(
+    (s, [col]) => s + (col === 'credit_note' ? -1 : 1) * (matrix[col]?.[key] ?? 0),
+    0
+  );
+
   // KPI totals across all columns
-  const sumRow = (key) => GST_MATRIX_COLS.reduce((acc, [col]) => acc + (matrix[col]?.[key] ?? 0), 0);
   const kpiValues = {
-    taxable: sumRow('taxable_value'),
-    cgst:    sumRow('cgst'),
-    sgst:    sumRow('sgst'),
-    igst:    sumRow('igst'),
-    gross:   sumRow('total_invoice_value'),
+    taxable: netAcrossCols('taxable_value'),
+    cgst:    netAcrossCols('cgst'),
+    sgst:    netAcrossCols('sgst'),
+    igst:    netAcrossCols('igst'),
+    gross:   netAcrossCols('total_invoice_value'),
   };
 
   // Row totals (across all doc-type columns)
-  const rowTotal = (rowKey) => GST_MATRIX_COLS.reduce((s, [col]) => s + (matrix[col]?.[rowKey] ?? 0), 0);
+  const rowTotal = (rowKey) => netAcrossCols(rowKey);
 
   return (
     <div style={{ maxWidth: '100%' }}>

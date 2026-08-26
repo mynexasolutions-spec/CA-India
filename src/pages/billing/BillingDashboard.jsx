@@ -185,9 +185,13 @@ export default function BillingDashboard() {
         const hasValidTotals = apiTotals && typeof apiTotals === 'object' && 'count' in apiTotals && Number(apiTotals.count) > 0;
         
         if (!hasValidTotals && d.data && d.data.length > 0) {
-          const taxable = d.data.reduce((sum, row) => sum + Number(row.taxable_amount || 0), 0);
-          const gst = d.data.reduce((sum, row) => sum + (Number(row.cgst_amount || 0) + Number(row.sgst_amount || 0) + Number(row.igst_amount || 0)), 0);
-          const grand = d.data.reduce((sum, row) => sum + Number(row.grand_total || row.total_amount || 0), 0);
+          // Credit Notes reduce value — only flip the sign when this fallback is
+          // summing a mixed set (no single type filter applied), same rule as the
+          // backend's own totals calculation.
+          const sign = (row) => (!docType && row.type === 'credit_note' ? -1 : 1);
+          const taxable = d.data.reduce((sum, row) => sum + sign(row) * Number(row.taxable_amount || 0), 0);
+          const gst = d.data.reduce((sum, row) => sum + sign(row) * (Number(row.cgst_amount || 0) + Number(row.sgst_amount || 0) + Number(row.igst_amount || 0)), 0);
+          const grand = d.data.reduce((sum, row) => sum + sign(row) * Number(row.grand_total || row.total_amount || 0), 0);
           apiTotals = {
             count: d.total || d.data.length,
             taxable_amount: taxable,

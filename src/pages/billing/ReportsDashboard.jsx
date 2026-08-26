@@ -164,7 +164,12 @@ export default function ReportsDashboard() {
   };
 
   const matrix = resolveGstMatrix(gstData, profile);
-  const sumRow = (key) => GST_MATRIX_COLS.reduce((acc, [col]) => acc + (matrix[col]?.[key] ?? 0), 0);
+  // Credit Notes reduce value, so they're subtracted rather than added when combining
+  // across document types — same rule as the GST Summary report.
+  const sumRow = (key) => GST_MATRIX_COLS.reduce(
+    (acc, [col]) => acc + (col === 'credit_note' ? -1 : 1) * (matrix[col]?.[key] ?? 0),
+    0
+  );
   const totalGross   = sumRow('total_invoice_value');
   const totalTaxable = sumRow('taxable_value');
   const gstCollected = sumRow('cgst') + sumRow('sgst') + sumRow('igst');

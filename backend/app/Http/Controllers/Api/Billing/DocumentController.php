@@ -97,11 +97,17 @@ class DocumentController extends Controller
         if ($request->filled('type')) {
             $totalsScope->where('type', $request->type);
         }
+        // Credit Notes reduce value, everything else adds to it — but only flip the sign
+        // when the totals mix document types (no single type filter applied); a filtered
+        // "Credit Notes" view should still show its own plain positive total.
+        $signed = fn (string $expr) => $request->filled('type')
+            ? $expr
+            : "CASE WHEN type = 'credit_note' THEN -($expr) ELSE ($expr) END";
         $totals = [
             'count' => (clone $totalsScope)->count(),
-            'taxable_amount' => (float) (clone $totalsScope)->sum('taxable_amount'),
-            'gst_amount' => (float) (clone $totalsScope)->sum(DB::raw('cgst_amount + sgst_amount + igst_amount')),
-            'grand_total' => (float) (clone $totalsScope)->sum(DB::raw('COALESCE(NULLIF(grand_total, 0), total_amount)')),
+            'taxable_amount' => (float) (clone $totalsScope)->sum(DB::raw($signed('taxable_amount'))),
+            'gst_amount' => (float) (clone $totalsScope)->sum(DB::raw($signed('cgst_amount + sgst_amount + igst_amount'))),
+            'grand_total' => (float) (clone $totalsScope)->sum(DB::raw($signed('COALESCE(NULLIF(grand_total, 0), total_amount)'))),
         ];
 
         $q = clone $base;

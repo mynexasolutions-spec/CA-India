@@ -354,7 +354,9 @@ class BillingMonitorController extends Controller
                 'Bill of Supply' => $billOfSupply,
                 'Debit Notes' => $debitNotes,
                 'Credit Notes' => $creditNotes,
-                'Total' => $taxInvoices + $billOfSupply + $debitNotes + $creditNotes,
+                // Credit Notes reduce value, so they're subtracted rather than added —
+                // same rule as the client portal's flattenGstMatrix().
+                'Total' => $taxInvoices + $billOfSupply + $debitNotes - $creditNotes,
             ];
         }
 
