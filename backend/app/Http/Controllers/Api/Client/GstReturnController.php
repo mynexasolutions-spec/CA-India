@@ -74,9 +74,9 @@ class GstReturnController extends Controller
                     $month -= 12;
                     $year += 1;
                 }
-                // GSTR-1 (Monthly): 11th of the following month. GSTR-3B (Monthly): 20th.
+                // GSTR-1 (QRMP monthly IFF): 13th of the following month. GSTR-3B (Monthly): 20th.
                 $after = \Carbon\Carbon::createFromDate($year, $month, 1)->addMonth();
-                $day = $dueField === 'due_gstr3b' ? 20 : 11;
+                $day = $dueField === 'due_gstr3b' ? 20 : 13;
                 $periods[] = [
                     'period' => sprintf('%04d-%02d', $year, $month),
                     'label' => \Carbon\Carbon::createFromDate($year, $month, 1)->format('M \'y'),

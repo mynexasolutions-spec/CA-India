@@ -381,8 +381,8 @@ export default function PartyWisePage({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid var(--bp-border)' }}>
-                  <th style={{ padding: '11px 20px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b', width: 48 }}>#</th>
-                  <th style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Party Name</th>
+                  <th style={{ padding: '11px 20px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b', width: 48, whiteSpace: 'nowrap' }}>Sr. No.</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Party Name</th>
                   <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>Documents <InfoIcon /></span>
                   </th>
@@ -409,8 +409,8 @@ export default function PartyWisePage({
                       <tr key={r.customer_id || i} style={{ borderBottom: '1px solid var(--bp-border)', background: '#fff', transition: 'background .15s' }}
                         onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                         onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}>
-                        <td style={{ padding: '13px 20px', fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>{i + 1}</td>
-                        <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{name}</td>
+                        <td style={{ padding: '13px 20px', textAlign: 'center', fontSize: 13, color: '#94a3b8', fontWeight: 600 }}>{i + 1}</td>
+                        <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{name}</td>
                         <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13 }}>
                           {canOpen ? (
                             <button type="button" onClick={() => openParty(r)}

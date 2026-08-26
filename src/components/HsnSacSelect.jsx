@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 
 /**
@@ -24,10 +24,33 @@ export default function HsnSacSelect({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const [menuPos, setMenuPos] = useState(null);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
   const skipNextSearch = useRef(false);
 
   useEffect(() => { setQuery(value || ''); }, [value]);
+
+  // Render the dropdown with `position: fixed`, positioned from the input's own screen
+  // coordinates — a table cell's scroll container clips a plain `position: absolute`
+  // dropdown (the classic "hidden below the table" bug), but `fixed` escapes any
+  // ancestor's overflow. Below the 640px breakpoint the CSS switches this menu to an
+  // anchored bottom sheet instead, so no inline position is needed there.
+  useLayoutEffect(() => {
+    if (!open) { setMenuPos(null); return undefined; }
+    const place = () => {
+      if (window.innerWidth <= 640 || !inputRef.current) { setMenuPos(null); return; }
+      const r = inputRef.current.getBoundingClientRect();
+      setMenuPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 340) });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -88,6 +111,7 @@ export default function HsnSacSelect({
   return (
     <div className="hsn-select" ref={wrapRef}>
       <input
+        ref={inputRef}
         className={className}
         name={name}
         value={query}
@@ -107,7 +131,10 @@ export default function HsnSacSelect({
         onKeyDown={onKeyDown}
       />
       {open && (
-        <div className="hsn-select-menu">
+        <div
+          className="hsn-select-menu"
+          style={menuPos ? { position: 'fixed', top: menuPos.top, left: menuPos.left, width: menuPos.width } : undefined}
+        >
           {loading && <div className="hsn-select-note">Searching…</div>}
           {!loading && !options.length && (
             <div className="hsn-select-note">No matching code in the government master</div>

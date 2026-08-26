@@ -171,6 +171,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/clients/{id}/gstr2b', [Gstr2bController::class, 'index']);
         Route::post('/clients/{id}/gstr2b', [Gstr2bController::class, 'upload']);
         Route::delete('/clients/{id}/gstr2b/{recordId}', [Gstr2bController::class, 'destroy']);
+        Route::get('/clients/{id}/gstr2b/{recordId}/invoices', [Gstr2bController::class, 'invoices']);
+        Route::post('/clients/{id}/gstr2b/{recordId}/invoices/bulk', [Gstr2bController::class, 'bulkStoreInvoices']);
+        Route::patch('/clients/{id}/gstr2b/invoices/{invoiceId}/eligibility', [Gstr2bController::class, 'updateEligibility']);
         Route::get('/staff', [ResourceController::class, 'staff']);
         Route::post('/staff', [ResourceController::class, 'storeStaff']);
         Route::get('/activity', [ResourceController::class, 'activity']);

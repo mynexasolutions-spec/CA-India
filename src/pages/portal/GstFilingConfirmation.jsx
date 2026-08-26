@@ -217,13 +217,13 @@ export default function GstFilingConfirmation() {
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Return Type</span>
-            <select 
+            <select
               className="bp-select"
               style={{ height: 40, boxSizing: 'border-box', minWidth: 160 }}
               value="GSTR-1"
-              disabled
+              onChange={() => {}}
             >
-              <option value="GSTR-1">GSTR-1 Only</option>
+              <option value="GSTR-1">GSTR-1</option>
             </select>
           </div>
           <div>

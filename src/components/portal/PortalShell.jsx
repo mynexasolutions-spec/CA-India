@@ -138,6 +138,12 @@ function NavGroup({ item, location, closeSidebar }) {
         <span style={{ display: 'flex', alignItems: 'center' }}>
           {item.icon && <item.icon />}
           {item.label}
+          {item.locked && (
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6, flexShrink: 0 }}>
+              <rect x="4" y="10" width="16" height="10" rx="2" />
+              <path d="M7 10V7a5 5 0 0 1 10 0v3" />
+            </svg>
+          )}
         </span>
         <span className="bp-nav-chevron" style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-flex', alignItems: 'center' }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -585,6 +591,7 @@ export function ClientPortalLayout() {
   const { user } = useAuth();
   const profile = user?.client_profile;
   const hasGst = Boolean(profile?.has_gst);
+  const gstComplianceEnabled = profile?.gst_compliance_enabled !== false;
   const mode = billingMode(profile);
 
   const fyOptions = buildFyOptions(6);
@@ -630,6 +637,7 @@ export function ClientPortalLayout() {
     hasGst && {
       label: 'GST Compliance',
       icon: ShieldCheckIcon,
+      locked: !gstComplianceEnabled,
       children: [
         { to: '/portal/gstr-2b', label: 'GSTR-2B' },
         { to: '/portal/gst-returns', label: 'GST Returns' },

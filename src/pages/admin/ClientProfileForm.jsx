@@ -287,7 +287,7 @@ export default function ClientProfileForm() {
                         checked={form.gst_filing_frequency === 'quarterly'}
                         onChange={() => set('gst_filing_frequency', 'quarterly')}
                       />
-                      Quarterly (QRMP)
+                      Quarterly
                     </label>
                   </div>
                 </Field>
@@ -311,7 +311,7 @@ export default function ClientProfileForm() {
                         checked={form.gstr1_filing_frequency === 'quarterly'}
                         onChange={() => set('gstr1_filing_frequency', 'quarterly')}
                       />
-                      Quarterly
+                      Quarterly (QRMP)
                     </label>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 4 }}>

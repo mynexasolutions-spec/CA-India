@@ -118,6 +118,7 @@
   gap: 3px;
   padding: 12px 10px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden !important;
   scrollbar-width: thin;
@@ -293,6 +294,14 @@
   .bp-stat-grid-5 {
     grid-template-columns: 1fr;
   }
+
+  .bp-gst-feature-row { grid-template-columns: repeat(2, 1fr) !important; }
+
+  .bp-modal { width: 100% !important; padding: 22px 18px 20px !important; }
+
+  .bp-gate-footer-btn { font-size: 10px !important; padding: 0 4px !important; gap: 3px !important; white-space: nowrap !important; }
+
+  .bp-toolbar .bp-toolbar-export-btn { font-size: 11.5px !important; padding: 0 6px !important; gap: 5px !important; }
 }
 
 .bp-card {
@@ -325,22 +334,38 @@
   align-self: start;
 }
 
+.bp-actions .bp-btn {
+  min-width: 108px;
+}
+
 .bp-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   border: 0;
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 9px;
+  padding: 0 16px;
+  height: 38px;
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   text-decoration: none;
   color: #fff;
-  height: auto;
   align-self: flex-start;
   flex: 0 0 auto;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.bp-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -6px rgba(13, 31, 60, 0.35);
+  filter: brightness(1.04);
+}
+
+.bp-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .bp-btn-primary {
@@ -364,6 +389,11 @@
   background: #fff;
   color: var(--bp-navy);
   border: 1px solid var(--bp-border);
+}
+
+.bp-btn-outline:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .bp-btn-danger {
@@ -695,6 +725,38 @@
   border-color: rgba(0, 0, 0, 0.12);
 }
 
+/* Compliance Status — thin styled scrollbar + period card hover, instead of the raw native bar */
+.bp-compliance-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.bp-compliance-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.bp-compliance-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bp-compliance-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.bp-compliance-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.bp-period-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bp-period-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, 0.16);
+}
+
 .bp-summary-card:nth-child(1),
 .bp-summary-card:nth-child(2) {
   background: #f8fafc;
@@ -770,6 +832,18 @@
 @media (max-width: 768px) {
   .bp-summary-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* The 0.9 zoom on the "All Documents" table is a desktop density tweak — on mobile it
+     just shrinks tap targets and text further on top of the already-narrow viewport. */
+  .bp-billing-dashboard {
+    zoom: 1 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .bp-summary-cards {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -2098,10 +2172,9 @@ select.bp-filter-control {
 }
 
 .hsn-select-desc {
+  grid-column: 1 / -1;
   color: var(--bp-text, #163a52);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 @media (max-width: 900px) {
@@ -2214,9 +2287,28 @@ select.bp-filter-control {
     min-width: 0;
   }
 
-  .bp-actions .bp-btn,
   .bp-toolbar .bp-btn {
     flex: 1 1 auto;
+  }
+
+  /* Document-detail action bar (Back/Edit/Duplicate/Download PDF/etc.) — clean, even
+     2-column grid on mobile instead of an uneven flex-wrap. */
+  .bp-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .bp-actions .bp-btn {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
   }
 
   .bp-party-modal-card {
@@ -2237,11 +2329,6 @@ select.bp-filter-control {
 
   .hsn-select-item {
     grid-template-columns: auto 1fr;
-  }
-
-  .hsn-select-desc {
-    grid-column: 1 / -1;
-    white-space: normal;
   }
 }
 
@@ -2813,6 +2900,14 @@ select.bp-filter-control {
   border-radius: 8px !important;
 }
 
+/* Item Details table stays a real table on mobile too (same look as desktop) — it just
+   scrolls horizontally inside .bp-table-wrapper instead of reflowing into cards. */
+@media (max-width: 900px) {
+  .bp-invoice-lines-table {
+    min-width: 900px;
+  }
+}
+
 .bp-doctype-tile-check {
   position: absolute;
   top: 10px;
@@ -2887,6 +2982,15 @@ select.bp-filter-control {
 
 /* Mobile responsive overrides for all updated Client Portal pages */
 @media (max-width: 768px) {
+  .bp-gate-dots { display: none; }
+  .bp-gate-illustration { margin: 10px auto 0 !important; transform: scale(0.8); }
+  .bp-gst-feature-row { grid-template-columns: repeat(3, 1fr) !important; row-gap: 16px !important; }
+  .bp-gate-hero { padding: 22px 20px !important; text-align: center; justify-content: center !important; }
+  .bp-gate-hero > div:nth-child(2) { min-width: 0 !important; }
+  .bp-gate-hero .bp-gate-cta { width: auto !important; margin: 0 auto !important; }
+  .bp-gate-footer-btns { flex-wrap: nowrap !important; width: 100%; }
+  .bp-gate-footer-btns .bp-gate-footer-btn { flex: 1 1 0 !important; width: auto !important; min-width: 0 !important; padding: 0 8px !important; font-size: 11.5px !important; gap: 5px !important; white-space: nowrap !important; }
+
   /* 1. GSTR KPI & Status card grids */
   .bp-content div[style*="grid-template-columns: repeat(5, 1fr)"],
   .bp-content div[style*="display: grid; grid-template-columns: repeat(5, 1fr)"] {
@@ -2917,6 +3021,12 @@ select.bp-filter-control {
     flex-direction: row !important;
     align-items: center !important;
     padding: 12px 16px !important;
+  }
+
+  /* Business Profile field grid — one column, tighter spacing */
+  .bp-profile-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
   }
 
   /* 2. Filters & Selection Forms Alignment */
@@ -3015,6 +3125,21 @@ select.bp-filter-control {
   .bp-toolbar div[style*="display: flex; gap: 10px;"] > a,
   .bp-toolbar button {
     width: 100% !important;
+  }
+
+  /* Export Excel / Export PDF stay side by side in one row on mobile instead of
+     stacking full-width like Create Document above them. */
+  .bp-toolbar-export-row {
+    flex-direction: row !important;
+    width: 100% !important;
+  }
+
+  .bp-toolbar .bp-toolbar-export-btn {
+    width: auto !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    padding: 0 8px !important;
+    font-size: 12.5px !important;
   }
 
   /* 5. Topbar/Navbar mobile responsive optimizations */

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { api } from '../../api/client';
+import { api, getAuthToken } from '../../api/client';
 import { LoadingBlock } from '../../components/Spinner';
 import BillingDateFilters from './BillingDateFilters';
 import DocActionMenu from './DocActionMenu';
@@ -48,12 +48,19 @@ function ChevronUpIcon() {
   );
 }
 
-function DownloadIcon() {
+function DocIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-      <polyline points="7 10 12 15 17 10"></polyline>
-      <line x1="12" y1="15" x2="12" y2="3"></line>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </svg>
+  );
+}
+
+function ExcelIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+      <line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="14" y2="9"/>
     </svg>
   );
 }
@@ -294,14 +301,41 @@ export default function BillingDashboard() {
     URL.revokeObjectURL(url);
   };
 
+  /** PDF export uses the shared reports endpoint (branded header, formatted table) —
+   * scoped to the active From/To date range (the reports endpoint doesn't support the
+   * search/status/type filters exportCsv respects). */
+  const exportPdf = async () => {
+    const token = getAuthToken();
+    const qs = new URLSearchParams({ type: 'document_register', from, to, format: 'pdf' });
+    const res = await fetch(`/api/billing/reports/export?${qs}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: '*/*' },
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bills-and-documents_${from || 'all'}_to_${to || 'all'}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div>
+    <>
+      <div className="bp-billing-dashboard" style={{ zoom: 0.9 }}>
       <div className="bp-toolbar">
         <h2 style={{ margin: 0, flex: 1 }}>All Documents</h2>
         <CreateDocumentDropdown profile={profile} />
-        <button type="button" className="bp-btn bp-btn-outline" onClick={exportCsv} disabled={!meta.total}>
-          <DownloadIcon /> Export Report
-        </button>
+        <div className="bp-toolbar-export-row" style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className="bp-toolbar-export-btn" onClick={exportCsv} disabled={!meta.total}
+            style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1.5px solid #16a34a', background: '#fff', color: '#16a34a', fontWeight: 700, fontSize: 13.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: meta.total ? 'pointer' : 'not-allowed', opacity: meta.total ? 1 : 0.5 }}>
+            <ExcelIcon /> Export Excel
+          </button>
+          <button type="button" className="bp-toolbar-export-btn" onClick={exportPdf} disabled={!meta.total}
+            style={{ height: 38, padding: '0 16px', borderRadius: 10, border: '1.5px solid #ef4444', background: '#fff', color: '#ef4444', fontWeight: 700, fontSize: 13.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, cursor: meta.total ? 'pointer' : 'not-allowed', opacity: meta.total ? 1 : 0.5 }}>
+            <DocIcon /> Export PDF
+          </button>
+        </div>
       </div>
 
       <DocSummaryCards typeCounts={typeCounts} />
@@ -399,6 +433,7 @@ export default function BillingDashboard() {
           />
         </div>
       </div>
+      </div>
       {cancelTarget && (
         <CancelDocumentModal
           docLabel={`${docTypeLabel(cancelTarget.type)} ${cancelTarget.number}`}
@@ -407,6 +442,6 @@ export default function BillingDashboard() {
           onConfirm={confirmCancel}
         />
       )}
-    </div>
+    </>
   );
 }

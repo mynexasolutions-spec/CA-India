@@ -9,6 +9,7 @@ use App\Models\ClientProfile;
 use App\Services\Gstr2b\Gstr2bJsonParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class Gstr2bController extends Controller
@@ -99,6 +100,89 @@ class Gstr2bController extends Controller
         $record->delete();
 
         return response()->json(['message' => 'Deleted']);
+    }
+
+    /** Replaces the invoice line items for a record with rows the admin's browser parsed
+     * out of an Excel/CSV GSTR-2B export (the JSON format is parsed server-side in
+     * upload(); spreadsheet formats don't have a PHP-side parser, so the frontend reads
+     * the sheet with SheetJS and posts back the mapped rows instead). */
+    public function bulkStoreInvoices(Request $request, int $clientId, int $recordId)
+    {
+        $record = ClientGstr2bRecord::where('client_profile_id', $clientId)->findOrFail($recordId);
+
+        $data = $request->validate([
+            'invoices' => 'present|array',
+            'invoices.*.supplier_gstin' => 'nullable|string|max:20',
+            'invoices.*.supplier_name' => 'nullable|string|max:255',
+            'invoices.*.invoice_number' => 'nullable|string|max:255',
+            'invoices.*.invoice_date' => 'nullable|date',
+            'invoices.*.invoice_value' => 'nullable|numeric',
+            'invoices.*.taxable_value' => 'nullable|numeric',
+            'invoices.*.cgst' => 'nullable|numeric',
+            'invoices.*.sgst' => 'nullable|numeric',
+            'invoices.*.igst' => 'nullable|numeric',
+            'invoices.*.cess' => 'nullable|numeric',
+            'invoices.*.itc_eligibility' => ['nullable', 'string', Rule::in(ClientGstr2bInvoice::ITC_ELIGIBILITIES)],
+            'invoices.*.itc_reason' => 'nullable|string|max:255',
+        ]);
+
+        ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->delete();
+
+        foreach ($data['invoices'] as $row) {
+            $cgst = (float) ($row['cgst'] ?? 0);
+            $sgst = (float) ($row['sgst'] ?? 0);
+            $igst = (float) ($row['igst'] ?? 0);
+
+            ClientGstr2bInvoice::create([
+                'client_profile_id' => $clientId,
+                'gstr2b_record_id' => $record->id,
+                'financial_year' => $record->financial_year,
+                'tax_period' => $record->tax_period,
+                'supplier_gstin' => $row['supplier_gstin'] ?? null,
+                'supplier_name' => $row['supplier_name'] ?? null,
+                'invoice_number' => $row['invoice_number'] ?? null,
+                'invoice_date' => $row['invoice_date'] ?? null,
+                'invoice_value' => (float) ($row['invoice_value'] ?? 0),
+                'taxable_value' => (float) ($row['taxable_value'] ?? 0),
+                'cgst' => $cgst,
+                'sgst' => $sgst,
+                'igst' => $igst,
+                'cess' => (float) ($row['cess'] ?? 0),
+                'total_gst' => $cgst + $sgst + $igst,
+                'itc_eligibility' => $row['itc_eligibility'] ?? null,
+                'itc_reason' => $row['itc_reason'] ?? null,
+            ]);
+        }
+
+        return response()->json(
+            ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->orderBy('invoice_date')->get()
+        );
+    }
+
+    /** Structured invoice line items for one uploaded record — populated either by the
+     * server-side JSON parser (upload()) or by bulkStoreInvoices() for spreadsheet formats. */
+    public function invoices(int $clientId, int $recordId)
+    {
+        $record = ClientGstr2bRecord::where('client_profile_id', $clientId)->findOrFail($recordId);
+
+        return response()->json(
+            ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->orderBy('invoice_date')->get()
+        );
+    }
+
+    /** Lets an admin correct/override the ITC eligibility the parser assigned to one
+     * invoice line, with an optional reason (e.g. "Blocked credit u/s 17(5)"). */
+    public function updateEligibility(Request $request, int $clientId, int $invoiceId)
+    {
+        $data = $request->validate([
+            'itc_eligibility' => ['required', 'string', Rule::in(ClientGstr2bInvoice::ITC_ELIGIBILITIES)],
+            'itc_reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $invoice = ClientGstr2bInvoice::where('client_profile_id', $clientId)->findOrFail($invoiceId);
+        $invoice->update($data);
+
+        return response()->json($invoice->fresh());
     }
 
     private function deriveFinancialYear(string $taxPeriod): string

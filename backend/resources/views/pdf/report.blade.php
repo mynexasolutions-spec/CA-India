@@ -15,16 +15,18 @@ body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #0f172a; ma
 table { width: 100%; border-collapse: collapse; }
 
 /* ===== Company header — same visual language as the invoice PDF ===== */
-.company-box { border: 1.2px solid #1e40af; border-radius: 11px; padding: 12px 16px; margin-bottom: 14px; text-align: center; }
+.company-box { border: 1.2px dashed #93c5fd; border-radius: 11px; padding: 12px 16px; margin-bottom: 6px; text-align: center; background: #f8fafc; }
 .company-name { font-size: 17px; font-weight: bold; color: #1e40af; margin: 0 0 5px; letter-spacing: 0.3px; }
 .company-address { font-size: 9.5px; color: #475569; margin: 0 0 6px; }
 .company-meta { font-size: 9.5px; color: #334155; }
 .company-meta b { color: #1e293b; }
 .company-meta .sep { color: #94a3b8; margin: 0 8px; }
 
-/* ===== Report title bar ===== */
-.report-title-wrap { text-align: center; margin-bottom: 14px; }
-.report-title { display: inline-block; background: #1e40af; color: #ffffff; font-size: 15px; font-weight: bold; letter-spacing: 0.8px; text-transform: uppercase; padding: 7px 22px; border-radius: 8px; margin: 0 0 6px; }
+.header-arrow { text-align: center; color: #2563eb; font-size: 16px; line-height: 1; margin: 2px 0 10px; }
+
+/* ===== Report title box ===== */
+.report-title-wrap { text-align: center; margin-bottom: 14px; border: 1.2px solid #bfdbfe; background: #eff6ff; border-radius: 10px; padding: 10px 16px; }
+.report-title { font-size: 18px; font-weight: bold; color: #1e40af; letter-spacing: 0.6px; text-transform: uppercase; margin: 0 0 4px; }
 .report-period { font-size: 10.5px; color: #64748b; margin: 0; }
 
 /* ===== Table ===== */
@@ -75,12 +77,13 @@ table { width: 100%; border-collapse: collapse; }
   <div class="company-meta">
     @if($gstin)<b>GSTIN:</b> {{ $gstin }}@endif
     @if($gstin && ($phone || $email))<span class="sep">|</span>@endif
-    @if($phone)<b>Phone:</b> {{ $phone }}@endif
+    @if($phone)<b>Contact:</b> {{ $phone }}@endif
     @if($phone && $email)<span class="sep">|</span>@endif
     @if($email)<b>Email:</b> {{ $email }}@endif
   </div>
   @endif
 </div>
+<div class="header-arrow">&#8595;</div>
 @endif
 
 <div class="report-title-wrap">

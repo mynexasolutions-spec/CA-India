@@ -510,38 +510,74 @@ export function ClientProfile() {
 
   if (!profile) return <LoadingBlock />;
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div>
       <div style={{ fontSize: 12, color: 'var(--bp-muted)', marginBottom: 12, fontWeight: 600 }}>
         <Link to="/portal" style={{ color: 'var(--bp-blue)', textDecoration: 'none' }}>Client Portal</Link>
         <span style={{ margin: '0 6px', opacity: 0.5 }}>›</span>
         Profile
       </div>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 22, color: 'var(--bp-navy)' }}>Business Profile</h1>
-        <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
-          View your registered business information.
-        </p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+        <span style={{
+          width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+          background: 'linear-gradient(135deg,#1d4ed8,#2563eb)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(37,99,235,0.35)',
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="3" width="16" height="18" rx="1" />
+            <path d="M9 21v-4h6v4M9 7h.01M9 11h.01M9 15h.01M15 7h.01M15 11h.01M15 15h.01" />
+          </svg>
+        </span>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--bp-navy)' }}>Business Profile</h1>
+          <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
+            View your registered business information.
+          </p>
+        </div>
       </div>
 
-      <div className="bp-alert" style={{ background: '#eaf1fb', borderColor: '#cfe0f5', color: 'var(--bp-navy)', marginBottom: 20 }}>
-        <span aria-hidden="true">ⓘ</span>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8, maxWidth: '100%',
+        background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+        borderRadius: 14, padding: '8px 16px 8px 10px', marginBottom: 20,
+        fontSize: 13, fontWeight: 600, boxShadow: '0 1px 3px rgba(37,99,235,0.08)',
+      }}>
+        <span style={{
+          width: 18, height: 18, borderRadius: '50%', background: '#2563eb', color: '#fff',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="16" x2="12" y2="11" /><line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+        </span>
         <span>This information is view-only and cannot be edited.</span>
       </div>
 
-      <div style={{ ...card }}>
-        <h2 style={{ margin: '0 0 18px', fontSize: 15, fontWeight: 800, color: 'var(--bp-navy)' }}>Business Information</h2>
-        <div style={{ display: 'grid', gap: '20px 32px', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-          {PROFILE_FIELDS.map(([key, label, Icon]) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <span style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--bp-sky)', color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon />
-              </span>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--bp-text)' }}>{profile[key] || '—'}</div>
+      <div className="bp-dash-card" style={{ ...card, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.05)' }}>
+        <h2 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 30, height: 30, borderRadius: 9, background: '#2563eb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 2px 6px rgba(37,99,235,0.35)' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 21v-4h6v4M9 7h.01M9 11h.01M9 15h.01M15 7h.01M15 11h.01M15 15h.01" />
+            </svg>
+          </span>
+          Business Information
+        </h2>
+        <div className="bp-profile-grid" style={{ display: 'grid', gap: '18px 28px', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))' }}>
+          {PROFILE_FIELDS.map(([key, label, Icon]) => {
+            const val = profile[key] || '—';
+            const valFontSize = val.length > 28 ? 12.5 : val.length > 20 ? 13 : 14;
+            return (
+              <div key={key} className="bp-stat-tile" style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.1)', borderRadius: 12, padding: '12px 14px', minWidth: 0, overflow: 'hidden' }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: '#fff', color: '#2563eb', border: '1px solid rgba(37,99,235,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon />
+                </span>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: 11, color: 'var(--bp-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>{label}</div>
+                  <div style={{ fontSize: valFontSize, fontWeight: 700, color: 'var(--bp-text)', wordBreak: 'break-word' }}>{val}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

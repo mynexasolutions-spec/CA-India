@@ -484,11 +484,11 @@ export default function OutstandingPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid var(--bp-border)' }}>
-                  <th style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Invoice No.</th>
-                  <th style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Date</th>
-                  <th style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Party Name</th>
-                  <th style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Document Type</th>
-                  <th style={{ padding: '11px 16px', textAlign: 'right', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Total (₹)</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Invoice No.</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Date</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Party Name</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Document Type</th>
+                  <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Total (₹)</th>
                   <th style={{ padding: '11px 16px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Status</th>
                   <th style={{ padding: '11px 20px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b' }}>Actions</th>
                 </tr>
@@ -503,13 +503,13 @@ export default function OutstandingPage() {
                     <tr key={r.id} style={{ borderBottom: '1px solid var(--bp-border)', background: '#fff', transition: 'background .15s' }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                       onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}>
-                      <td style={{ padding: '13px 16px', fontSize: 13 }}>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13 }}>
                         <Link to={docPath(r)} style={{ fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}>{r.number}</Link>
                       </td>
-                      <td style={{ padding: '13px 16px', fontSize: 13, color: '#475569' }}>{fmtDate(r.document_date)}</td>
-                      <td style={{ padding: '13px 16px', fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{r.customer?.name || '—'}</td>
-                      <td style={{ padding: '13px 16px', fontSize: 13, color: '#475569' }}>{docTypeLabel(r.type)}</td>
-                      <td style={{ padding: '13px 16px', textAlign: 'right', fontSize: 13, fontWeight: 600 }}>{Number(r.grand_total || r.total_amount || 0).toLocaleString('en-IN')}</td>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, color: '#475569' }}>{fmtDate(r.document_date)}</td>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{r.customer?.name || '—'}</td>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, color: '#475569' }}>{docTypeLabel(r.type)}</td>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 600 }}>{Number(r.grand_total || r.total_amount || 0).toLocaleString('en-IN')}</td>
                       <td style={{ padding: '13px 16px', textAlign: 'center' }}>
                         <span className={`bp-badge ${paymentStatusBadge(r.status)}`}>{paymentStatusLabel(r.status)}</span>
                       </td>

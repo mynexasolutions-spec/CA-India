@@ -198,19 +198,29 @@ function shortDueDate(iso) {
   return `${d} ${MONTHS[Number(m) - 1]} ${y}`;
 }
 
-function PeriodDot({ status }) {
-  const s = STATUS_STYLE[status] || STATUS_STYLE.upcoming;
+function PeriodCard({ period }) {
+  const s = STATUS_STYLE[period.status] || STATUS_STYLE.upcoming;
   return (
-    <span
-      title={s.text}
+    <div
+      className="bp-period-card"
       style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        width: 18, height: 18, borderRadius: '50%', fontSize: 10, fontWeight: 800, flexShrink: 0,
-        background: s.bg, color: s.fg,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+        flexShrink: 0, minWidth: 80, padding: '12px 8px 10px',
+        background: s.bg, borderRadius: 12, border: `1px solid ${s.fg}26`,
+        scrollSnapAlign: 'start',
       }}
     >
-      {s.icon}
-    </span>
+      <span style={{ fontSize: 11.5, color: 'var(--bp-navy)', fontWeight: 800 }}>{period.label}</span>
+      <span style={{
+        width: 28, height: 28, borderRadius: '50%', background: '#fff', color: s.fg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 13, fontWeight: 800, border: `1.5px solid ${s.fg}44`, flexShrink: 0,
+      }}>
+        {s.icon}
+      </span>
+      <span style={{ fontSize: 10, color: s.fg, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.3 }}>{s.text}</span>
+      {period.due_date && <span style={{ fontSize: 9, color: 'var(--bp-muted)', fontWeight: 600, textAlign: 'center', lineHeight: 1.3 }}>Due {shortDueDate(period.due_date)}</span>}
+    </div>
   );
 }
 
@@ -218,24 +228,20 @@ function PeriodDot({ status }) {
  * due date, + X/Total filed count. */
 function ComplianceRow({ label, row }) {
   if (!row) return null;
+  const allFiled = row.total > 0 && row.filed_count === row.total;
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--bp-navy)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-muted)' }}>{row.filed_count}/{row.total}</span>
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--bp-navy)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</span>
+        <span style={{
+          fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 20,
+          background: allFiled ? '#dcfce7' : '#eff6ff', color: allFiled ? '#15803d' : '#2563eb',
+        }}>
+          {row.filed_count}/{row.total} filed
+        </span>
       </div>
-      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-        {row.periods.map((p) => {
-          const s = STATUS_STYLE[p.status] || STATUS_STYLE.upcoming;
-          return (
-            <div key={p.period} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0, minWidth: 64 }}>
-              <span style={{ fontSize: 10, color: '#000', fontWeight: 700 }}>{p.label}</span>
-              <PeriodDot status={p.status} />
-              <span style={{ fontSize: 9, color: s.fg, fontWeight: 700 }}>{s.text}</span>
-              {p.due_date && <span style={{ fontSize: 8, color: 'var(--bp-muted)', fontWeight: 600 }}>Due {shortDueDate(p.due_date)}</span>}
-            </div>
-          );
-        })}
+      <div className="bp-compliance-scroll" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8, scrollSnapType: 'x proximity' }}>
+        {row.periods.map((p) => <PeriodCard key={p.period} period={p} />)}
       </div>
     </div>
   );
@@ -272,7 +278,7 @@ export function ComplianceStatus({ compliance, financialYear, locked = false }) 
         <ComplianceRow label="CMP-08 (Quarterly)" row={compliance.cmp08} />
       ) : (
         <>
-          <ComplianceRow label={`GSTR-1 (${cycleLabel(compliance.gstr1_frequency)})`} row={compliance.gstr1} />
+          <ComplianceRow label={`GSTR-1 (${compliance.gstr1_frequency === 'quarterly' ? 'Quarterly' : 'QRMP'})`} row={compliance.gstr1} />
           <ComplianceRow label={`GSTR-3B (${cycleLabel(compliance.gstr3b_frequency)})`} row={compliance.gstr3b} />
         </>
       )}

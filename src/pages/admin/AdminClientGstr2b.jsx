@@ -1,7 +1,197 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { api } from '../../api/client';
 import { buildFyOptions, currentFyLabel, fyMonthOptions, monthLabel } from '../billing/billingUtils';
+
+const PREVIEWABLE_EXT = ['xls', 'xlsx', 'csv'];
+
+/** Reads a spreadsheet file in the browser and returns its first sheet as a plain
+ * array-of-rows grid, so it can be rendered exactly as the uploaded file looks —
+ * no server round-trip needed just to preview what was picked. */
+function readSheetAsGrid(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the file'));
+    reader.onload = () => {
+      try {
+        const wb = XLSX.read(reader.result, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const grid = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' });
+        resolve(grid);
+      } catch (e) {
+        reject(e);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/** Header keywords (from the standard GST portal GSTR-2B B2B export layout) used to map
+ * whatever columns the uploaded sheet actually has onto our invoice fields — best-effort,
+ * since GSTN doesn't publish a fixed column order and clients may re-export/reorder. */
+const INVOICE_HEADER_MAP = [
+  ['supplier_gstin', /gst\s*i?n/i],
+  ['supplier_name', /(trade|legal).*name|supplier\s*name|\bname\b/i],
+  ['invoice_number', /invoice\s*(no\.?|number|num)/i],
+  ['invoice_date', /invoice\s*date/i],
+  ['invoice_value', /invoice\s*value/i],
+  ['taxable_value', /taxable\s*value/i],
+  ['igst', /integrated\s*tax|igst/i],
+  ['cgst', /central\s*tax|cgst/i],
+  ['sgst', /state\s*\/?\s*ut\s*tax|sgst/i],
+  ['cess', /cess/i],
+  ['itc_eligibility', /itc\s*availab|eligib/i],
+  ['itc_reason', /reason/i],
+];
+
+function parseAmount(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseGridDate(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') {
+    // Excel serial date (1900 date system, UTC).
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+  }
+  const s = String(v).trim();
+  let m = s.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  return null;
+}
+
+function normalizeEligibilityValue(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const s = String(v).trim().toLowerCase();
+  if (['y', 'yes', 'true', '1', 'eligible'].includes(s)) return 'eligible';
+  if (['n', 'no', 'false', '0', 'ineligible', 'blocked'].includes(s)) return 'ineligible';
+  return null;
+}
+
+/** Finds the header row inside a raw grid by looking for a row that mentions both
+ * "GSTIN" and "invoice" — real GSTR-2B exports have a few title/summary rows above it. */
+function findInvoiceHeaderRow(grid) {
+  const limit = Math.min(grid.length, 20);
+  for (let ri = 0; ri < limit; ri++) {
+    const row = grid[ri].map((c) => String(c || '').toLowerCase());
+    if (row.some((c) => /gst\s*i?n/.test(c)) && row.some((c) => c.includes('invoice'))) {
+      return ri;
+    }
+  }
+  return -1;
+}
+
+/** Maps a raw spreadsheet grid onto our invoice-row shape, ready to post to the
+ * bulk-import endpoint. Returns [] if this doesn't look like a B2B invoice sheet at all. */
+function mapGridToInvoiceRows(grid) {
+  const headerIdx = findInvoiceHeaderRow(grid);
+  if (headerIdx === -1) return [];
+
+  const headers = grid[headerIdx].map((h) => String(h || ''));
+  const colFor = {};
+  headers.forEach((h, ci) => {
+    INVOICE_HEADER_MAP.forEach(([field, re]) => {
+      if (colFor[field] === undefined && re.test(h)) colFor[field] = ci;
+    });
+  });
+  if (colFor.supplier_gstin === undefined && colFor.invoice_number === undefined) return [];
+
+  const get = (row, field) => (colFor[field] !== undefined ? row[colFor[field]] : undefined);
+  const rows = [];
+  for (let ri = headerIdx + 1; ri < grid.length; ri++) {
+    const row = grid[ri];
+    const gstin = get(row, 'supplier_gstin');
+    const invNum = get(row, 'invoice_number');
+    if ((gstin === undefined || gstin === '') && (invNum === undefined || invNum === '')) continue;
+
+    rows.push({
+      supplier_gstin: gstin != null && gstin !== '' ? String(gstin).trim() : null,
+      supplier_name: get(row, 'supplier_name') ? String(get(row, 'supplier_name')).trim() : null,
+      invoice_number: invNum != null && invNum !== '' ? String(invNum).trim() : null,
+      invoice_date: parseGridDate(get(row, 'invoice_date')),
+      invoice_value: parseAmount(get(row, 'invoice_value')),
+      taxable_value: parseAmount(get(row, 'taxable_value')),
+      cgst: parseAmount(get(row, 'cgst')),
+      sgst: parseAmount(get(row, 'sgst')),
+      igst: parseAmount(get(row, 'igst')),
+      cess: parseAmount(get(row, 'cess')),
+      itc_eligibility: normalizeEligibilityValue(get(row, 'itc_eligibility')),
+      itc_reason: get(row, 'itc_reason') ? String(get(row, 'itc_reason')) : null,
+    });
+  }
+  return rows;
+}
+
+/** Renders a parsed spreadsheet grid (array-of-rows) as an HTML table — shared by the
+ * pre-upload preview and the "View" preview of an already-saved statement. Styled
+ * standalone (not the shared .bp-table class) so it doesn't affect any other table. */
+function GridTable({ grid }) {
+  if (!grid.length) return <p>This file has no rows to preview.</p>;
+  return (
+    <div
+      style={{
+        zoom: 0.9,
+        overflowX: 'auto',
+        border: '1px solid #e2e8f0',
+        borderRadius: 10,
+        boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
+      }}
+    >
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr>
+            {grid[0].map((cell, ci) => (
+              <th
+                key={ci}
+                style={{
+                  position: 'sticky', top: 0,
+                  background: 'var(--bp-navy, #0a3d82)', color: '#fff',
+                  fontWeight: 700, fontSize: 12, letterSpacing: 0.2,
+                  textAlign: 'left', whiteSpace: 'nowrap',
+                  padding: '10px 14px',
+                  borderRight: '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                {cell === '' || cell == null ? '—' : String(cell)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grid.slice(1).map((row, ri) => (
+            <tr
+              key={ri}
+              style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ri % 2 === 0 ? '#fff' : '#f8fafc'; }}
+            >
+              {grid[0].map((_, ci) => (
+                <td
+                  key={ci}
+                  style={{
+                    padding: '8px 14px',
+                    borderBottom: '1px solid #edf2f7',
+                    borderRight: '1px solid #edf2f7',
+                    color: '#1e293b',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {row[ci] === '' || row[ci] == null ? '' : String(row[ci])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function currentMonthValue() {
   const d = new Date();
@@ -21,6 +211,20 @@ export default function AdminClientGstr2b() {
     return monthOptions.some((o) => o.value === cur) ? cur : (monthOptions[0]?.value || '');
   });
   const [file, setFile] = useState(null);
+  const [previewGrid, setPreviewGrid] = useState(null);
+  const [previewErr, setPreviewErr] = useState('');
+  const [previewing, setPreviewing] = useState(false);
+
+  const [viewRecord, setViewRecord] = useState(null);
+  const [viewGrid, setViewGrid] = useState(null);
+  const [viewErr, setViewErr] = useState('');
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const [invoicesRecord, setInvoicesRecord] = useState(null);
+  const [invoices, setInvoices] = useState(null);
+  const [invoicesErr, setInvoicesErr] = useState('');
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [savingInvoiceId, setSavingInvoiceId] = useState(null);
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -56,14 +260,51 @@ export default function AdminClientGstr2b() {
       const fd = new FormData();
       fd.append('tax_period', period);
       fd.append('file', uploadFile);
-      await api(`/admin/clients/${id}/gstr2b`, { method: 'POST', body: fd });
-      setMsg(`Saved GSTR-2B for ${monthLabel(period)}`);
-      setFile(null);
+      const record = await api(`/admin/clients/${id}/gstr2b`, { method: 'POST', body: fd });
+
+      let invoiceNote = '';
+      const ext = uploadFile.name.split('.').pop()?.toLowerCase();
+      if (PREVIEWABLE_EXT.includes(ext) && record?.id) {
+        try {
+          const grid = await readSheetAsGrid(uploadFile);
+          const rows = mapGridToInvoiceRows(grid);
+          if (rows.length) {
+            await api(`/admin/clients/${id}/gstr2b/${record.id}/invoices/bulk`, {
+              method: 'POST',
+              body: { invoices: rows },
+            });
+            invoiceNote = ` — ${rows.length} invoice line(s) parsed.`;
+          }
+        } catch {
+          // Best-effort: the raw file is already saved regardless of whether we could
+          // also map it into structured invoice rows.
+        }
+      }
+
+      setMsg(`Saved GSTR-2B for ${monthLabel(period)}${invoiceNote}`);
       loadRecords();
     } catch (e) {
       setErr(e.message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleFileChange = async (picked) => {
+    setFile(picked);
+    setPreviewGrid(null);
+    setPreviewErr('');
+    if (!picked) return;
+    const ext = picked.name.split('.').pop()?.toLowerCase();
+    if (!PREVIEWABLE_EXT.includes(ext)) return;
+    setPreviewing(true);
+    try {
+      const grid = await readSheetAsGrid(picked);
+      setPreviewGrid(grid);
+    } catch (e) {
+      setPreviewErr(e.message || 'Could not read this file for preview.');
+    } finally {
+      setPreviewing(false);
     }
   };
 
@@ -87,6 +328,87 @@ export default function AdminClientGstr2b() {
     e.target.value = '';
     if (!picked || !period) return;
     doUpload(period, picked);
+  };
+
+  const handleView = async (record) => {
+    const url = `/storage/${record.file_path}`;
+    const ext = record.file_name?.split('.').pop()?.toLowerCase();
+    if (!PREVIEWABLE_EXT.includes(ext)) {
+      window.open(url, '_blank', 'noreferrer');
+      return;
+    }
+    setViewRecord(record);
+    setViewGrid(null);
+    setViewErr('');
+    setViewLoading(true);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Could not download the file');
+      const blob = await res.blob();
+      const grid = await readSheetAsGrid(blob);
+      setViewGrid(grid);
+    } catch (e) {
+      setViewErr(e.message || 'Could not read this file for preview.');
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const handleViewInvoices = async (record) => {
+    setInvoicesRecord(record);
+    setInvoices(null);
+    setInvoicesErr('');
+    setInvoicesLoading(true);
+    try {
+      const rows = await api(`/admin/clients/${id}/gstr2b/${record.id}/invoices`);
+      setInvoices(rows || []);
+    } catch (e) {
+      setInvoicesErr(e.message || 'Could not load invoices for this statement.');
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  const handleParseFromFile = async (record) => {
+    setInvoicesErr('');
+    setInvoicesLoading(true);
+    try {
+      const res = await fetch(`/storage/${record.file_path}`);
+      if (!res.ok) throw new Error('Could not download the file');
+      const blob = await res.blob();
+      const grid = await readSheetAsGrid(blob);
+      const rows = mapGridToInvoiceRows(grid);
+      if (!rows.length) {
+        setInvoicesErr("Couldn't find a GSTIN/Invoice header row in this file to map — check its column layout.");
+        return;
+      }
+      const saved = await api(`/admin/clients/${id}/gstr2b/${record.id}/invoices/bulk`, {
+        method: 'POST',
+        body: { invoices: rows },
+      });
+      setInvoices(saved || []);
+    } catch (e) {
+      setInvoicesErr(e.message || 'Could not parse this file.');
+    } finally {
+      setInvoicesLoading(false);
+    }
+  };
+
+  const handleEligibilityChange = async (invoice, newValue) => {
+    const prev = invoices;
+    setSavingInvoiceId(invoice.id);
+    setInvoices((rows) => rows.map((r) => (r.id === invoice.id ? { ...r, itc_eligibility: newValue } : r)));
+    try {
+      await api(`/admin/clients/${id}/gstr2b/invoices/${invoice.id}/eligibility`, {
+        method: 'PATCH',
+        body: { itc_eligibility: newValue },
+      });
+    } catch (e) {
+      setInvoices(prev);
+      setInvoicesErr(e.message || 'Could not update ITC eligibility.');
+    } finally {
+      setSavingInvoiceId(null);
+    }
   };
 
   const handleDelete = async (record) => {
@@ -136,7 +458,7 @@ export default function AdminClientGstr2b() {
               className="bp-file-input"
               type="file"
               accept=".pdf,.xls,.xlsx,.json,.csv"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
             />
           </label>
           <button type="submit" className="bp-btn bp-btn-primary" disabled={busy}>
@@ -146,6 +468,108 @@ export default function AdminClientGstr2b() {
         {msg && <p className="bp-alert bp-alert-success" style={{ marginTop: 12 }}>{msg}</p>}
         {err && <p className="bp-alert bp-alert-error" style={{ marginTop: 12 }}>{err}</p>}
       </div>
+
+      {file && (
+        <div className="bp-card" style={{ marginTop: 14 }}>
+          <h3 style={{ marginTop: 0 }}>Preview — {file.name}</h3>
+          {previewing && <p>Reading file…</p>}
+          {previewErr && <p className="bp-alert bp-alert-error">{previewErr}</p>}
+          {!previewing && !previewErr && previewGrid && <GridTable grid={previewGrid} />}
+          {!previewing && !previewErr && !previewGrid && (
+            <p style={{ color: 'var(--bp-muted)' }}>Preview isn't available for this file type — it will still be saved as-is.</p>
+          )}
+        </div>
+      )}
+
+      {viewRecord && (
+        <div className="bp-card" style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>Viewing — {viewRecord.file_name}</h3>
+            <button type="button" className="bp-btn bp-btn-outline" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => setViewRecord(null)}>
+              Close
+            </button>
+          </div>
+          {viewLoading && <p>Loading…</p>}
+          {viewErr && <p className="bp-alert bp-alert-error">{viewErr}</p>}
+          {!viewLoading && !viewErr && viewGrid && <GridTable grid={viewGrid} />}
+        </div>
+      )}
+
+      {invoicesRecord && (
+        <div className="bp-card" style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div>
+              <h3 style={{ margin: 0 }}>Invoices — {monthLabel(invoicesRecord.tax_period)}</h3>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--bp-muted)' }}>
+                Override ITC eligibility per invoice line if the parsed statement got it wrong.
+              </p>
+            </div>
+            <button type="button" className="bp-btn bp-btn-outline" style={{ padding: '2px 10px', fontSize: 12 }} onClick={() => setInvoicesRecord(null)}>
+              Close
+            </button>
+          </div>
+          {invoicesLoading && <p>Loading…</p>}
+          {invoicesErr && <p className="bp-alert bp-alert-error">{invoicesErr}</p>}
+          {!invoicesLoading && invoices && (
+            invoices.length ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="bp-table">
+                  <thead>
+                    <tr>
+                      <th>Supplier GSTIN</th>
+                      <th>Supplier Name</th>
+                      <th>Invoice No.</th>
+                      <th>Invoice Date</th>
+                      <th>Total GST (₹)</th>
+                      <th>ITC Eligibility</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((inv) => (
+                      <tr key={inv.id}>
+                        <td>{inv.supplier_gstin || '—'}</td>
+                        <td>{inv.supplier_name || '—'}</td>
+                        <td>{inv.invoice_number || '—'}</td>
+                        <td>{inv.invoice_date ? new Date(inv.invoice_date).toLocaleDateString('en-IN') : '—'}</td>
+                        <td>{Number(inv.total_gst || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td>
+                          <select
+                            className="bp-select"
+                            value={inv.itc_eligibility || 'eligible'}
+                            disabled={savingInvoiceId === inv.id}
+                            onChange={(e) => handleEligibilityChange(inv, e.target.value)}
+                          >
+                            <option value="eligible">Eligible</option>
+                            <option value="ineligible">Not Eligible</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: 'var(--bp-muted)', marginTop: 0 }}>
+                  No structured invoice lines for this statement yet.
+                  {PREVIEWABLE_EXT.includes(invoicesRecord.file_name?.split('.').pop()?.toLowerCase())
+                    ? ' This looks like a spreadsheet — try parsing it below.'
+                    : ' Only JSON, Excel or CSV GSTR-2B files can be parsed into invoice lines.'}
+                </p>
+                {PREVIEWABLE_EXT.includes(invoicesRecord.file_name?.split('.').pop()?.toLowerCase()) && (
+                  <button
+                    type="button"
+                    className="bp-btn bp-btn-primary"
+                    onClick={() => handleParseFromFile(invoicesRecord)}
+                  >
+                    Parse Invoices from Uploaded File
+                  </button>
+                )}
+              </div>
+            )
+          )}
+        </div>
+      )}
 
       <input
         ref={replaceInputRef}
@@ -179,7 +603,23 @@ export default function AdminClientGstr2b() {
                     {r.uploader?.name ? ` · ${r.uploader.name}` : ''}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    <a href={`/storage/${r.file_path}`} target="_blank" rel="noreferrer">View</a>
+                    <button
+                      type="button"
+                      className="bp-btn bp-btn-outline"
+                      style={{ padding: '2px 8px', fontSize: 11 }}
+                      onClick={() => handleView(r)}
+                    >
+                      View
+                    </button>
+                    {' · '}
+                    <button
+                      type="button"
+                      className="bp-btn bp-btn-outline"
+                      style={{ padding: '2px 8px', fontSize: 11 }}
+                      onClick={() => handleViewInvoices(r)}
+                    >
+                      Invoices
+                    </button>
                     {' · '}
                     <button
                       type="button"

@@ -391,24 +391,6 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--bp-navy)' }}>{docId ? (title || 'Edit Document') : 'New Billing Document'}</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>Create and manage your business documents</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {docType === 'credit_note' ? (
-            <button type="button" className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }} onClick={() => setShowDiscardModal(true)}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              Back to Billing
-            </button>
-          ) : (
-            <>
-              <button type="button" className="bp-btn bp-btn-outline" style={{ borderRadius: 8, height: 40, display: 'flex', alignItems: 'center', fontWeight: 600 }} onClick={() => setShowDiscardModal(true)}>Cancel</button>
-              <button type="button" className="bp-btn bp-btn-primary" style={{ borderRadius: 8, height: 40, backgroundColor: '#0052cc', fontWeight: 600 }} disabled={busy} onClick={saveDraft}>
-                {unlockedEdit ? 'Save Changes' : 'Save Document'}
-              </button>
-            </>
-          )}
-        </div>
       </div>
 
       {!id && DOC_TYPE_TILE_SET.includes(docType) && (
@@ -693,8 +675,8 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
             <thead>
               <tr style={{ background: '#f8fafc' }}>
                 <th style={{ width: 60, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Sr. No.</th>
-                <th style={{ width: 260, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Particulars <span className="bp-required">*</span></th>
-                {hsnEnabled && <th style={{ minWidth: 150, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>HSN / SAC <span className="bp-required">*</span></th>}
+                <th style={{ width: 340, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Particulars <span className="bp-required">*</span></th>
+                {hsnEnabled && <th style={{ width: 120, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>HSN / SAC <span className="bp-required">*</span></th>}
                 <th style={{ width: 90, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Qty <span className="bp-required">*</span></th>
                 <th style={{ width: 95, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>UCQ</th>
                 <th style={{ minWidth: 140, textAlign: 'center', color: 'var(--bp-text)', fontWeight: 700, borderRight: '1px solid var(--bp-border)' }}>Rate (₹) <span className="bp-required">*</span></th>
@@ -817,6 +799,9 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
 
       <div className="bp-split" style={{ marginTop: 14 }}>
         <div className="bp-actions">
+          <button type="button" className="bp-btn bp-btn-outline" onClick={() => setShowDiscardModal(true)}>
+            Cancel
+          </button>
           <button type="button" className="bp-btn bp-btn-outline" disabled={busy} onClick={saveDraft}>
             {unlockedEdit ? 'Save Corrections' : 'Save Draft'}
           </button>
@@ -829,12 +814,11 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
         <div className="bp-gst-box">
           <h3>Totals</h3>
           {[
-            ['Discount', totals.discount],
             ['Taxable', totals.taxable],
             ...(taxesEnabled
               ? (inter
                 ? [['IGST', rcm ? 0 : totals.igst]]
-                : [['CGST', rcm ? 0 : totals.cgst], ['SGST', rcm ? 0 : totals.sgst]])
+                : [['CGST', rcm ? 0 : totals.cgst], ['SGST/UTGST', rcm ? 0 : totals.sgst]])
               : []),
             ...(tdsTcsApplicable && taxDeductionType
               ? [

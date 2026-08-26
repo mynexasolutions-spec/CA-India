@@ -323,7 +323,7 @@ class ReportController extends Controller
             $out[] = [
                 'Particulars' => $label,
                 'Tax Invoices' => $taxInvoices,
-                'Bill of Supply' => $billOfSupply,
+                'Bills of Supply' => $billOfSupply,
                 'Debit Notes' => $debitNotes,
                 'Credit Notes' => $creditNotes,
                 // Row-wise total across doc types — same figure the live GST Summary
@@ -435,7 +435,7 @@ class ReportController extends Controller
             }
             $metaLine = implode('   |   ', array_filter([
                 ($meta['gstin'] ?? null) ? 'GSTIN: '.$meta['gstin'] : null,
-                ($meta['phone'] ?? null) ? 'Phone: '.$meta['phone'] : null,
+                ($meta['phone'] ?? null) ? 'Contact: '.$meta['phone'] : null,
                 ($meta['email'] ?? null) ? 'Email: '.$meta['email'] : null,
             ]));
             if ($metaLine) {

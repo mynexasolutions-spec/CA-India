@@ -9,6 +9,26 @@ function money(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
+/** Always exactly 2 decimal places, however many were entered/stored (5 -> 5.00, 5.567 -> 5.57). */
+function fmtQty(v) {
+  return Number(v || 0).toFixed(2);
+}
+
+/* ── Toolbar button icons ─────────────────────────────────────── */
+const ICON = { width: 14, height: 14, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2.3, strokeLinecap: 'round', strokeLinejoin: 'round' };
+function ArrowLeftIcon() { return <svg {...ICON}><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>; }
+function PencilIcon() { return <svg {...ICON}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>; }
+function CopyIcon() { return <svg {...ICON}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>; }
+function CheckIcon() { return <svg {...ICON}><polyline points="20 6 9 17 4 12" /></svg>; }
+function UndoIcon() { return <svg {...ICON}><polyline points="1 4 1 10 7 10" /><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" /></svg>; }
+function DownloadIcon() { return <svg {...ICON}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>; }
+function MailIcon() { return <svg {...ICON}><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 6-10 7L2 6" /></svg>; }
+function XCircleIcon() { return <svg {...ICON}><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>; }
+function TrashIcon() { return <svg {...ICON}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>; }
+function RefreshCwIcon() { return <svg {...ICON}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>; }
+function DocEditIcon() { return <svg {...ICON}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-1.5-.5.5-1.5z" /></svg>; }
+function WhatsAppIcon() { return <svg {...ICON} width={17} height={17} fill="currentColor" stroke="none" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2Zm5.8 14.03c-.24.68-1.4 1.3-1.93 1.38-.5.08-1.11.11-1.79-.11-.41-.13-.94-.31-1.62-.61-2.85-1.23-4.71-4.1-4.85-4.29-.14-.19-1.16-1.54-1.16-2.94 0-1.4.73-2.08.99-2.37.26-.29.57-.36.76-.36.19 0 .38 0 .55.01.18.01.41-.07.64.49.24.58.81 2 .88 2.15.07.15.12.32.02.51-.1.19-.15.31-.29.48-.15.17-.31.38-.44.51-.15.15-.3.31-.13.61.17.29.75 1.24 1.62 2.01 1.11.99 2.05 1.3 2.34 1.44.29.15.46.13.63-.05.17-.19.72-.84.92-1.13.19-.29.38-.24.64-.14.26.1 1.66.78 1.95.92.29.14.48.21.55.33.07.12.07.68-.17 1.36Z" /></svg>; }
+
 export default function InvoiceDetail() {
   const { id } = useParams();
   const [doc, setDoc] = useState(null);
@@ -88,9 +108,9 @@ export default function InvoiceDetail() {
           </div>
         </div>
         <div className="bp-actions" style={{ marginTop: 0 }}>
-          <Link className="bp-btn bp-btn-outline" to={listBack}>Back</Link>
+          <Link className="bp-btn bp-btn-outline" to={listBack}><ArrowLeftIcon /> Back</Link>
           {canEdit && editPath && (
-            <Link className="bp-btn bp-btn-outline" to={editPath}>Edit</Link>
+            <Link className="bp-btn bp-btn-outline" to={editPath}><PencilIcon /> Edit</Link>
           )}
           {doc.status === 'draft' && (
             <button
@@ -110,7 +130,7 @@ export default function InvoiceDetail() {
                 }
               }}
             >
-              {busyAction === 'issue' ? 'Generating…' : 'Generate / Issue'}
+              {busyAction === 'issue' ? 'Generating…' : (<><CheckIcon /> Generate / Issue</>)}
             </button>
           )}
           {doc.type === 'quotation' && !doc.converted_document_id && doc.status !== 'cancelled' && (
@@ -130,7 +150,7 @@ export default function InvoiceDetail() {
                 }
               }}
             >
-              {busyAction === 'convert' ? 'Converting…' : 'Convert to Tax Invoice/Bill of Supply'}
+              {busyAction === 'convert' ? 'Converting…' : (<><RefreshCwIcon /> Convert to Tax Invoice/Bill of Supply</>)}
             </button>
           )}
           <button
@@ -149,7 +169,7 @@ export default function InvoiceDetail() {
               }
             }}
           >
-            {busyAction === 'duplicate' ? 'Duplicating…' : 'Duplicate'}
+            {busyAction === 'duplicate' ? 'Duplicating…' : (<><CopyIcon /> Duplicate</>)}
           </button>
           {doc.type === 'quotation' && !doc.converted_document_id && (
             <button
@@ -168,7 +188,7 @@ export default function InvoiceDetail() {
                 }
               }}
             >
-              {busyAction === 'delete' ? 'Deleting…' : 'Delete'}
+              {busyAction === 'delete' ? 'Deleting…' : (<><TrashIcon /> Delete</>)}
             </button>
           )}
           {isIssuedFamily && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && !canEdit && (
@@ -178,14 +198,14 @@ export default function InvoiceDetail() {
                 style={{ opacity: 0.45, cursor: 'not-allowed' }}
                 title="Request Edit is disabled — the GST Return for this period has already been filed. Use Credit Note, Debit Note, or Amendment instead."
               >
-                Request Edit
+                <PencilIcon /> Request Edit
               </span>
             ) : (
-              <Link className="bp-btn bp-btn-amber" to="/portal/edit-requests">Request Edit</Link>
+              <Link className="bp-btn bp-btn-amber" to="/portal/edit-requests"><PencilIcon /> Request Edit</Link>
             )
           )}
           {['issued', 'partial', 'paid'].includes(doc.status) && ['tax_invoice', 'credit_note', 'debit_note'].includes(doc.type) && (
-            <Link className="bp-btn bp-btn-outline" to={`/portal/amendments/new?ref=${doc.id}`}>Create Amendment</Link>
+            <Link className="bp-btn bp-btn-outline" to={`/portal/amendments/new?ref=${doc.id}`}><DocEditIcon /> Create Amendment</Link>
           )}
           {['issued', 'partial', 'paid'].includes(doc.status) && (
             doc.status === 'paid' ? (
@@ -206,7 +226,7 @@ export default function InvoiceDetail() {
                   }
                 }}
               >
-                {busyAction === 'markUnpaid' ? 'Updating…' : 'Mark Unpaid'}
+                {busyAction === 'markUnpaid' ? 'Updating…' : (<><UndoIcon /> Mark Unpaid</>)}
               </button>
             ) : (
               <button
@@ -226,7 +246,7 @@ export default function InvoiceDetail() {
                   }
                 }}
               >
-                {busyAction === 'markPaid' ? 'Updating…' : 'Mark Paid'}
+                {busyAction === 'markPaid' ? 'Updating…' : (<><CheckIcon /> Mark Paid</>)}
               </button>
             )
           )}
@@ -247,29 +267,24 @@ export default function InvoiceDetail() {
               }
             }}
           >
-            {busyAction === 'download' ? 'Downloading…' : 'Download PDF'}
+            {busyAction === 'download' ? 'Downloading…' : (<><DownloadIcon /> Download PDF</>)}
           </button>
-          <button
-            type="button"
+          <a
             className="bp-btn bp-btn-amber"
-            disabled={busyAction === 'email'}
-            onClick={async () => {
-              setBusyAction('email'); setMsg(''); setActionErr('');
-              try {
-                const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
-                setMsg(r.message || 'Email sent successfully.');
-              } catch (e) {
-                setActionErr(e.message || 'Failed to send email.');
-              } finally {
-                setBusyAction('');
-              }
-            }}
+            // Opens the user's own email app (mailto:), same as the WhatsApp button opens
+            // WhatsApp — not a server-side send.
+            href={`mailto:${doc.customer?.email || ''}?subject=${encodeURIComponent(`${docTypeLabel(doc.type)} ${doc.number}`)}&body=${encodeURIComponent(
+              doc.share_token
+                ? `Please find your ${docTypeLabel(doc.type)} ${doc.number} here: ${window.location.origin}/api/billing/share/${doc.share_token}`
+                : `Please find attached your ${docTypeLabel(doc.type)} ${doc.number}.`
+            )}`}
+            title="Email this document"
           >
-            {busyAction === 'email' ? 'Sending…' : 'Email'}
-          </button>
+            <MailIcon /> Email
+          </a>
           {cancellable && (
             <button type="button" className="bp-btn bp-btn-danger" onClick={() => setCancelling(true)}>
-              Cancel
+              <XCircleIcon /> Cancel
             </button>
           )}
           {doc.share_token && (
@@ -285,7 +300,7 @@ export default function InvoiceDetail() {
               rel="noreferrer"
               onClick={() => setMsg('Opening WhatsApp to share this document…')}
             >
-              WhatsApp
+              <WhatsAppIcon /> WhatsApp
             </a>
           )}
         </div>
@@ -347,29 +362,31 @@ export default function InvoiceDetail() {
       {/* Read-only, professional item table — same column set as the Create/Edit form
           (Invoice Item Table spec §3, Disc.% removed), just without the Action column
           and with no inputs/dropdowns of any kind. */}
-      <table className="bp-table bp-doc-table" style={{ marginTop: 16 }}>
-        <thead>
-          <tr>
-            <th>Sr. No.</th><th>Particulars</th><th>HSN/SAC</th><th>Qty</th><th>UCQ</th>
-            <th>Rate (₹)</th><th>GST %</th><th>Taxable Value (₹)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(doc.line_items || []).map((l, i) => (
-            <tr key={l.id}>
-              <td>{i + 1}</td>
-              <td>{l.description}</td>
-              <td>{l.hsn_sac}</td>
-              <td>{l.qty}</td>
-              <td>{l.unit}</td>
-              <td>{money(l.rate)}</td>
-              <td>{l.gst_rate}%</td>
-              <td className="bp-doc-total">{money(l.taxable_amount)}</td>
+      <div className="bp-table-wrapper" style={{ marginTop: 16 }}>
+        <table className="bp-table bp-doc-table" style={{ marginTop: 0 }}>
+          <thead>
+            <tr>
+              <th>Sr. No.</th><th>Particulars</th><th>HSN/SAC</th><th>Qty</th><th>UCQ</th>
+              <th>Rate (₹)</th><th>GST %</th><th>Taxable Value (₹)</th>
             </tr>
-          ))}
-          {!doc.line_items?.length && <tr><td colSpan={8} className="bp-table-empty">No line items</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {(doc.line_items || []).map((l, i) => (
+              <tr key={l.id}>
+                <td>{i + 1}</td>
+                <td>{l.description}</td>
+                <td>{l.hsn_sac}</td>
+                <td>{fmtQty(l.qty)}</td>
+                <td>{l.unit}</td>
+                <td>{money(l.rate)}</td>
+                <td>{Number(l.gst_rate || 0)}%</td>
+                <td className="bp-doc-total">{money(l.taxable_amount)}</td>
+              </tr>
+            ))}
+            {!doc.line_items?.length && <tr><td colSpan={8} className="bp-table-empty">No line items</td></tr>}
+          </tbody>
+        </table>
+      </div>
 
       <div className="bp-gst-box" style={{ maxWidth: 360, marginTop: 16, marginLeft: 'auto' }}>
         {/* Disc.% is removed from item entry (Invoice Item Table spec §3) — new documents
@@ -383,7 +400,7 @@ export default function InvoiceDetail() {
         ) : (
           <>
             <div className="bp-gst-row"><span>CGST</span><strong>{money(doc.cgst_amount)}</strong></div>
-            <div className="bp-gst-row"><span>SGST</span><strong>{money(doc.sgst_amount)}</strong></div>
+            <div className="bp-gst-row"><span>SGST/UTGST</span><strong>{money(doc.sgst_amount)}</strong></div>
           </>
         )}
         {doc.tax_deduction_type ? (
@@ -406,7 +423,7 @@ export default function InvoiceDetail() {
         )}
         {doc.amount_in_words && (
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--bp-border)' }}>
-            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Amount in Words</span>
+            <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>Amount in Words</span>
             <span style={{ fontSize: 12.5 }}>{doc.amount_in_words}</span>
           </div>
         )}

@@ -421,17 +421,14 @@ export default function HsnSummaryPage({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid var(--bp-border)' }}>
-                  {['Code Type', 'HSN / SAC Code', 'GST Rate (%)', 'QTY', 'UQC', 'Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)'].map((h) => {
-                    const centered = ['Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)'].includes(h);
-                    return (
-                      <th key={h} style={{
-                        padding: '13px 14px',
-                        textAlign: h === 'Code Type' || h === 'HSN / SAC Code' ? 'left' : centered ? 'center' : 'right',
-                        fontSize: 12, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap',
-                        verticalAlign: 'middle', lineHeight: 1.3,
-                      }}>{h}</th>
-                    );
-                  })}
+                  {['Code Type', 'HSN / SAC Code', 'GST Rate (%)', 'QTY', 'UQC', 'Taxable Value (₹)', 'IGST (₹)', 'CGST (₹)', 'SGST (₹)'].map((h) => (
+                    <th key={h} style={{
+                      padding: '13px 14px',
+                      textAlign: 'center',
+                      fontSize: 12, fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap',
+                      verticalAlign: 'middle', lineHeight: 1.3,
+                    }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -443,7 +440,7 @@ export default function HsnSummaryPage({
                     const isSacRow = type === 'S';
                     return (
                       <tr key={`${r.hsn_sac}-${i}`} style={{ borderBottom: '1px solid var(--bp-border)', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                        <td style={{ padding: '14px', verticalAlign: 'middle' }}>
+                        <td style={{ padding: '14px', textAlign: 'center', verticalAlign: 'middle' }}>
                           <span style={{
                             width: 24, height: 24, borderRadius: 5, boxSizing: 'border-box',
                             background: isSacRow ? '#f0fdf4' : '#eff6ff',
@@ -453,13 +450,13 @@ export default function HsnSummaryPage({
                             fontSize: 11, fontWeight: 800, lineHeight: 1, verticalAlign: 'middle',
                           }}>{type}</span>
                         </td>
-                        <td style={{ padding: '14px', fontSize: 13, fontWeight: 500, color: 'var(--bp-navy)', verticalAlign: 'middle', lineHeight: 1.4, whiteSpace: 'nowrap' }}>{r.hsn_sac || '—'}</td>
-                        <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 500, color: 'var(--bp-navy)', verticalAlign: 'middle', lineHeight: 1.4, whiteSpace: 'nowrap' }}>{r.hsn_sac || '—'}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>
                           {r.gst_rate != null ? `${Number(r.gst_rate).toFixed(0)}%` : '—'}
                         </td>
-                        <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.qty, 2)}</td>
-                        <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, color: '#64748b', verticalAlign: 'middle', lineHeight: 1.4 }}>{r.unit || r.uqc || 'NOS'}</td>
-                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.taxable || r.taxable_value, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.qty, 2)}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, color: '#64748b', verticalAlign: 'middle', lineHeight: 1.4 }}>{r.unit || r.uqc || 'NOS'}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.taxable || r.taxable_value, 0)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.igst, 2)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.cgst, 2)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.sgst, 2)}</td>
@@ -471,9 +468,9 @@ export default function HsnSummaryPage({
                 {filtered.length > 0 && (
                   <tr style={{ borderTop: '2px solid #bfdbfe', background: '#f0f9ff' }}>
                     <td colSpan={3} style={{ padding: '14px', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>Total</td>
-                    <td style={{ padding: '14px', textAlign: 'right', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totQty, 2)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totQty, 2)}</td>
                     <td />
-                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totTaxable, 2)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totTaxable, 0)}</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totIgst, 2)}</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totCgst, 2)}</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totSgst, 2)}</td>

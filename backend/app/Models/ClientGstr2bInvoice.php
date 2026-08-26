@@ -15,6 +15,15 @@ class ClientGstr2bInvoice extends Model
         self::MATCH_STATUS_UNMATCHED,
     ];
 
+    public const ITC_ELIGIBLE = 'eligible';
+
+    public const ITC_INELIGIBLE = 'ineligible';
+
+    public const ITC_ELIGIBILITIES = [
+        self::ITC_ELIGIBLE,
+        self::ITC_INELIGIBLE,
+    ];
+
     protected $fillable = [
         'client_profile_id', 'gstr2b_record_id', 'financial_year', 'tax_period',
         'supplier_gstin', 'supplier_name', 'invoice_number', 'invoice_date', 'invoice_value',

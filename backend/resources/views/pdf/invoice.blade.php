@@ -360,7 +360,7 @@ td, th { vertical-align: top; }
   $totalCols = 6 + ($colHsn ? 1 : 0) + ($showTax ? 1 : 0);
 
   $roundOffVal = (float) $doc->round_off;
-  $roundOffDisplay = ($roundOffVal < 0 ? '- ' : '').'&#8377; '.number_format(abs($roundOffVal), 0);
+  $roundOffDisplay = ($roundOffVal < 0 ? '- ' : '').'&#8377; '.number_format(abs($roundOffVal), 2);
 @endphp
 
 <div class="frame">
