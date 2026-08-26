@@ -79,10 +79,9 @@ td, th { vertical-align: top; }
   width: 48%;
   padding: 0;
   vertical-align: top;
-}
-.party-box {
   border: 1.2px solid #1e40af;
   border-radius: 11px;
+  background: #ffffff;
 }
 .party-head {
   background: #1e40af;
@@ -94,7 +93,7 @@ td, th { vertical-align: top; }
   padding: 7px 12px;
   border-radius: 9px 9px 0 0;
 }
-.party-body { padding: 10px 12px; background: #ffffff; border-radius: 0 0 9px 9px; }
+.party-body { padding: 10px 12px; }
 .party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 5px; }
 .party-line { color: #334155; font-size: 9.8px; margin: 2px 0; }
 .party-line b { color: #0f172a; }
@@ -466,7 +465,6 @@ td, th { vertical-align: top; }
 <table class="party-wrap">
   <tr>
     <td class="party-cell">
-      <div class="party-box">
       <div class="party-head">Details of Receiver | Bill To</div>
       <div class="party-body">
         @if($c)
@@ -482,11 +480,9 @@ td, th { vertical-align: top; }
           <div class="party-line">—</div>
         @endif
       </div>
-      </div>
     </td>
     <td class="col-spacer"></td>
     <td class="party-cell">
-      <div class="party-box">
       <div class="party-head">Details of Consignee | Ship To</div>
       <div class="party-body">
         @if($c)
@@ -501,7 +497,6 @@ td, th { vertical-align: top; }
         @else
           <div class="party-line">—</div>
         @endif
-      </div>
       </div>
     </td>
   </tr>

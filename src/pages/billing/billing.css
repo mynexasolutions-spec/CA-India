@@ -3205,3 +3205,9 @@ select.bp-filter-control {
   }
 
 }
+
+/* Helper to center-align all text in a bp-table */
+.bp-table-center th,
+.bp-table-center td {
+  text-align: center !important;
+}

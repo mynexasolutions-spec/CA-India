@@ -131,8 +131,17 @@ function mapGridToInvoiceRows(grid) {
 /** Renders a parsed spreadsheet grid (array-of-rows) as an HTML table — shared by the
  * pre-upload preview and the "View" preview of an already-saved statement. Styled
  * standalone (not the shared .bp-table class) so it doesn't affect any other table. */
-function GridTable({ grid }) {
+function GridTable({ grid, dbInvoices = [] }) {
   if (!grid.length) return <p>This file has no rows to preview.</p>;
+
+  const headers = grid[0] || [];
+  const colFor = {};
+  headers.forEach((h, ci) => {
+    INVOICE_HEADER_MAP.forEach(([field, re]) => {
+      if (colFor[field] === undefined && re.test(h)) colFor[field] = ci;
+    });
+  });
+
   return (
     <div
       style={{
@@ -153,7 +162,7 @@ function GridTable({ grid }) {
                   position: 'sticky', top: 0,
                   background: 'var(--bp-navy, #0a3d82)', color: '#fff',
                   fontWeight: 700, fontSize: 12, letterSpacing: 0.2,
-                  textAlign: 'left', whiteSpace: 'nowrap',
+                  textAlign: 'center', whiteSpace: 'nowrap',
                   padding: '10px 14px',
                   borderRight: '1px solid rgba(255,255,255,0.15)',
                 }}
@@ -171,20 +180,40 @@ function GridTable({ grid }) {
               onMouseEnter={(e) => { e.currentTarget.style.background = '#eff6ff'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = ri % 2 === 0 ? '#fff' : '#f8fafc'; }}
             >
-              {grid[0].map((_, ci) => (
-                <td
-                  key={ci}
-                  style={{
-                    padding: '8px 14px',
-                    borderBottom: '1px solid #edf2f7',
-                    borderRight: '1px solid #edf2f7',
-                    color: '#1e293b',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {row[ci] === '' || row[ci] == null ? '' : String(row[ci])}
-                </td>
-              ))}
+              {grid[0].map((_, ci) => {
+                let cellVal = row[ci] === '' || row[ci] == null ? '' : String(row[ci]);
+
+                if (ci === colFor.itc_eligibility && dbInvoices.length > 0) {
+                  const rowGstin = colFor.supplier_gstin !== undefined ? String(row[colFor.supplier_gstin] || '').trim().toLowerCase() : '';
+                  const rowInvNum = colFor.invoice_number !== undefined ? String(row[colFor.invoice_number] || '').trim().toLowerCase() : '';
+                  if (rowGstin && rowInvNum) {
+                    const match = dbInvoices.find(
+                      (inv) =>
+                        String(inv.supplier_gstin || '').trim().toLowerCase() === rowGstin &&
+                        String(inv.invoice_number || '').trim().toLowerCase() === rowInvNum
+                    );
+                    if (match) {
+                      cellVal = match.itc_eligibility === 'eligible' ? 'Yes' : 'No';
+                    }
+                  }
+                }
+
+                return (
+                  <td
+                    key={ci}
+                    style={{
+                      padding: '8px 14px',
+                      borderBottom: '1px solid #edf2f7',
+                      borderRight: '1px solid #edf2f7',
+                      color: '#1e293b',
+                      whiteSpace: 'nowrap',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {cellVal}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -219,6 +248,7 @@ export default function AdminClientGstr2b() {
   const [viewGrid, setViewGrid] = useState(null);
   const [viewErr, setViewErr] = useState('');
   const [viewLoading, setViewLoading] = useState(false);
+  const [viewDbInvoices, setViewDbInvoices] = useState([]);
 
   const [invoicesRecord, setInvoicesRecord] = useState(null);
   const [invoices, setInvoices] = useState(null);
@@ -308,6 +338,16 @@ export default function AdminClientGstr2b() {
     }
   };
 
+  const downloadTemplate = () => {
+    const headers = [
+      ['Supplier GSTIN', 'Supplier Name', 'Invoice No.', 'Invoice Date', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'Total GST', 'ITC Availability', 'Match Status']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(headers);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    XLSX.writeFile(wb, 'GSTR2B_Template.xlsx');
+  };
+
   const handleUploadSubmit = (e) => {
     e.preventDefault();
     if (!file) {
@@ -342,11 +382,15 @@ export default function AdminClientGstr2b() {
     setViewErr('');
     setViewLoading(true);
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('Could not download the file');
-      const blob = await res.blob();
-      const grid = await readSheetAsGrid(blob);
+      const [grid, dbInvoices] = await Promise.all([
+        fetch(url).then((res) => {
+          if (!res.ok) throw new Error('Could not download the file');
+          return res.blob().then(readSheetAsGrid);
+        }),
+        api(`/admin/clients/${id}/gstr2b/${record.id}/invoices`).catch(() => [])
+      ]);
       setViewGrid(grid);
+      setViewDbInvoices(dbInvoices || []);
     } catch (e) {
       setViewErr(e.message || 'Could not read this file for preview.');
     } finally {
@@ -397,7 +441,9 @@ export default function AdminClientGstr2b() {
   const handleEligibilityChange = async (invoice, newValue) => {
     const prev = invoices;
     setSavingInvoiceId(invoice.id);
-    setInvoices((rows) => rows.map((r) => (r.id === invoice.id ? { ...r, itc_eligibility: newValue } : r)));
+    const updateFn = (rows) => (rows || []).map((r) => (r.id === invoice.id ? { ...r, itc_eligibility: newValue } : r));
+    setInvoices(updateFn);
+    setViewDbInvoices(updateFn);
     try {
       await api(`/admin/clients/${id}/gstr2b/invoices/${invoice.id}/eligibility`, {
         method: 'PATCH',
@@ -438,7 +484,47 @@ export default function AdminClientGstr2b() {
       </div>
 
       <div className="bp-card" style={{ marginTop: 14 }}>
-        <h3 style={{ marginTop: 0 }}>Upload GSTR-2B</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+          <h3 style={{ margin: 0 }}>Upload GSTR-2B</h3>
+          <button
+            type="button"
+            className="bp-btn"
+            style={{
+              height: 36,
+              fontSize: 12,
+              padding: '0 16px',
+              background: 'linear-gradient(135deg, #107c41 0%, #1f9a55 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 8,
+              boxShadow: '0 4px 10px rgba(16, 124, 65, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onClick={downloadTemplate}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1.5px)';
+              e.currentTarget.style.boxShadow = '0 6px 14px rgba(16, 124, 65, 0.35)';
+              e.currentTarget.style.filter = 'brightness(1.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 4px 10px rgba(16, 124, 65, 0.25)';
+              e.currentTarget.style.filter = 'none';
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download Predefined Format
+          </button>
+        </div>
         <form onSubmit={handleUploadSubmit} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'end' }}>
           <label>
             Financial Year
@@ -491,7 +577,7 @@ export default function AdminClientGstr2b() {
           </div>
           {viewLoading && <p>Loading…</p>}
           {viewErr && <p className="bp-alert bp-alert-error">{viewErr}</p>}
-          {!viewLoading && !viewErr && viewGrid && <GridTable grid={viewGrid} />}
+          {!viewLoading && !viewErr && viewGrid && <GridTable grid={viewGrid} dbInvoices={viewDbInvoices} />}
         </div>
       )}
 
@@ -513,7 +599,7 @@ export default function AdminClientGstr2b() {
           {!invoicesLoading && invoices && (
             invoices.length ? (
               <div style={{ overflowX: 'auto' }}>
-                <table className="bp-table">
+                <table className="bp-table bp-table-center">
                   <thead>
                     <tr>
                       <th>Supplier GSTIN</th>
@@ -582,7 +668,7 @@ export default function AdminClientGstr2b() {
       <div className="bp-card" style={{ marginTop: 14, overflowX: 'auto' }}>
         <h3 style={{ marginTop: 0 }}>Uploaded Statements</h3>
         {loading ? <p>Loading…</p> : (
-          <table className="bp-table">
+          <table className="bp-table bp-table-center">
             <thead>
               <tr>
                 <th>Financial Year</th>

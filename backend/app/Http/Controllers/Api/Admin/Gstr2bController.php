@@ -155,7 +155,7 @@ class Gstr2bController extends Controller
         }
 
         return response()->json(
-            ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->orderBy('invoice_date')->get()
+            ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->orderBy('id')->get()
         );
     }
 
@@ -166,7 +166,7 @@ class Gstr2bController extends Controller
         $record = ClientGstr2bRecord::where('client_profile_id', $clientId)->findOrFail($recordId);
 
         return response()->json(
-            ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->orderBy('invoice_date')->get()
+            ClientGstr2bInvoice::where('gstr2b_record_id', $record->id)->orderBy('id')->get()
         );
     }
 

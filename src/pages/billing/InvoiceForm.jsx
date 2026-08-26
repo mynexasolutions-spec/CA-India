@@ -320,7 +320,13 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       setDocNumber(doc.number || '');
       setDocStatus(doc.status);
       setEditAllowed(!!doc.edit_allowed);
-      if (unlockedEdit) {
+      if (id) {
+        setConfirmModal({
+          title: 'Document Updated Successfully',
+          message: 'Your document has been updated successfully.',
+          redirectTo: billingDocPath(docType, doc.id),
+        });
+      } else if (unlockedEdit) {
         setConfirmModal({
           title: 'Changes Saved Successfully',
           message: 'Your corrections have been saved successfully.',

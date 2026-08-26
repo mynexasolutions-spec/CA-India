@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, getAuthToken } from '../../api/client';
 import { LoadingBlock } from '../../components/Spinner';
 import { buildFyOptions, fyMonthOptions } from '../billing/billingUtils';
+import NumberedPagination from '../billing/NumberedPagination';
 
 const COLUMNS = [
   { key: 'supplier_gstin', label: 'SUPPLIER GSTIN' },
@@ -44,6 +45,7 @@ export default function ClientGstr2b() {
   const [sort, setSort] = useState('invoice_date');
   const [dir, setDir] = useState('desc');
   const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export default function ClientGstr2b() {
       sort,
       dir,
       page: String(page),
+      per_page: String(perPage),
       ...appliedFilters,
       ...extra,
     });
@@ -64,7 +67,7 @@ export default function ClientGstr2b() {
       if (!qs.get(k)) qs.delete(k);
     });
     return qs;
-  }, [appliedFilters, dir, page, sort]);
+  }, [appliedFilters, dir, page, sort, perPage]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -145,9 +148,6 @@ export default function ClientGstr2b() {
   };
 
   const rows = result?.data || [];
-  const currentPage = result?.current_page || 1;
-  const lastPage = result?.last_page || 1;
-  const total = result?.total || 0;
   const summary = result?.summary || {};
   const kpis = [
     {
@@ -437,15 +437,12 @@ export default function ClientGstr2b() {
             </table>
           </div>
 
-          {rows.length > 0 && (
-            <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 12, fontSize: 13 }}>
-              <span>Page {currentPage} of {lastPage} · {total} invoice{total === 1 ? '' : 's'}</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" className="bp-btn bp-btn-outline" disabled={currentPage <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
-                <button type="button" className="bp-btn bp-btn-outline" disabled={currentPage >= lastPage} onClick={() => setPage((p) => p + 1)}>Next</button>
-              </div>
-            </div>
-          )}
+          <NumberedPagination
+            meta={result}
+            perPage={perPage}
+            onPerPage={(v) => { setPerPage(v); setPage(1); }}
+            onPage={setPage}
+          />
         </>
       )}
 

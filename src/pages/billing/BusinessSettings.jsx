@@ -306,6 +306,49 @@ export default function BusinessSettings() {
     }
   };
 
+  const submitAll = async () => {
+    setBusy(true);
+    setErr('');
+    setMsg('');
+    try {
+      await Promise.all([
+        api('/client/change-requests', {
+          method: 'POST',
+          body: {
+            section: 'bank',
+            ...Object.fromEntries(
+              (SECTION_FIELDS.bank || []).map((k) => [k, form[k] ?? ''])
+            ),
+          },
+        }),
+        api('/client/change-requests', {
+          method: 'POST',
+          body: {
+            section: 'invoice_settings',
+            ...Object.fromEntries(
+              (SECTION_FIELDS.invoice_settings || []).map((k) => [k, form[k] ?? ''])
+            ),
+          },
+        }),
+        api('/client/change-requests', {
+          method: 'POST',
+          body: {
+            section: 'numbering',
+            ...Object.fromEntries(
+              (SECTION_FIELDS.numbering || []).map((k) => [k, form[k] ?? ''])
+            ),
+          },
+        }),
+      ]);
+      load();
+      setMsg('All changes submitted for administrator approval successfully.');
+    } catch (ex) {
+      setErr(ex.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="bp-section-wrap">
       <div style={{ fontSize: 12, color: 'var(--bp-muted)', fontWeight: 600 }}>
@@ -378,9 +421,7 @@ export default function BusinessSettings() {
               </label>
             ))}
           </div>
-          <button type="button" className="bp-btn bp-btn-primary" style={{ marginTop: 16 }} disabled={busy} onClick={() => submitSection('bank')}>
-            {busy ? 'Submitting…' : 'Submit for Approval'}
-          </button>
+          {/* Submit is now handled globally at the bottom of the page */}
           <ApprovalStatus data={sections?.bank} />
         </div>
 
@@ -402,9 +443,7 @@ export default function BusinessSettings() {
               />
             </label>
           </div>
-          <button type="button" className="bp-btn bp-btn-primary" style={{ marginTop: 16 }} disabled={busy} onClick={() => submitSection('invoice_settings')}>
-            {busy ? 'Submitting…' : 'Submit for Approval'}
-          </button>
+          {/* Submit is now handled globally at the bottom of the page */}
           <ApprovalStatus data={sections?.invoice_settings} />
         </div>
 
@@ -429,20 +468,50 @@ export default function BusinessSettings() {
               </Fragment>
             ))}
           </div>
-          <button type="button" className="bp-btn bp-btn-primary" style={{ marginTop: 16 }} disabled={busy} onClick={() => submitSection('numbering')}>
-            {busy ? 'Submitting…' : 'Submit for Approval'}
-          </button>
+          {/* Submit is now handled globally at the bottom of the page */}
           <ApprovalStatus data={sections?.numbering} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', background: '#eef4fc', border: '1px solid #d7e6f7', borderRadius: 10, padding: '12px 18px' }}>
-        <span style={{ fontSize: 12, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <InfoIcon /> If you make any changes above, they will be sent to administrator for approval. Once approved, the changes will reflect on your invoices.
-        </span>
-        <Link to="/portal/settings/history" className="bp-btn bp-btn-outline" style={{ whiteSpace: 'nowrap' }}>
-          View Request History →
-        </Link>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, background: '#eef4fc', border: '1px solid #d7e6f7', borderRadius: 10, padding: '16px 20px', marginTop: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+            <InfoIcon /> Click the button on the right to submit all your changes (Bank Details, Invoice Settings, Document Numbering) for administrator approval.
+          </span>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="bp-btn bp-btn-primary"
+              style={{
+                height: 40,
+                padding: '0 24px',
+                background: 'linear-gradient(135deg, #0a3d82 0%, #1e5aab 100%)',
+                boxShadow: '0 4px 10px rgba(10, 61, 130, 0.25)',
+              }}
+              disabled={busy}
+              onClick={submitAll}
+            >
+              {busy ? 'Submitting Changes…' : 'Submit All Changes'}
+            </button>
+            <Link
+              to="/portal/settings/history"
+              className="bp-btn bp-btn-outline"
+              style={{
+                height: 40,
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              View Request History
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -480,7 +549,21 @@ export function ChangeRequestHistory() {
           <div className="bp-section-kicker">Request History</div>
           <p className="bp-section-desc">Every settings change you've submitted, and its approval status.</p>
         </div>
-        <Link to="/portal/settings" className="bp-btn bp-btn-outline">← Back to Settings</Link>
+        <Link
+          to="/portal/settings"
+          className="bp-btn bp-btn-outline"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back to Settings
+        </Link>
       </div>
 
       <div className="bp-toolbar" style={{ marginBottom: 0 }}>

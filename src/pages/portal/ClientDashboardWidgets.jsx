@@ -21,7 +21,7 @@ const CARD_STYLE = {
 
 export function DashCard({ title, icon, iconColor = '#2563eb', badge, action, children, style }) {
   return (
-    <section className="bp-dash-card" style={{ ...CARD_STYLE, ...style }}>
+    <section className="bp-dash-card" style={{ ...CARD_STYLE, height: '100%', display: 'flex', flexDirection: 'column', ...style }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 10 }}>
           {icon && (
@@ -34,7 +34,9 @@ export function DashCard({ title, icon, iconColor = '#2563eb', badge, action, ch
         </h3>
         {action}
       </div>
-      {children}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {children}
+      </div>
     </section>
   );
 }
