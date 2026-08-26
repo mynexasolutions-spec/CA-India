@@ -245,9 +245,8 @@ td, th { vertical-align: top; }
     return rtrim(rtrim(number_format((float) $r, 2), '0'), '.');
   };
   $billAddr = $c?->billing_address;
-  // Consignee / Ship To only prints when a genuinely distinct shipping address is
-  // configured — never duplicate Bill To into a second identical box (spec §5).
-  $hasDistinctShipping = filled($c?->shipping_address) && trim((string) $c->shipping_address) !== trim((string) $billAddr);
+  // Ship To always prints alongside Bill To — falls back to the billing address/state
+  // when no distinct shipping address is configured, instead of being hidden.
   $shipAddr = $c?->shipping_address ?: $billAddr;
   $customerLabel = trim(($c?->name ?? '') . ($c?->phone ? ' ('.$c->phone.')' : ($c?->contact_person ? ' ('.$c->contact_person.')' : '')));
   $stateLine = function ($state, $code) {
@@ -461,12 +460,12 @@ td, th { vertical-align: top; }
 
 <hr class="hdr-rule">
 
-{{-- BILL TO / SHIP TO with navy header bars — Ship To only prints when a genuinely
-     distinct shipping address is configured (spec §5: "Display when configured/required;
-     keep separate from Bill To"), never a duplicate of Bill To. --}}
+{{-- BILL TO / SHIP TO with navy header bars — both boxes always print side by side;
+     Ship To falls back to the billing address/state when no distinct shipping address
+     is configured, rather than being hidden (spec: always show two sections). --}}
 <table class="party-wrap">
   <tr>
-    <td class="party-cell" @if(! $hasDistinctShipping) style="width:100%;" @endif>
+    <td class="party-cell">
       <div class="party-box">
       <div class="party-head">Details of Receiver | Bill To</div>
       <div class="party-body">
@@ -485,24 +484,26 @@ td, th { vertical-align: top; }
       </div>
       </div>
     </td>
-    @if($hasDistinctShipping)
     <td class="col-spacer"></td>
     <td class="party-cell">
       <div class="party-box">
       <div class="party-head">Details of Consignee | Ship To</div>
       <div class="party-body">
+        @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
             <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->name ?: '—' }}</td></tr>
-            <tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>
+            @if($shipAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($shipStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipStateLine }}</td></tr>@endif
             @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
+        @else
+          <div class="party-line">—</div>
+        @endif
       </div>
       </div>
     </td>
-    @endif
   </tr>
 </table>
 
