@@ -21,8 +21,8 @@ function CreditNoteIcon() {
 const TILES = [
   { type: 'tax_invoice', label: 'Tax Invoice', desc: 'Create a new tax invoice', Icon: TaxInvoiceIcon, color: '#2563eb', bg: '#e8f0fe', newPath: '/portal/billing/invoices/new' },
   { type: 'bill_of_supply', label: 'Bill of Supply', desc: 'Create a new bill of supply', Icon: BillOfSupplyIcon, color: '#15803d', bg: '#e6f7ec', newPath: '/portal/billing/bill-of-supply/new' },
-  { type: 'debit_note', label: 'Debit Note', desc: 'Create a new debit note', Icon: DebitNoteIcon, color: '#b45309', bg: '#fdf1de', newPath: '/portal/billing/debit-notes/new' },
-  { type: 'credit_note', label: 'Credit Note', desc: 'Create a new credit note', Icon: CreditNoteIcon, color: '#7c3aed', bg: '#f1e9fd', newPath: '/portal/billing/credit-notes/new' },
+  { type: 'debit_note', label: 'Debit Note', desc: 'Create a new debit note', Icon: DebitNoteIcon, color: '#7c3aed', bg: '#f1e9fd', newPath: '/portal/billing/debit-notes/new' },
+  { type: 'credit_note', label: 'Credit Note', desc: 'Create a new credit note', Icon: CreditNoteIcon, color: '#dc2626', bg: '#fee2e2', newPath: '/portal/billing/credit-notes/new' },
 ];
 
 export default function DocTypeTiles({ docType, profile }) {

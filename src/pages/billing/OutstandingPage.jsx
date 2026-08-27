@@ -228,7 +228,7 @@ export default function OutstandingPage() {
 
   /* ── Derived data ──────────────────────────────────────────── */
   const allRows = useMemo(
-    () => [...unpaidRows, ...paidRows].sort((a, b) => String(a.document_date || '').localeCompare(String(b.document_date || ''))),
+    () => [...unpaidRows, ...paidRows].sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || ''))),
     [unpaidRows, paidRows]
   );
 

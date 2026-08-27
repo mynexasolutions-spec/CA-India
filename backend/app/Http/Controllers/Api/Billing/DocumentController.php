@@ -33,9 +33,13 @@ class DocumentController extends Controller
      *  filters without being narrowed by the Document Type filter itself (spec §24). */
     private function applyCommonFilters($q, Request $request)
     {
+        // Listing/filtering/GST-period counting spec — driven by Date of Creation
+        // (created_at), not the document's back-dated Document Date. whereDate() on
+        // both ends keeps this portable/correct against the created_at timestamp
+        // column even though the bound values below are date-only strings.
         // Billing launched at FY 2026-27 — an unconditional floor, independent of
         // whatever from/fy filter (or none) the request sends.
-        $q->whereDate('document_date', '>=', BillingPolicy::MIN_BILLING_FY_START_DATE);
+        $q->whereDate('created_at', '>=', BillingPolicy::MIN_BILLING_FY_START_DATE);
 
         if ($request->filled('status')) {
             $q->where('status', $request->status);
@@ -48,23 +52,24 @@ class DocumentController extends Controller
             $q->where('customer_id', $request->party_id);
         }
         if ($request->filled('from')) {
-            $q->whereDate('document_date', '>=', $request->from);
+            $q->whereDate('created_at', '>=', $request->from);
         }
         if ($request->filled('to')) {
-            $q->whereDate('document_date', '<=', $request->to);
+            $q->whereDate('created_at', '<=', $request->to);
         }
         if ($request->filled('month')) {
             // YYYY-MM — real date bounds instead of a MySQL-only DATE_FORMAT() compare,
             // so this works identically on SQLite (current) and MySQL (per README).
             $start = Carbon::createFromFormat('Y-m-d', $request->month.'-01')->startOfMonth();
-            $q->whereBetween('document_date', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()]);
+            $q->whereDate('created_at', '>=', $start->toDateString())
+                ->whereDate('created_at', '<=', $start->copy()->endOfMonth()->toDateString());
         }
         if ($request->filled('fy')) {
             // FY like 2025-26 → Apr 1 2025 – Mar 31 2026
             [$y1] = explode('-', $request->fy);
             $start = sprintf('%d-04-01', (int) $y1);
             $end = sprintf('%d-03-31', (int) $y1 + 1);
-            $q->whereBetween('document_date', [$start, $end]);
+            $q->whereDate('created_at', '>=', $start)->whereDate('created_at', '<=', $end);
         }
         if ($request->filled('q')) {
             $s = $request->q;
@@ -114,7 +119,7 @@ class DocumentController extends Controller
         if ($request->filled('type')) {
             $q->where('type', $request->type);
         }
-        $q->with('customer:id,name,gstin,gst_status')->latest('document_date')->latest('id');
+        $q->with('customer:id,name,gstin,gst_status')->latest('created_at')->latest('id');
 
         $perPage = min(500, max(1, (int) $request->input('per_page', 25)));
         $paginated = $q->paginate($perPage);
@@ -122,10 +127,12 @@ class DocumentController extends Controller
         $filedPeriods = BillingPolicy::filedPeriods($profile);
         $submittedPeriods = BillingPolicy::submittedFilingPeriods($profile->id);
         $paginated->getCollection()->each(function (CommercialDocument $doc) use ($profile, $filedPeriods, $submittedPeriods) {
-            $filed = $doc->document_date
-                && in_array(BillingPolicy::periodOf($profile, $doc->document_date->toDateString()), $filedPeriods, true);
-            $confirmationSubmitted = $doc->document_date
-                && in_array($doc->document_date->format('Y-m'), $submittedPeriods, true);
+            // GST-period counting spec — a document's GST period is its Date of
+            // Creation, not its (possibly back-dated) Document Date.
+            $filed = $doc->created_at
+                && in_array(BillingPolicy::periodOf($profile, $doc->created_at->toDateString()), $filedPeriods, true);
+            $confirmationSubmitted = $doc->created_at
+                && in_array($doc->created_at->format('Y-m'), $submittedPeriods, true);
             $doc->gst_return_filed = $filed;
             $doc->direct_edit_locked = $filed || $confirmationSubmitted;
         });
@@ -154,9 +161,9 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $data = $this->validated($request, true, BillingPolicy::mode($profile) !== 'retail');
-        if (!empty($data['document_date'])) {
-            BillingPolicy::assertNotLocked($profile, $data['document_date']);
-        }
+        // GST-period counting spec — a new document's period is its Date of Creation
+        // (i.e. now), not whatever back-dated Document Date is being submitted.
+        BillingPolicy::assertNotLocked($profile, now()->toDateString());
         $this->assertOwnedRelations($profile, $data, $data['type'] ?? 'tax_invoice');
         BillingPolicy::assertReferenceDocument($profile, $data['type'] ?? 'tax_invoice', $data['reference_document_id'] ?? null);
         $doc = $this->invoices->create($profile, $data);
@@ -174,13 +181,12 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
-        BillingPolicy::assertNotLocked($profile, $doc->document_date?->toDateString());
-        
+        // GST-period counting spec — locking is based on the document's own Date of
+        // Creation (unchanged by this edit), not the Document Date being submitted.
+        BillingPolicy::assertNotLocked($profile, $doc->created_at?->toDateString());
+
         $data = $this->validated($request, false, BillingPolicy::mode($profile) !== 'retail');
-        if (!empty($data['document_date'])) {
-            BillingPolicy::assertNotLocked($profile, $data['document_date']);
-        }
-        
+
         $this->assertOwnedRelations($profile, $data, $doc->type);
         $doc = $this->invoices->updateDraft($doc, $profile, $data);
 
@@ -213,8 +219,8 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
-        BillingPolicy::assertNotLocked($profile, $doc->document_date?->toDateString());
-        
+        BillingPolicy::assertNotLocked($profile, $doc->created_at?->toDateString());
+
         $this->invoices->destroyQuotation($doc, $profile);
 
         return response()->json(['message' => 'Quotation deleted']);
@@ -248,8 +254,8 @@ class DocumentController extends Controller
     {
         $profile = $this->profile($request);
         $doc = CommercialDocument::where('client_profile_id', $profile->id)->findOrFail($id);
-        BillingPolicy::assertNotLocked($profile, $doc->document_date?->toDateString());
-        
+        BillingPolicy::assertNotLocked($profile, $doc->created_at?->toDateString());
+
         $doc = $this->invoices->issue($doc, $profile);
 
         return response()->json($doc);
@@ -291,8 +297,8 @@ class DocumentController extends Controller
         $doc = CommercialDocument::where('client_profile_id', $profile->id)
             ->with(['lineItems', 'customer', 'clientProfile', 'referenceDocument', 'tdsTcsSection'])
             ->findOrFail($id);
-        $doc->gst_return_filed = BillingPolicy::isPeriodFiled($profile, $doc->document_date?->toDateString());
-        $doc->direct_edit_locked = BillingPolicy::isDirectEditLocked($profile, $doc->document_date?->toDateString());
+        $doc->gst_return_filed = BillingPolicy::isPeriodFiled($profile, $doc->created_at?->toDateString());
+        $doc->direct_edit_locked = BillingPolicy::isDirectEditLocked($profile, $doc->created_at?->toDateString());
 
         return response()->json($doc);
     }

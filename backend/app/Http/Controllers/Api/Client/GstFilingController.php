@@ -74,10 +74,13 @@ class GstFilingController extends Controller
         // Allowed types for GST calculation
         $types = ['tax_invoice', 'credit_note', 'debit_note'];
 
+        // GST-period counting spec — a bill belongs to the filing period it was
+        // created in, not the period implied by its back-dated Document Date.
         $bills = CommercialDocument::where('client_profile_id', $clientProfileId)
             ->whereIn('type', $types)
             ->whereIn('status', ['issued', 'paid'])
-            ->whereBetween('document_date', [$periodStart, $periodEnd])
+            ->whereDate('created_at', '>=', $periodStart)
+            ->whereDate('created_at', '<=', $periodEnd)
             ->get();
 
         $taxableValue = 0;
@@ -135,10 +138,13 @@ class GstFilingController extends Controller
         $types = ['tax_invoice', 'credit_note', 'debit_note'];
         [$periodStart, $periodEnd] = self::periodBounds($period);
 
+        // GST-period counting spec — a bill belongs to the filing period it was
+        // created in, not the period implied by its back-dated Document Date.
         $bills = CommercialDocument::where('client_profile_id', $clientProfileId)
             ->whereIn('type', $types)
             ->whereIn('status', ['issued', 'paid'])
-            ->whereBetween('document_date', [$periodStart, $periodEnd])
+            ->whereDate('created_at', '>=', $periodStart)
+            ->whereDate('created_at', '<=', $periodEnd)
             ->get();
 
 

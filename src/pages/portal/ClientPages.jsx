@@ -481,8 +481,8 @@ export function ClientDashboard() {
           <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))' }}>
             <StatTile label="Tax Invoices" count={billingOverviewData.tax_invoices ?? 0} value={shortMoney(billingOverviewData.tax_invoices_value)} color="#2563eb" bg="rgba(37,99,235,0.08)" />
             <StatTile label="Bill of Supply" count={billingOverviewData.bill_of_supply ?? 0} value={shortMoney(billingOverviewData.bill_of_supply_value)} color="#0f766e" bg="rgba(15,118,110,0.08)" />
-            <StatTile label="Debit Notes" count={billingOverviewData.debit_notes ?? 0} value={shortMoney(billingOverviewData.debit_notes_value)} color="#d97706" bg="rgba(217,119,6,0.08)" />
-            <StatTile label="Credit Notes" count={billingOverviewData.credit_notes ?? 0} value={shortMoney(billingOverviewData.credit_notes_value)} color="#059669" bg="rgba(5,150,105,0.08)" />
+            <StatTile label="Debit Notes" count={billingOverviewData.debit_notes ?? 0} value={shortMoney(billingOverviewData.debit_notes_value)} color="#7c3aed" bg="rgba(124,58,237,0.08)" />
+            <StatTile label="Credit Notes" count={billingOverviewData.credit_notes ?? 0} value={shortMoney(billingOverviewData.credit_notes_value)} color="#dc2626" bg="rgba(220,38,38,0.08)" />
             <StatTile label="Cancelled Invoices" count={billingOverviewData.cancelled_invoices ?? 0} value="—" color="#dc2626" bg="rgba(220,38,38,0.08)" />
           </div>
           <ViewLink to="/portal/billing">View All Documents</ViewLink>

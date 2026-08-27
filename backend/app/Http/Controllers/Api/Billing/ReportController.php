@@ -183,19 +183,24 @@ class ReportController extends Controller
 
     private function build(string $type, int $pid, string $from, string $to)
     {
+        // Listing/filtering/GST-period counting spec — Date of Creation, not the
+        // document's back-dated Document Date. whereDate() on both bounds keeps this
+        // correct against the created_at timestamp column.
         $base = CommercialDocument::where('client_profile_id', $pid)
-            ->whereBetween('document_date', [$from, $to]);
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to);
 
         return match ($type) {
             'sales_register', 'sales_summary' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
-                ->with('customer:id,name')->orderBy('document_date')->get(),
-            'invoice_register', 'document_register' => (clone $base)->with('customer:id,name')->orderBy('document_date')->get(),
+                ->with('customer:id,name')->orderBy('created_at')->get(),
+            'invoice_register', 'document_register' => (clone $base)->with('customer:id,name')->orderBy('created_at')->get(),
             'gst_summary' => $this->gstSummaryMatrix($base, $pid),
             'gst_liability' => $this->gstLiability($pid, $from, $to),
             'hsn_summary', 'hsn_wise' => DB::table('document_line_items as li')
                 ->join('commercial_documents as d', 'd.id', '=', 'li.commercial_document_id')
                 ->where('d.client_profile_id', $pid)
-                ->whereBetween('d.document_date', [$from, $to])
+                ->whereDate('d.created_at', '>=', $from)
+                ->whereDate('d.created_at', '<=', $to)
                 ->where('d.type', 'tax_invoice')
                 ->where('d.status', 'issued')
                 ->select(
@@ -223,19 +228,19 @@ class ReportController extends Controller
                 )
                 ->groupBy('customer_id')->with('customer:id,name')->get(),
             'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
-                ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
+                ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
                 ->groupBy('month')->orderBy('month')->get(),
             'outstanding', 'pending_dues', 'outstanding_report' => (clone $base)
                 ->whereIn('type', ['tax_invoice', 'bill_of_supply'])
                 ->whereIn('status', ['issued', 'partial'])
                 ->with('customer:id,name')
-                ->orderBy('document_date')
+                ->orderBy('created_at')
                 ->get(),
             'paid_invoices' => (clone $base)
                 ->whereIn('type', ['tax_invoice', 'bill_of_supply'])
                 ->where('status', 'paid')
                 ->with('customer:id,name')
-                ->orderByDesc('document_date')
+                ->orderByDesc('created_at')
                 ->get(),
             'credit_notes' => (clone $base)->where('type', 'credit_note')->with('customer:id,name')->get(),
             'debit_notes' => (clone $base)->where('type', 'debit_note')->with('customer:id,name')->get(),

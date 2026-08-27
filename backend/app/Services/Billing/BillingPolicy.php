@@ -156,7 +156,12 @@ class BillingPolicy
         abort_if($exists, 422, 'Invoice number already exists for this client.');
     }
 
-    /** The GST return tax_period label for a document date, per the profile's filing frequency. */
+    /**
+     * The GST return tax_period label for a document, per the profile's filing frequency.
+     * GST-period counting spec — callers must pass the document's Date of Creation
+     * (created_at), not its back-dated Document Date, so a back-dated invoice still
+     * counts against the period it was actually entered in.
+     */
     public static function periodOf(ClientProfile $profile, string $documentDate): string
     {
         $date = Carbon::parse($documentDate);

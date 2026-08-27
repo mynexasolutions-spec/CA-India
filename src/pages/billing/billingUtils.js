@@ -24,11 +24,13 @@ export function isDateInRange(dateStr, from = '', to = '') {
   return true;
 }
 
-/** Filter documents by From / To date (and optional FY bounds already reflected in from/to). */
+/** Filter documents by From / To date (and optional FY bounds already reflected in from/to).
+ * Listing/filtering/GST-period counting spec — driven by Date of Creation (created_at),
+ * not the document's back-dated Document Date. */
 export function filterDocsByPeriod(docs, { from = '', to = '' } = {}) {
   if (!Array.isArray(docs)) return [];
   if (!from && !to) return docs;
-  return docs.filter((doc) => isDateInRange(doc.document_date, from, to));
+  return docs.filter((doc) => isDateInRange(doc.created_at, from, to));
 }
 
 export function money(n) {

@@ -280,7 +280,14 @@ export function ComplianceStatus({ compliance, financialYear, locked = false }) 
         <ComplianceRow label="CMP-08 (Quarterly)" row={compliance.cmp08} />
       ) : (
         <>
-          <ComplianceRow label={`GSTR-1 (${compliance.gstr1_frequency === 'quarterly' ? 'Quarterly' : 'QRMP'})`} row={compliance.gstr1} />
+          <ComplianceRow
+            label={`GSTR-1 (${
+              compliance.gstr1_frequency === 'quarterly'
+                ? 'Quarterly'
+                : (compliance.gstr3b_frequency === 'quarterly' ? 'Monthly (QRMP)' : 'Monthly')
+            })`}
+            row={compliance.gstr1}
+          />
           <ComplianceRow label={`GSTR-3B (${cycleLabel(compliance.gstr3b_frequency)})`} row={compliance.gstr3b} />
         </>
       )}

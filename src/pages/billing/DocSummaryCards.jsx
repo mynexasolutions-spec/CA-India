@@ -20,8 +20,8 @@ const CARD_DEFS = [
   { key: 'total', label: 'Total Documents', Icon: StackIcon, color: '#2563eb', bg: '#e8f0fe' },
   { key: 'tax_invoice', label: 'Tax Invoices', Icon: DocIcon, color: '#2563eb', bg: '#e8f0fe' },
   { key: 'bill_of_supply', label: 'Bills of Supply', Icon: SheetIcon, color: '#15803d', bg: '#e6f7ec' },
-  { key: 'debit_note', label: 'Debit Notes', Icon: DocPlusIcon, color: '#b45309', bg: '#fdf1de' },
-  { key: 'credit_note', label: 'Credit Notes', Icon: DocMinusIcon, color: '#7c3aed', bg: '#f1e9fd' },
+  { key: 'debit_note', label: 'Debit Notes', Icon: DocPlusIcon, color: '#7c3aed', bg: '#f1e9fd' },
+  { key: 'credit_note', label: 'Credit Notes', Icon: DocMinusIcon, color: '#dc2626', bg: '#fee2e2' },
 ];
 
 /** Billing Module spec §24 — Summary cards reacting to the current FY/date/status/search filters. */

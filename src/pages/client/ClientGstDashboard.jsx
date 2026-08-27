@@ -106,7 +106,9 @@ export default function ClientGstDashboard() {
       date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  // Helper: Calculate Due Date (13th for GSTR-1 (QRMP), 20th for GSTR-3B next month)
+  // Helper: Calculate Due Date — GSTR-3B: 20th next month. GSTR-1: 11th next month for a
+  // plain Monthly filer, 13th (QRMP monthly IFF) when the client's overall filing
+  // frequency is Quarterly.
   const calculateDueDate = (periodStr, rType) => {
     if (!periodStr) return '—';
     const parts = periodStr.split('-');
@@ -118,7 +120,8 @@ export default function ClientGstDashboard() {
       monthNum = 1;
       year += 1;
     }
-    const day = rType === 'GSTR-3B' ? '20' : '13';
+    const isQrmp = data?.frequency === 'quarterly';
+    const day = rType === 'GSTR-3B' ? '20' : (isQrmp ? '13' : '11');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return `${day} ${months[monthNum - 1]} ${year}`;
   };

@@ -304,6 +304,10 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     if (redirectTo) navigate(redirectTo);
   };
 
+  // Save Draft only ever runs in Create mode (no :id in the route) — editing an existing
+  // document uses updateDoc() below instead, per the Edit Mode button spec. `docId` may
+  // already be set here (a prior Save Draft on this same /new visit), so this still PUTs
+  // against that same record rather than creating a duplicate.
   const saveDraft = async () => {
     const validationError = validateBeforeSave();
     if (validationError) {
@@ -312,32 +316,42 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     }
     setBusy(true); setMsg('');
     try {
-      const body = { ...payload(), status: unlockedEdit ? docStatus : 'draft' };
+      const body = { ...payload(), status: 'draft' };
       const doc = docId
         ? await api(`/billing/documents/${docId}`, { method: 'PUT', body })
-        : await api('/billing/documents', { method: 'POST', body: { ...body, status: 'draft' } });
+        : await api('/billing/documents', { method: 'POST', body });
       setDocId(doc.id);
       setDocNumber(doc.number || '');
       setDocStatus(doc.status);
       setEditAllowed(!!doc.edit_allowed);
-      if (id) {
-        setConfirmModal({
-          title: 'Document Updated Successfully',
-          message: 'Your document has been updated successfully.',
-          redirectTo: billingDocPath(docType, doc.id),
-        });
-      } else if (unlockedEdit) {
-        setConfirmModal({
-          title: 'Changes Saved Successfully',
-          message: 'Your corrections have been saved successfully.',
-          redirectTo: billingDocPath(docType, doc.id),
-        });
-      } else {
-        setConfirmModal({
-          title: 'Draft Saved Successfully',
-          message: 'Your document draft has been saved successfully.',
-        });
-      }
+      setConfirmModal({
+        title: 'Draft Saved Successfully',
+        message: 'Your document draft has been saved successfully.',
+      });
+    } catch (e) { setMsg(e.message); }
+    finally { setBusy(false); }
+  };
+
+  // Edit Mode's single action — updates the existing document record in place (same
+  // ID/reference, no new document number) and keeps whatever status it already had.
+  const updateDoc = async () => {
+    const validationError = validateBeforeSave();
+    if (validationError) {
+      setMsg(validationError);
+      return;
+    }
+    setBusy(true); setMsg('');
+    try {
+      const doc = await api(`/billing/documents/${docId}`, { method: 'PUT', body: { ...payload(), status: docStatus } });
+      setDocId(doc.id);
+      setDocNumber(doc.number || '');
+      setDocStatus(doc.status);
+      setEditAllowed(!!doc.edit_allowed);
+      setConfirmModal({
+        title: 'Document Updated Successfully',
+        message: 'Your changes have been saved successfully.',
+        redirectTo: billingDocPath(docType, doc.id),
+      });
     } catch (e) { setMsg(e.message); }
     finally { setBusy(false); }
   };
@@ -389,6 +403,11 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     amendment: '/portal/amendments',
   }[docType] || '/portal/billing';
   let sectionNum = 0;
+
+  // Generate Doc Type Button Labels spec (§7) — "Update Invoice", not "Update Tax Invoice";
+  // the other types keep their generation-button wording.
+  const generateLabel = docType === 'tax_invoice' ? 'Tax Invoice' : docType === 'bill_of_supply' ? 'Bill of Supply' : docType === 'quotation' ? 'Quotation' : docType === 'debit_note' ? 'Debit Note' : docType === 'credit_note' ? 'Credit Note' : docType === 'amendment' ? 'Amendment' : 'Document';
+  const updateLabel = docType === 'tax_invoice' ? 'Invoice' : generateLabel;
 
   return (
     <div>
@@ -808,13 +827,19 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
           <button type="button" className="bp-btn bp-btn-outline" onClick={() => setShowDiscardModal(true)}>
             Cancel
           </button>
-          <button type="button" className="bp-btn bp-btn-outline" disabled={busy} onClick={saveDraft}>
-            {unlockedEdit ? 'Save Corrections' : 'Save Draft'}
-          </button>
-          {!unlockedEdit && (
-            <button type="button" className="bp-btn bp-btn-green" disabled={busy} onClick={generateDoc}>
-              Generate {docType === 'tax_invoice' ? 'Tax Invoice' : docType === 'bill_of_supply' ? 'Bill of Supply' : docType === 'quotation' ? 'Quotation' : docType === 'debit_note' ? 'Debit Note' : docType === 'credit_note' ? 'Credit Note' : docType === 'amendment' ? 'Amendment' : 'Document'}
+          {id ? (
+            <button type="button" className="bp-btn bp-btn-green" disabled={busy} onClick={updateDoc}>
+              Update {updateLabel}
             </button>
+          ) : (
+            <>
+              <button type="button" className="bp-btn bp-btn-outline" disabled={busy} onClick={saveDraft}>
+                Save Draft
+              </button>
+              <button type="button" className="bp-btn bp-btn-green" disabled={busy} onClick={generateDoc}>
+                Generate {generateLabel}
+              </button>
+            </>
           )}
         </div>
         <div className="bp-gst-box">

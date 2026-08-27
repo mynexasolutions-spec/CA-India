@@ -31,7 +31,7 @@ const empty = () => ({
   date_of_incorporation: '', date_of_birth: '', mobile: '', alt_mobile: '',
   email: '', alt_email: '', address: '', city: '', state: '', state_code: '27',
   pincode: '', country: 'India', website: '',
-  pan: '', aadhaar: '', gstin: '', has_gst: false, gst_compliance_enabled: true, dealer_type: '', gst_filing_frequency: 'monthly', gstr1_filing_frequency: 'monthly', composition_rate: '1.00', gst_portal_username: '', gst_portal_password: '',
+  pan: '', aadhaar: '', gstin: '', has_gst: false, gst_compliance_enabled: true, dealer_type: '', gst_filing_frequency: 'monthly', gstr1_filing_frequency: 'monthly', gstr2b_filing_frequency: 'monthly', composition_rate: '1.00', gst_portal_username: '', gst_portal_password: '',
   tan: '', tan_portal_password: '', it_portal_password: '',
   udyam: '', shop_establishment: '', iec: '', cin: '', llpin: '', pt_reg: '', esic: '', pf: '',
   bank_name: '', bank_branch: '', bank_account: '', account_holder_name: '',
@@ -268,14 +268,16 @@ export default function ClientProfileForm() {
                 </Field>
               )}
               {form.has_gst && form.dealer_type && (
-                <Field label="GSTR-3B Filing Frequency" full>
+                <Field label="Client Filing Frequency" full>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 4 }}>
                     <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input
                         type="radio"
                         name="gst_filing_frequency"
                         checked={form.gst_filing_frequency === 'monthly'}
-                        onChange={() => set('gst_filing_frequency', 'monthly')}
+                        onChange={() => setForm((f) => ({
+                          ...f, gst_filing_frequency: 'monthly', gstr1_filing_frequency: 'monthly', gstr2b_filing_frequency: 'monthly',
+                        }))}
                         disabled={form.dealer_type === 'composition'}
                       />
                       Monthly
@@ -285,10 +287,15 @@ export default function ClientProfileForm() {
                         type="radio"
                         name="gst_filing_frequency"
                         checked={form.gst_filing_frequency === 'quarterly'}
-                        onChange={() => set('gst_filing_frequency', 'quarterly')}
+                        onChange={() => setForm((f) => ({
+                          ...f, gst_filing_frequency: 'quarterly', gstr1_filing_frequency: 'monthly', gstr2b_filing_frequency: 'quarterly',
+                        }))}
                       />
                       Quarterly
                     </label>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 4 }}>
+                    Drives GSTR-3B directly, and auto-sets the GSTR-1 / GSTR-2B defaults below (each stays individually editable).
                   </div>
                 </Field>
               )}
@@ -302,7 +309,7 @@ export default function ClientProfileForm() {
                         checked={form.gstr1_filing_frequency === 'monthly'}
                         onChange={() => set('gstr1_filing_frequency', 'monthly')}
                       />
-                      Monthly
+                      {form.gst_filing_frequency === 'quarterly' ? 'Monthly (QRMP)' : 'Monthly'}
                     </label>
                     <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                       <input
@@ -311,11 +318,35 @@ export default function ClientProfileForm() {
                         checked={form.gstr1_filing_frequency === 'quarterly'}
                         onChange={() => set('gstr1_filing_frequency', 'quarterly')}
                       />
-                      Quarterly (QRMP)
+                      Quarterly
                     </label>
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--bp-muted)', marginTop: 4 }}>
-                    Under QRMP, GSTR-1 can be filed monthly (via IFF) even when GSTR-3B stays quarterly — set independently here.
+                    Under QRMP, GSTR-1 is filed monthly (via IFF) even when GSTR-3B stays quarterly — set independently here.
+                  </div>
+                </Field>
+              )}
+              {form.has_gst && form.dealer_type === 'regular' && (
+                <Field label="GSTR-2B Filing Frequency" full>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 4 }}>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        type="radio"
+                        name="gstr2b_filing_frequency"
+                        checked={form.gstr2b_filing_frequency === 'monthly'}
+                        onChange={() => set('gstr2b_filing_frequency', 'monthly')}
+                      />
+                      Monthly
+                    </label>
+                    <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        type="radio"
+                        name="gstr2b_filing_frequency"
+                        checked={form.gstr2b_filing_frequency === 'quarterly'}
+                        onChange={() => set('gstr2b_filing_frequency', 'quarterly')}
+                      />
+                      Monthly (QRMP)
+                    </label>
                   </div>
                 </Field>
               )}

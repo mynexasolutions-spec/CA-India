@@ -35,11 +35,13 @@ class DashboardController extends Controller
 
     private function applyPeriod(Builder $q, ?string $from, ?string $to): Builder
     {
+        // GST-period counting spec — bucketed by Date of Creation, not the document's
+        // back-dated Document Date.
         if ($from) {
-            $q->whereDate('document_date', '>=', $from);
+            $q->whereDate('created_at', '>=', $from);
         }
         if ($to) {
-            $q->whereDate('document_date', '<=', $to);
+            $q->whereDate('created_at', '<=', $to);
         }
 
         return $q;
@@ -63,9 +65,9 @@ class DashboardController extends Controller
         $rows = CommercialDocument::where('client_profile_id', $pid)
             ->where('type', $type)
             ->where('status', 'issued')
-            ->whereDate('document_date', '>=', $from)
-            ->whereDate('document_date', '<=', $to)
-            ->get(['document_date', 'taxable_amount', 'cgst_amount', 'sgst_amount', 'igst_amount']);
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to)
+            ->get(['created_at', 'taxable_amount', 'cgst_amount', 'sgst_amount', 'igst_amount']);
 
         $buckets = [];
         if ($frequency === 'quarterly') {
@@ -115,7 +117,7 @@ class DashboardController extends Controller
         }
 
         foreach ($rows as $row) {
-            $date = \Carbon\Carbon::parse($row->document_date);
+            $date = \Carbon\Carbon::parse($row->created_at);
             if ($frequency === 'quarterly') {
                 $q = $monthToQuarter[$date->year.'-'.$date->month] ?? null;
                 $key = $q ? $quarterDefs[$q]['year'].'-Q'.$q : null;
@@ -193,7 +195,7 @@ class DashboardController extends Controller
         $this->applyPeriod($recent, $from, $to);
         $recent = $recent
             ->with('customer:id,name')
-            ->latest('document_date')
+            ->latest('created_at')
             ->latest('id')
             ->limit(8)
             ->get();

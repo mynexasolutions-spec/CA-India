@@ -10,6 +10,7 @@
   --bp-green: #16a34a;
   --bp-red: #dc2626;
   --bp-amber: #d97706;
+  --bp-purple: #7c3aed;
   display: flex;
   min-height: 100vh;
   background: #f8fafc;
@@ -781,22 +782,22 @@
 
 .bp-summary-card:nth-child(4) {
   background: #f8fafc;
-  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
-  border: 1px solid #fef3c7;
-}
-
-.bp-summary-card:nth-child(4) .bp-summary-card-value {
-  color: #ea580c;
-}
-
-.bp-summary-card:nth-child(5) {
-  background: #f8fafc;
   background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
   border: 1px solid #e9d5ff;
 }
 
+.bp-summary-card:nth-child(4) .bp-summary-card-value {
+  color: var(--bp-purple);
+}
+
+.bp-summary-card:nth-child(5) {
+  background: #f8fafc;
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+  border: 1px solid #fee2e2;
+}
+
 .bp-summary-card:nth-child(5) .bp-summary-card-value {
-  color: #9333ea;
+  color: var(--bp-red);
 }
 
 .bp-summary-card-icon {

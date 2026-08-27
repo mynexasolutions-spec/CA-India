@@ -59,7 +59,7 @@ class InvoiceService
     public function updateDraft(CommercialDocument $doc, ClientProfile $profile, array $data): CommercialDocument
     {
         $isIssuedFamily = in_array($doc->status, ['issued', 'partial', 'paid'], true);
-        $directEditable = $isIssuedFamily && ! BillingPolicy::isDirectEditLocked($profile, $doc->document_date?->toDateString());
+        $directEditable = $isIssuedFamily && ! BillingPolicy::isDirectEditLocked($profile, $doc->created_at?->toDateString());
         $unlockedIssued = $isIssuedFamily && $doc->edit_allowed;
         $keepIssued = $directEditable || $unlockedIssued;
         abort_unless($doc->status === 'draft' || $keepIssued, 422, 'This document is locked for direct edits — a GST Filing Confirmation has been submitted (or the GST Return filed) for its period. Please use Request Edit.');

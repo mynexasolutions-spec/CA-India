@@ -18,8 +18,10 @@ class GstLiabilityService
      */
     public function calculate(int $clientProfileId, string $from, string $to): array
     {
+        // GST-period counting spec — Date of Creation, not the back-dated Document Date.
         $output = CommercialDocument::where('client_profile_id', $clientProfileId)
-            ->whereBetween('document_date', [$from, $to])
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to)
             ->whereIn('status', ['issued', 'paid', 'partial'])
             ->whereIn('type', ['tax_invoice', 'debit_note', 'credit_note'])
             ->selectRaw(
@@ -102,7 +104,8 @@ class GstLiabilityService
         $turnover = (float) CommercialDocument::where('client_profile_id', $clientProfileId)
             ->where('type', 'bill_of_supply')
             ->where('status', 'issued')
-            ->whereBetween('document_date', [$from, $to])
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to)
             ->sum('taxable_amount');
 
         $taxPayable = round($turnover * $rate / 100, 2);
@@ -134,7 +137,8 @@ class GstLiabilityService
             $qTurnover = (float) CommercialDocument::where('client_profile_id', $clientProfileId)
                 ->where('type', 'bill_of_supply')
                 ->where('status', 'issued')
-                ->whereBetween('document_date', [$q['from'], $q['to']])
+                ->whereDate('created_at', '>=', $q['from'])
+                ->whereDate('created_at', '<=', $q['to'])
                 ->sum('taxable_amount');
             $taxPaid += round($qTurnover * $rate / 100, 2);
         }

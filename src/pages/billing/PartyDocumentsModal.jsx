@@ -37,8 +37,8 @@ function numFmt(v) {
 
 function sortDocs(list) {
   return [...list].sort((a, b) => {
-    const da = String(a.document_date || '');
-    const db = String(b.document_date || '');
+    const da = String(a.created_at || '');
+    const db = String(b.created_at || '');
     if (da !== db) return da.localeCompare(db);
     return String(a.number || '').localeCompare(String(b.number || ''));
   });

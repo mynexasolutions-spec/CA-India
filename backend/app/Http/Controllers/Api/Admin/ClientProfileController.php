@@ -272,8 +272,10 @@ class ClientProfileController extends Controller
         $profile = ClientProfile::findOrFail($id);
         [$from, $to] = $this->dateRange($request);
 
+        // Listing/filtering/GST-period counting spec — Date of Creation, not the
+        // document's back-dated Document Date.
         $base = CommercialDocument::where('client_profile_id', $profile->id)
-            ->whereBetween('document_date', [$from, $to])
+            ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)
             ->where('status', 'issued')
             ->when($request->filled('document_type') && $request->document_type !== 'all', fn ($q) => $q->where('type', $request->document_type))
             ->when($request->filled('invoice_number'), fn ($q) => $q->where('number', 'like', '%'.$request->invoice_number.'%'))
@@ -297,7 +299,7 @@ class ClientProfileController extends Controller
             : $expr;
 
         $monthly = (clone $base)
-            ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month,
+            ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month,
                 SUM(CASE WHEN type = "tax_invoice" THEN 1 ELSE 0 END) as tax_invoices,
                 SUM(CASE WHEN type = "bill_of_supply" THEN 1 ELSE 0 END) as bill_of_supply,
                 SUM(CASE WHEN type = "debit_note" THEN 1 ELSE 0 END) as debit_notes,
@@ -314,7 +316,7 @@ class ClientProfileController extends Controller
         $hsn = DB::table('document_line_items as li')
             ->join('commercial_documents as d', 'd.id', '=', 'li.commercial_document_id')
             ->where('d.client_profile_id', $profile->id)
-            ->whereBetween('d.document_date', [$from, $to])
+            ->whereDate('d.created_at', '>=', $from)->whereDate('d.created_at', '<=', $to)
             ->where('d.status', 'issued')
             ->select(
                 'li.hsn_sac',
@@ -330,7 +332,7 @@ class ClientProfileController extends Controller
             ->groupBy('li.hsn_sac')->orderByDesc('total')->get();
 
         $yearly = (clone $base)
-            ->selectRaw('YEAR(document_date) as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount) as cgst, SUM(sgst_amount) as sgst, SUM(igst_amount) as igst, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+            ->selectRaw('YEAR(created_at) as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount) as cgst, SUM(sgst_amount) as sgst, SUM(igst_amount) as igst, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
             ->groupBy('year', 'type')->orderBy('year')->get();
 
         $typeDistribution = [
@@ -342,7 +344,7 @@ class ClientProfileController extends Controller
 
         $documents = (clone $base)
             ->with('customer:id,name')
-            ->orderByDesc('document_date')
+            ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
 
@@ -420,7 +422,7 @@ class ClientProfileController extends Controller
 
         if ($type === 'gst_summary') {
             $base = CommercialDocument::where('client_profile_id', $profile->id)
-                ->whereBetween('document_date', [$from, $to])
+                ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)
                 ->where('status', 'issued');
             $bucket = function (string $docType) use ($base): array {
                 return [
@@ -465,7 +467,7 @@ class ClientProfileController extends Controller
             $rows = CommercialDocument::query()
                 ->leftJoin('customers as c', 'c.id', '=', 'commercial_documents.customer_id')
                 ->where('commercial_documents.client_profile_id', $profile->id)
-                ->whereBetween('commercial_documents.document_date', [$from, $to])
+                ->whereDate('commercial_documents.created_at', '>=', $from)->whereDate('commercial_documents.created_at', '<=', $to)
                 ->where('commercial_documents.status', 'issued')
                 ->select(
                     DB::raw('COALESCE(MAX(c.name), "No Party") as Party'),
@@ -489,7 +491,7 @@ class ClientProfileController extends Controller
             $hsn = DB::table('document_line_items as li')
                 ->join('commercial_documents as d', 'd.id', '=', 'li.commercial_document_id')
                 ->where('d.client_profile_id', $profile->id)
-                ->whereBetween('d.document_date', [$from, $to])
+                ->whereDate('d.created_at', '>=', $from)->whereDate('d.created_at', '<=', $to)
                 ->where('d.status', 'issued')
                 ->select(
                     'li.hsn_sac',
@@ -513,8 +515,8 @@ class ClientProfileController extends Controller
             // value, so they're subtracted rather than added.
             $cn = fn (string $expr) => "SUM(CASE WHEN type = 'credit_note' THEN -($expr) ELSE ($expr) END)";
             $rows = CommercialDocument::where('client_profile_id', $profile->id)
-                ->whereBetween('document_date', [$from, $to])->where('status', 'issued')
-                ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month,
+                ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)->where('status', 'issued')
+                ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month,
                     SUM(CASE WHEN type = "tax_invoice" THEN 1 ELSE 0 END) as tax_invoices,
                     SUM(CASE WHEN type = "bill_of_supply" THEN 1 ELSE 0 END) as bill_of_supply,
                     SUM(CASE WHEN type = "debit_note" THEN 1 ELSE 0 END) as debit_notes,
@@ -530,8 +532,8 @@ class ClientProfileController extends Controller
 
         if ($type === 'yearly_report') {
             $yearly = CommercialDocument::where('client_profile_id', $profile->id)
-                ->whereBetween('document_date', [$from, $to])->where('status', 'issued')
-                ->selectRaw('YEAR(document_date) as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+                ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)->where('status', 'issued')
+                ->selectRaw('YEAR(created_at) as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
                 ->groupBy('year', 'type')->orderBy('year')->get();
             $rows = $this->yearlyTotals($yearly);
 
@@ -549,10 +551,10 @@ class ClientProfileController extends Controller
 
         $docs = CommercialDocument::with('customer:id,name')
             ->where('client_profile_id', $profile->id)
-            ->whereBetween('document_date', [$from, $to])
+            ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)
             ->where('status', 'issued')
             ->when($docType, fn ($q) => $q->where('type', $docType))
-            ->orderBy('document_date')
+            ->orderBy('created_at')
             ->get()
             ->map(fn ($d) => [
                 'Number' => $d->number,
@@ -577,7 +579,7 @@ class ClientProfileController extends Controller
         $docType = $request->input('document_type');
 
         $docs = CommercialDocument::where('client_profile_id', $profile->id)
-            ->whereBetween('document_date', [$from, $to])
+            ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)
             ->where('status', 'issued')
             ->when($docType && $docType !== 'all', fn ($q) => $q->where('type', $docType))
             ->get();
@@ -628,6 +630,7 @@ class ClientProfileController extends Controller
             'dealer_type' => 'nullable|in:regular,composition',
             'gst_filing_frequency' => 'nullable|in:monthly,quarterly',
             'gstr1_filing_frequency' => 'nullable|in:monthly,quarterly',
+            'gstr2b_filing_frequency' => 'nullable|in:monthly,quarterly',
             'composition_rate' => 'nullable|numeric|min:0|max:99.99',
             'pan' => 'nullable|string',
             'aadhaar' => 'nullable|string',
@@ -686,14 +689,16 @@ class ClientProfileController extends Controller
             $data['dealer_type'] = null;
             $data['gst_filing_frequency'] = null;
             $data['gstr1_filing_frequency'] = null;
+            $data['gstr2b_filing_frequency'] = null;
         } else {
             if (empty($data['dealer_type'])) {
                 $data['dealer_type'] = 'regular';
             }
             if ($data['dealer_type'] === 'composition') {
-                // Composition dealers file CMP-08, not GSTR-1/GSTR-3B — the split doesn't apply.
+                // Composition dealers file CMP-08, not GSTR-1/2B/3B — the split doesn't apply.
                 $data['gst_filing_frequency'] = 'quarterly';
                 $data['gstr1_filing_frequency'] = null;
+                $data['gstr2b_filing_frequency'] = null;
                 if (empty($data['composition_rate'])) {
                     $data['composition_rate'] = 1.00; // default: traders/manufacturers rate
                 }
@@ -701,10 +706,18 @@ class ClientProfileController extends Controller
                 if (empty($data['gst_filing_frequency'])) {
                     $data['gst_filing_frequency'] = 'monthly'; // default for regular if omitted
                 }
-                // GSTR-1 defaults to GSTR-3B's cycle unless the admin explicitly diverges
-                // (e.g. QRMP: GSTR-3B quarterly but GSTR-1 filed monthly via IFF).
+                // Client Filing Frequency auto-selection spec: GSTR-1 is tracked monthly
+                // regardless of the GSTR-3B cycle — defaults to monthly, labelled "Monthly
+                // (QRMP)" on the frontend when GSTR-3B is quarterly (the stored value stays
+                // 'monthly' either way, so due-date/period logic in GstReturnController never
+                // sees a bogus "quarterly" GSTR-1 cycle). GSTR-2B mirrors GSTR-3B's cycle 1:1,
+                // plain "Monthly"/"Quarterly" — it has no downstream due-date logic of its own.
+                // Both defaults apply only when the admin hasn't explicitly chosen a value.
                 if (empty($data['gstr1_filing_frequency'])) {
-                    $data['gstr1_filing_frequency'] = $data['gst_filing_frequency'];
+                    $data['gstr1_filing_frequency'] = 'monthly';
+                }
+                if (empty($data['gstr2b_filing_frequency'])) {
+                    $data['gstr2b_filing_frequency'] = $data['gst_filing_frequency'];
                 }
             }
         }
@@ -719,7 +732,7 @@ class ClientProfileController extends Controller
             'client_name', 'business_name', 'constitution_type', 'business_type',
             'date_of_incorporation', 'date_of_birth', 'mobile', 'alt_mobile', 'alt_email',
             'email', 'address', 'city', 'state', 'state_code', 'pincode', 'country', 'website',
-            'gstin', 'has_gst', 'gst_compliance_enabled', 'dealer_type', 'gst_filing_frequency', 'gstr1_filing_frequency', 'composition_rate', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
+            'gstin', 'has_gst', 'gst_compliance_enabled', 'dealer_type', 'gst_filing_frequency', 'gstr1_filing_frequency', 'gstr2b_filing_frequency', 'composition_rate', 'pan', 'aadhaar', 'gst_portal_username', 'tan', 'udyam', 'shop_establishment',
             'iec', 'cin', 'llpin', 'pt_reg', 'esic', 'pf',
             'bank_name', 'bank_branch', 'bank_account', 'account_holder_name', 'bank_ifsc',
             'swift_code', 'account_type', 'upi_id', 'signatory_name', 'terms_conditions', 'client_code',

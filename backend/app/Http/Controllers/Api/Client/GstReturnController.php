@@ -43,8 +43,12 @@ class GstReturnController extends Controller
     /**
      * Period grid (quarterly or monthly) for one return type, independent of any other
      * return's cycle — the due-date column selected depends only on $type.
+     *
+     * $qrmp distinguishes, within the MONTHLY GSTR-1 grid specifically, a plain Monthly
+     * filer (due 11th) from a Quarterly/QRMP client whose GSTR-1 is still tracked monthly
+     * here via IFF (due 13th) — both resolve to the same 12-row grid, only the day differs.
      */
-    private function buildPeriods(bool $quarterly, int $startYear, string $dueField): array
+    private function buildPeriods(bool $quarterly, int $startYear, string $dueField, bool $qrmp = false): array
     {
         $periods = [];
         if ($quarterly) {
@@ -74,9 +78,10 @@ class GstReturnController extends Controller
                     $month -= 12;
                     $year += 1;
                 }
-                // GSTR-1 (QRMP monthly IFF): 13th of the following month. GSTR-3B (Monthly): 20th.
+                // GSTR-1 (plain Monthly): 11th of the following month. GSTR-1 (QRMP monthly
+                // IFF): 13th. GSTR-3B (Monthly): 20th.
                 $after = \Carbon\Carbon::createFromDate($year, $month, 1)->addMonth();
-                $day = $dueField === 'due_gstr3b' ? 20 : 13;
+                $day = $dueField === 'due_gstr3b' ? 20 : ($qrmp ? 13 : 11);
                 $periods[] = [
                     'period' => sprintf('%04d-%02d', $year, $month),
                     'label' => \Carbon\Carbon::createFromDate($year, $month, 1)->format('M \'y'),
@@ -160,7 +165,7 @@ class GstReturnController extends Controller
             $payload['gstr3b_frequency'] = $gstr3bQuarterly ? 'quarterly' : 'monthly';
             $payload['gstr1'] = $buildRow(
                 ClientGstReturn::TYPE_GSTR1,
-                $this->buildPeriods($gstr1Quarterly, $startYear, 'due_gstr1')
+                $this->buildPeriods($gstr1Quarterly, $startYear, 'due_gstr1', $gstr3bQuarterly)
             );
             $payload['gstr3b'] = $buildRow(
                 ClientGstReturn::TYPE_GSTR3B,

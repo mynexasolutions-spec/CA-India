@@ -25,8 +25,8 @@ export default function BillingOverviewStats({
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
         {[
           ['Tax Invoice / Bill of Supply', `${s.tax_invoices ?? 0}`, money(s.tax_invoices_value), '#2563eb', 'rgba(37, 99, 235, 0.08)'],
-          ['Debit Notes', `${s.debit_notes ?? 0}`, money(s.debit_notes_value), '#d97706', 'rgba(217, 119, 6, 0.08)'],
-          ['Credit Notes', `${s.credit_notes ?? 0}`, money(s.credit_notes_value), '#059669', 'rgba(5, 150, 105, 0.08)'],
+          ['Debit Notes', `${s.debit_notes ?? 0}`, money(s.debit_notes_value), '#7c3aed', 'rgba(124, 58, 237, 0.08)'],
+          ['Credit Notes', `${s.credit_notes ?? 0}`, money(s.credit_notes_value), '#dc2626', 'rgba(220, 38, 38, 0.08)'],
           ['Cancelled Invoices', `${s.cancelled_invoices ?? 0}`, null, '#dc2626', 'rgba(220, 38, 38, 0.08)'],
         ].map(([label, count, val, color, bg]) => (
           <div key={label} style={{ background: '#fff', borderRadius: 16, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>

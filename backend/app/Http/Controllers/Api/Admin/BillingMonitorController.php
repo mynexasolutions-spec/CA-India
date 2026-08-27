@@ -28,11 +28,12 @@ class BillingMonitorController extends Controller
             : (now()->year - 1).'-04-01';
 
         $issued = CommercialDocument::where('type', 'tax_invoice')->where('status', 'issued');
-        $fy = (clone $issued)->where('document_date', '>=', $yearStart);
+        // GST-period counting spec — Date of Creation, not the back-dated Document Date.
+        $fy = (clone $issued)->where('created_at', '>=', $yearStart);
 
         $monthly = CommercialDocument::where('type', 'tax_invoice')->where('status', 'issued')
-            ->where('document_date', '>=', now()->subMonths(11)->startOfMonth())
-            ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(taxable_amount) as taxable, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+            ->where('created_at', '>=', now()->subMonths(11)->startOfMonth())
+            ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(taxable_amount) as taxable, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
             ->groupBy('month')->orderBy('month')->get();
 
         $topClients = CommercialDocument::where('type', 'tax_invoice')->where('status', 'issued')
@@ -61,12 +62,12 @@ class BillingMonitorController extends Controller
         $hsn = DB::table('document_line_items as li')
             ->join('commercial_documents as d', 'd.id', '=', 'li.commercial_document_id')
             ->where('d.type', 'tax_invoice')->where('d.status', 'issued')
-            ->where('d.document_date', '>=', $yearStart)
+            ->where('d.created_at', '>=', $yearStart)
             ->select('li.hsn_sac', DB::raw('MAX(li.description) as description'), DB::raw('SUM(li.qty) as qty'), DB::raw('SUM(li.taxable_amount) as taxable'), DB::raw('SUM(li.cgst_amount+li.sgst_amount+li.igst_amount) as gst'), DB::raw('SUM(li.total_amount) as total'))
             ->groupBy('li.hsn_sac')->orderByDesc('total')->limit(20)->get();
 
         $recent = CommercialDocument::with(['customer:id,name', 'clientProfile:id,business_name'])
-            ->latest('document_date')->latest('id')->limit(12)->get();
+            ->latest('created_at')->latest('id')->limit(12)->get();
 
         return response()->json([
             'kpis' => [
@@ -95,7 +96,7 @@ class BillingMonitorController extends Controller
     public function invoices(Request $request)
     {
         $q = CommercialDocument::with(['customer:id,name', 'clientProfile:id,business_name,gstin'])
-            ->latest('document_date')->latest('id');
+            ->latest('created_at')->latest('id');
 
         if ($request->filled('client_profile_id')) {
             $q->where('client_profile_id', $request->client_profile_id);
@@ -104,10 +105,10 @@ class BillingMonitorController extends Controller
             $q->where('type', $request->type);
         }
         if ($request->filled('from')) {
-            $q->whereDate('document_date', '>=', $request->from);
+            $q->whereDate('created_at', '>=', $request->from);
         }
         if ($request->filled('to')) {
-            $q->whereDate('document_date', '<=', $request->to);
+            $q->whereDate('created_at', '<=', $request->to);
         }
         if ($request->filled('q')) {
             $s = $request->q;
@@ -149,16 +150,18 @@ class BillingMonitorController extends Controller
         $from = $request->input('from', now()->startOfMonth()->toDateString());
         $to = $request->input('to', now()->toDateString());
 
-        $base = CommercialDocument::whereBetween('document_date', [$from, $to]);
+        // GST-period counting spec — Date of Creation, not the back-dated Document Date.
+        $base = CommercialDocument::whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to);
         $data = match ($type) {
-            'client_wise_register' => (clone $base)->with(['customer:id,name', 'clientProfile:id,business_name'])->orderBy('document_date')->get(),
+            'client_wise_register' => (clone $base)->with(['customer:id,name', 'clientProfile:id,business_name'])->orderBy('created_at')->get(),
             'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
-                ->selectRaw(BillingPolicy::monthGroupExpr('document_date').' as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
+                ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month, COUNT(*) as count, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
                 ->groupBy('month')->orderBy('month')->get(),
             'gst_summary' => $this->gstSummaryMatrixFirm($base),
             'hsn_summary' => DB::table('document_line_items as li')
                 ->join('commercial_documents as d', 'd.id', '=', 'li.commercial_document_id')
-                ->whereBetween('d.document_date', [$from, $to])
+                ->whereDate('d.created_at', '>=', $from)
+                ->whereDate('d.created_at', '<=', $to)
                 ->where('d.type', 'tax_invoice')->where('d.status', 'issued')
                 ->select(
                     'li.hsn_sac',
