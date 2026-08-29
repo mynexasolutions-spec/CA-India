@@ -255,7 +255,7 @@ td, th { vertical-align: top; }
   // Ship To always prints alongside Bill To — falls back to the billing address/state
   // when no distinct shipping address is configured, instead of being hidden.
   $shipAddr = $c?->shipping_address ?: $billAddr;
-  $customerLabel = trim(($c?->name ?? '') . ($c?->phone ? ' ('.$c->phone.')' : ($c?->contact_person ? ' ('.$c->contact_person.')' : '')));
+  $customerLabel = trim($c?->name ?? '');
   $stateLine = function ($state, $code) {
     if ($state && $code) return $state.' (State Code: '.$code.')';
     if ($state) return $state;
@@ -471,23 +471,34 @@ td, th { vertical-align: top; }
      Ship To falls back to the billing address/state when no distinct shipping address
      is configured, rather than being hidden (spec: always show two sections). --}}
 @php
+  // Calibrated against the .pf-val column's actual rendered wrap width (9.8px font,
+  // 48%-wide cell minus the 60px+8px label/colon columns) — a plain name/address string
+  // wraps at ~46-50 chars there, not the narrower 25/38 this used to assume, which
+  // overestimated the line count and left a visible gap at the bottom of the box.
+  $pfValCharsPerLine = 44;
   $customerLabelLen = strlen($customerLabel);
   $custNameLen = $c ? strlen($c->name) : 0;
 
-  $leftLines = ceil($customerLabelLen / 36) + ceil($custNameLen / 25);
+  $leftLines = ceil($customerLabelLen / 36) + ceil($custNameLen / $pfValCharsPerLine);
   if (!empty($billAddr)) {
-      $leftLines += ceil(strlen($billAddr) / 38);
+      $leftLines += ceil(strlen($billAddr) / $pfValCharsPerLine);
   }
   if ($billStateLine) {
       $leftLines += 1;
   }
+  if ($c && $c->phone) {
+      $leftLines += 1;
+  }
   $leftLines += 1; // GSTIN line
 
-  $rightLines = ceil($customerLabelLen / 36) + ceil($custNameLen / 25);
+  $rightLines = ceil($customerLabelLen / 36) + ceil($custNameLen / $pfValCharsPerLine);
   if (!empty($shipAddr)) {
-      $rightLines += ceil(strlen($shipAddr) / 38);
+      $rightLines += ceil(strlen($shipAddr) / $pfValCharsPerLine);
   }
   if ($shipStateLine) {
+      $rightLines += 1;
+  }
+  if ($c && $c->phone) {
       $rightLines += 1;
   }
   $rightLines += 1; // GSTIN line
@@ -507,6 +518,7 @@ td, th { vertical-align: top; }
             @if($billAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $billAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($billStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $billStateLine }}</td></tr>@endif
+            @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
         @else
           <div class="party-line">—</div>
@@ -524,6 +536,7 @@ td, th { vertical-align: top; }
             @if($shipAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($shipStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipStateLine }}</td></tr>@endif
+            @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
         @else
           <div class="party-line">—</div>
