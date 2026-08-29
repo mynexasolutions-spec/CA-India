@@ -320,15 +320,17 @@ class DocumentController extends Controller
         $data = $request->validate(['email' => 'nullable|email']);
         $to = $data['email'] ?? $doc->customer?->email;
         abort_unless($to, 422, 'No email address available');
+        // Regenerate so the linked PDF reflects live branding/bank/terms, same as the
+        // Download PDF action — but shared as a viewable link, not a mail attachment
+        // (recipient's mail server size limits, spam filters, etc.).
         $this->invoices->generatePdf($doc);
         $doc->refresh();
-        $path = Storage::disk('public')->path($doc->pdf_path);
+        $shareLink = url('/api/billing/share/'.$doc->share_token);
         try {
             Mail::raw(
-                "Please find attached {$doc->type} {$doc->number}. Total: INR ".($doc->grand_total ?: $doc->total_amount),
-                function ($m) use ($to, $doc, $path) {
-                    $m->to($to)->subject(strtoupper(str_replace('_', ' ', $doc->type)).' '.$doc->number)
-                        ->attach($path);
+                "Please find your {$doc->type} {$doc->number} at the link below. Total: INR ".($doc->grand_total ?: $doc->total_amount)."\n\n{$shareLink}",
+                function ($m) use ($to, $doc) {
+                    $m->to($to)->subject(strtoupper(str_replace('_', ' ', $doc->type)).' '.$doc->number);
                 }
             );
         } catch (\Throwable $e) {

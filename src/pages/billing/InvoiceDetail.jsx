@@ -269,39 +269,49 @@ export default function InvoiceDetail() {
           >
             {busyAction === 'download' ? 'Downloading…' : (<><DownloadIcon /> Download PDF</>)}
           </button>
-          <a
+          <button
+            type="button"
             className="bp-btn bp-btn-amber"
-            // Opens the user's own email app (mailto:), same as the WhatsApp button opens
-            // WhatsApp — not a server-side send.
-            href={`mailto:${doc.customer?.email || ''}?subject=${encodeURIComponent(`${docTypeLabel(doc.type)} ${doc.number}`)}&body=${encodeURIComponent(
-              doc.share_token
-                ? `Please find your ${docTypeLabel(doc.type)} ${doc.number} here: ${window.location.origin}/api/billing/share/${doc.share_token}`
-                : `Please find attached your ${docTypeLabel(doc.type)} ${doc.number}.`
-            )}`}
-            title="Email this document"
+            disabled={busyAction === 'email'}
+            title="Email this document — sends a viewable link, not a PDF attachment"
+            onClick={async () => {
+              setBusyAction('email'); setMsg(''); setActionErr('');
+              try {
+                const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
+                setMsg(r.message || 'Email sent successfully.');
+              } catch (e) {
+                setActionErr(e.message || 'Failed to send email.');
+              } finally {
+                setBusyAction('');
+              }
+            }}
           >
-            <MailIcon /> Email
-          </a>
+            {busyAction === 'email' ? 'Sending…' : (<><MailIcon /> Email</>)}
+          </button>
           {cancellable && (
             <button type="button" className="bp-btn bp-btn-danger" onClick={() => setCancelling(true)}>
               <XCircleIcon /> Cancel
             </button>
           )}
           {doc.share_token && (
-            <a
+            <button
+              type="button"
               className="bp-btn bp-btn-green"
-              // Dynamic origin (not a hardcoded domain) so the shared link is always
-              // correct for wherever the app is actually running — same-origin proxy in
-              // dev, the real production domain in prod — and always points at THIS
-              // specific document's own share_token.
-              href={`https://wa.me/?text=${encodeURIComponent(`${docTypeLabel(doc.type)} ${doc.number}: ${window.location.origin}/api/billing/share/${doc.share_token}`)}`}
-              title="Share this document's PDF via WhatsApp"
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setMsg('Opening WhatsApp to share this document…')}
+              disabled={busyAction === 'whatsapp'}
+              title="Share a link to this document via WhatsApp"
+              onClick={() => {
+                setBusyAction('whatsapp'); setMsg(''); setActionErr('');
+                // Dynamic origin (not a hardcoded domain) so the shared link always points
+                // at wherever the app is actually running, for THIS document's share_token.
+                const shareLink = `${window.location.origin}/api/billing/share/${doc.share_token}`;
+                const waText = `${docTypeLabel(doc.type)} ${doc.number}: ${shareLink}`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank', 'noreferrer');
+                setMsg('Opened WhatsApp with the document link.');
+                setBusyAction('');
+              }}
             >
-              <WhatsAppIcon /> WhatsApp
-            </a>
+              {busyAction === 'whatsapp' ? 'Sharing…' : (<><WhatsAppIcon /> WhatsApp</>)}
+            </button>
           )}
         </div>
       </div>

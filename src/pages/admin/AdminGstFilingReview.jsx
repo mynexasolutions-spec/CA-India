@@ -8,6 +8,8 @@ export default function AdminGstFilingReview() {
   const [req, setReq] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [filingDate, setFilingDate] = useState('');
+  const [ackNo, setAckNo] = useState('');
 
   useEffect(() => {
     fetchRequest();
@@ -28,7 +30,12 @@ export default function AdminGstFilingReview() {
   const handleUpdateStatus = async (newStatus) => {
     setUpdating(true);
     try {
-      await api(`/admin/gst-filing/requests/${id}/status`, { method: 'PUT', body: { status: newStatus } });
+      const body = { status: newStatus };
+      if (newStatus === 'GST Filed') {
+        body.filing_date = filingDate;
+        body.ack_no = ackNo;
+      }
+      await api(`/admin/gst-filing/requests/${id}/status`, { method: 'PUT', body });
       alert(`Status updated to ${newStatus}`);
       fetchRequest();
     } catch (err) {
@@ -76,14 +83,37 @@ export default function AdminGstFilingReview() {
                 Approve / Proceed for Filing
               </button>
             </>
-          ) : req.status === 'Approved for Filing' ? (
-            <button
-              onClick={() => handleUpdateStatus('GST Filed')}
-              disabled={updating}
-              className="bp-btn bp-btn-green"
-            >
-              Mark as GST Filed
-            </button>
+          ) : req.status === 'Approved for Filing' || (req.status === 'GST Filed' && !req.ack_no) ? (
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Date *</label>
+                <input
+                  type="date"
+                  className="bp-input"
+                  style={{ height: 36 }}
+                  value={filingDate}
+                  onChange={(e) => setFilingDate(e.target.value)}
+                />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--bp-navy)' }}>ACK. No. *</label>
+                <input
+                  type="text"
+                  className="bp-input"
+                  style={{ height: 36 }}
+                  placeholder="Acknowledgement number"
+                  value={ackNo}
+                  onChange={(e) => setAckNo(e.target.value)}
+                />
+              </div>
+              <button
+                onClick={() => handleUpdateStatus('GST Filed')}
+                disabled={updating || !filingDate || !ackNo.trim()}
+                className="bp-btn bp-btn-green"
+              >
+                {req.status === 'GST Filed' ? 'Save Filing Details' : 'Mark as GST Filed'}
+              </button>
+            </div>
           ) : (
             <span className="bp-badge" style={{ padding: '8px 12px', fontSize: '13px', background: '#f1f5f9', color: '#64748b' }}>
               Current Status: {req.status}
@@ -105,6 +135,12 @@ export default function AdminGstFilingReview() {
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--bp-border)', paddingBottom: '8px' }}><span style={{ color: 'var(--bp-muted)' }}>Filing Period:</span> <span style={{ fontWeight: 600 }}>{req.filing_period}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--bp-border)', paddingBottom: '8px' }}><span style={{ color: 'var(--bp-muted)' }}>Return Type:</span> <span style={{ fontWeight: 600 }}>{req.return_type}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--bp-border)', paddingBottom: '8px' }}><span style={{ color: 'var(--bp-muted)' }}>Status:</span> <span style={{ fontWeight: 700, color: 'var(--bp-blue)' }}>{req.status}</span></div>
+            {req.status === 'GST Filed' && req.ack_no && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--bp-border)', paddingBottom: '8px' }}><span style={{ color: 'var(--bp-muted)' }}>Filing Date:</span> <span style={{ fontWeight: 600 }}>{req.filing_date ? new Date(req.filing_date).toLocaleDateString('en-GB') : '—'}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed var(--bp-border)', paddingBottom: '8px' }}><span style={{ color: 'var(--bp-muted)' }}>ACK. No.:</span> <span style={{ fontWeight: 600 }}>{req.ack_no}</span></div>
+              </>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px' }}><span style={{ color: 'var(--bp-muted)' }}>Client Confirmation:</span> <span style={{ fontWeight: 600, color: 'var(--bp-green)' }}>✓ Declared & Confirmed</span></div>
           </div>
         </div>

@@ -72,7 +72,7 @@ class GstFilingController extends Controller
         [$periodStart, $periodEnd] = self::periodBounds($period);
 
         // Allowed types for GST calculation
-        $types = ['tax_invoice', 'credit_note', 'debit_note'];
+        $types = ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'];
 
         // GST-period counting spec — a bill belongs to the filing period it was
         // created in, not the period implied by its back-dated Document Date.
@@ -83,16 +83,18 @@ class GstFilingController extends Controller
             ->whereDate('created_at', '<=', $periodEnd)
             ->get();
 
+        // Net figures = Tax Invoice + Bill of Supply + Debit Note − Credit Note.
         $taxableValue = 0;
         $cgst = 0;
         $sgst = 0;
         $igst = 0;
 
         foreach ($bills as $bill) {
-            $taxableValue += $bill->taxable_amount;
-            $cgst += $bill->cgst_amount;
-            $sgst += $bill->sgst_amount;
-            $igst += $bill->igst_amount;
+            $sign = $bill->type === 'credit_note' ? -1 : 1;
+            $taxableValue += $sign * $bill->taxable_amount;
+            $cgst += $sign * $bill->cgst_amount;
+            $sgst += $sign * $bill->sgst_amount;
+            $igst += $sign * $bill->igst_amount;
         }
 
         $totalGst = $cgst + $sgst + $igst;
@@ -135,7 +137,7 @@ class GstFilingController extends Controller
 
         // Fetch bills again
         $period = $request->filing_period;
-        $types = ['tax_invoice', 'credit_note', 'debit_note'];
+        $types = ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'];
         [$periodStart, $periodEnd] = self::periodBounds($period);
 
         // GST-period counting spec — a bill belongs to the filing period it was
@@ -147,11 +149,18 @@ class GstFilingController extends Controller
             ->whereDate('created_at', '<=', $periodEnd)
             ->get();
 
-
-        $taxableValue = $bills->sum('taxable_amount');
-        $cgst = $bills->sum('cgst_amount');
-        $sgst = $bills->sum('sgst_amount');
-        $igst = $bills->sum('igst_amount');
+        // Net figures = Tax Invoice + Bill of Supply + Debit Note − Credit Note.
+        $taxableValue = 0;
+        $cgst = 0;
+        $sgst = 0;
+        $igst = 0;
+        foreach ($bills as $bill) {
+            $sign = $bill->type === 'credit_note' ? -1 : 1;
+            $taxableValue += $sign * $bill->taxable_amount;
+            $cgst += $sign * $bill->cgst_amount;
+            $sgst += $sign * $bill->sgst_amount;
+            $igst += $sign * $bill->igst_amount;
+        }
         $totalGst = $cgst + $sgst + $igst;
 
         $filingRequest = GstFilingRequest::create([

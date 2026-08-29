@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { LoadingBlock } from '../../components/Spinner';
+import { periodLabel } from '../billing/billingUtils';
 
 function DownloadIcon() {
   return (
@@ -50,7 +51,7 @@ export default function ClientGstDashboard() {
   
   // Confirmation filters
   const [financialYear, setFinancialYear] = useState('2026-2027');
-  const [returnType, setReturnType] = useState('GSTR-1');
+  const [returnType, setReturnType] = useState('GSTR1');
   const [returnPeriod, setReturnPeriod] = useState('');
   const [filingStatus, setFilingStatus] = useState('All Status');
   const [loadingConfirmData, setLoadingConfirmData] = useState(false);
@@ -89,14 +90,18 @@ export default function ClientGstDashboard() {
     }
   };
 
-  const formatPeriod = (periodStr) => {
-    if (!periodStr) return '—';
-    const parts = periodStr.split('-');
-    if (parts.length < 2) return periodStr;
-    const year = parts[0];
-    const monthNum = parseInt(parts[1], 10);
+  // Handles both tax_period shapes: 'YYYY-MM' (a monthly-cadence return) and 'YYYY-Qn'
+  // (a quarterly one) — a client can have both in the same list (e.g. GSTR-1 monthly via
+  // QRMP alongside GSTR-3B quarterly), so this can't assume one shape for every row.
+  const formatPeriod = periodLabel;
+
+  // Formats the plain "YYYY-MM-DD" due date the backend computes (GstReturnController::nextDue)
+  // into the same "DD Mon YYYY" style used elsewhere on this page.
+  const formatIsoDate = (iso) => {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${months[monthNum - 1]} ${year}`;
+    return `${d} ${months[Number(m) - 1]} ${y}`;
   };
 
   const formatFiledOn = (d) => {
@@ -106,24 +111,40 @@ export default function ClientGstDashboard() {
       date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  // Helper: Calculate Due Date — GSTR-3B: 20th next month. GSTR-1: 11th next month for a
-  // plain Monthly filer, 13th (QRMP monthly IFF) when the client's overall filing
-  // frequency is Quarterly.
+  // Helper: Calculate Due Date. Monthly cadence — GSTR-3B: 20th next month; GSTR-1: 11th
+  // next month for a plain Monthly filer, 13th (QRMP monthly IFF) when the client's
+  // overall filing frequency is Quarterly. Quarterly cadence — GSTR-1: 13th, GSTR-3B:
+  // 22nd of the month after the quarter ends (same convention as the backend's
+  // GstReturnController::buildPeriods(), which actually drives filed/pending status).
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const calculateDueDate = (periodStr, rType) => {
     if (!periodStr) return '—';
-    const parts = periodStr.split('-');
-    if (parts.length < 2) return '—';
-    let year = parseInt(parts[0], 10);
-    let monthNum = parseInt(parts[1], 10);
-    monthNum += 1;
+    const [yearStr, rest] = periodStr.split('-');
+    if (!yearStr || !rest) return '—';
+
+    if (/^Q[1-4]$/.test(rest)) {
+      const year = parseInt(yearStr, 10);
+      const quarterEndMonth = { Q1: 6, Q2: 9, Q3: 12, Q4: 3 }[rest];
+      const quarterEndYear = rest === 'Q4' ? year + 1 : year;
+      let dueMonth = quarterEndMonth + 1;
+      let dueYear = quarterEndYear;
+      if (dueMonth > 12) {
+        dueMonth = 1;
+        dueYear += 1;
+      }
+      const day = rType === 'GSTR3B' ? '22' : '13';
+      return `${day} ${MONTH_NAMES[dueMonth - 1]} ${dueYear}`;
+    }
+
+    let year = parseInt(yearStr, 10);
+    let monthNum = parseInt(rest, 10) + 1;
     if (monthNum > 12) {
       monthNum = 1;
       year += 1;
     }
     const isQrmp = data?.frequency === 'quarterly';
-    const day = rType === 'GSTR-3B' ? '20' : (isQrmp ? '13' : '11');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return `${day} ${months[monthNum - 1]} ${year}`;
+    const day = rType === 'GSTR3B' ? '20' : (isQrmp ? '13' : '11');
+    return `${day} ${MONTH_NAMES[monthNum - 1]} ${year}`;
   };
 
   if (err) {
@@ -150,10 +171,7 @@ export default function ClientGstDashboard() {
       if (financialYear === '2026-2027' && !(year === '2026' || year === '2027')) return false;
     }
     if (returnType && req.return_type !== returnType) return false;
-    if (returnPeriod) {
-      const formatted = formatPeriod(req.tax_period);
-      if (!formatted.toLowerCase().startsWith(returnPeriod.toLowerCase())) return false;
-    }
+    if (returnPeriod && req.tax_period.split('-')[1] !== returnPeriod) return false;
     if (filingStatus !== 'All Status') {
       if (filingStatus === 'Filed' && req.status !== 'filed') return false;
       if (filingStatus === 'Pending' && req.status !== 'pending' && req.status !== 'upcoming') return false;
@@ -162,6 +180,22 @@ export default function ClientGstDashboard() {
     }
     return true;
   });
+
+  // Which cadence applies to whichever Return Type is currently selected in the
+  // Integrated Confirmation filters — GSTR-1 and GSTR-3B are tracked independently
+  // (QRMP: monthly GSTR-1 via IFF, quarterly GSTR-3B), so this can't share one flag.
+  const returnTypeQuarterly = returnType === 'GSTR3B' ? !!data.gstr3b_quarterly : !!data.gstr1_quarterly;
+  const periodOptions = returnTypeQuarterly
+    ? [
+        { value: 'Q1', label: 'Q1 (Apr-Jun)' },
+        { value: 'Q2', label: 'Q2 (Jul-Sep)' },
+        { value: 'Q3', label: 'Q3 (Oct-Dec)' },
+        { value: 'Q4', label: 'Q4 (Jan-Mar)' },
+      ]
+    : [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3].map((m) => ({
+        value: String(m).padStart(2, '0'),
+        label: MONTH_NAMES[m - 1],
+      }));
 
   // Calculate Confirmation stats
   const totalCount = returnsList.length;
@@ -244,8 +278,8 @@ export default function ClientGstDashboard() {
             </span>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 2 }}>Filing Frequency</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#1e40af', textTransform: 'capitalize' }}>
-                {data.frequency || 'quarterly'}
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#1e40af' }}>
+                {data.filing_frequency_label || 'Monthly'}
               </span>
             </div>
           </div>
@@ -280,11 +314,11 @@ export default function ClientGstDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 2 }}>Next Due Date</span>
               <span style={{ fontSize: 14, fontWeight: 800, color: '#1e40af' }}>
-                {lastFiledRecord ? calculateDueDate(lastFiledRecord.tax_period, lastFiledRecord.return_type) : '—'}
+                {data.next_due ? formatIsoDate(data.next_due.date) : '—'}
               </span>
-              {lastFiledRecord && (
+              {data.next_due && (
                 <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b' }}>
-                  (For {formatPeriod(lastFiledRecord.tax_period)})
+                  (For {data.next_due.period_label} · {data.next_due.return_type})
                 </span>
               )}
             </div>
@@ -336,7 +370,7 @@ export default function ClientGstDashboard() {
                             {r.status === 'filed' ? 'Filed' : (r.status === 'pending' ? 'Pending' : r.status)}
                           </span>
                         </td>
-                        <td>{formatFiledOn(r.filed_at)}</td>
+                        <td>{formatFiledOn(r.filed_on)}</td>
                         <td style={{ fontWeight: 700, color: r.ack_no ? '#2563eb' : '#64748b' }}>{r.ack_no || '—'}</td>
                         <td>
                           <button
@@ -357,7 +391,7 @@ export default function ClientGstDashboard() {
                               // Open integrated confirmation panel pre-filtered to this row's details
                               setFinancialYear('2026-2027');
                               setReturnType(r.return_type);
-                              setReturnPeriod(formatPeriod(r.tax_period).split(' ')[0]);
+                              setReturnPeriod(r.tax_period.split('-')[1]);
                               setFilingStatus('All Status');
                               setSelectedFilingRecord(r);
                             }}
@@ -419,23 +453,18 @@ export default function ClientGstDashboard() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>Return Type</span>
-                <select className="bp-select" style={{ height: 40, boxSizing: 'border-box', minWidth: 140 }} value={returnType} onChange={(e) => setReturnType(e.target.value)}>
-                  <option value="GSTR-1">GSTR-1</option>
-                  <option value="GSTR-3B">GSTR-3B</option>
+                <select className="bp-select" style={{ height: 40, boxSizing: 'border-box', minWidth: 140 }} value={returnType} onChange={(e) => { setReturnType(e.target.value); setReturnPeriod(''); }}>
+                  <option value="GSTR1">GSTR-1</option>
+                  <option value="GSTR3B">GSTR-3B</option>
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>Return Period (Month)</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>
+                  Return Period ({returnTypeQuarterly ? 'Quarter' : 'Month'})
+                </span>
                 <select className="bp-select" style={{ height: 40, boxSizing: 'border-box', minWidth: 140 }} value={returnPeriod} onChange={(e) => setReturnPeriod(e.target.value)}>
-                  <option value="">Select Month</option>
-                  <option value="Aug">August</option>
-                  <option value="Jul">July</option>
-                  <option value="Jun">June</option>
-                  <option value="May">May</option>
-                  <option value="Apr">April</option>
-                  <option value="Mar">March</option>
-                  <option value="Feb">February</option>
-                  <option value="Jan">January</option>
+                  <option value="">{returnTypeQuarterly ? 'Select Quarter' : 'Select Month'}</option>
+                  {periodOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -566,7 +595,7 @@ export default function ClientGstDashboard() {
                       const statusMapped = r.status === 'filed' ? 'Filed' : (r.status === 'pending' ? 'Pending' : (r.status === 'failed' ? 'Failed' : r.status));
                       const bStyle = getStatusBadgeStyle(r.status);
                       const dueVal = calculateDueDate(r.tax_period, r.return_type);
-                      const filedDate = r.status === 'filed' ? formatFiledOn(r.filed_at) : '—';
+                      const filedDate = r.status === 'filed' ? formatFiledOn(r.filed_on) : '—';
                       const remarks = r.status === 'filed' ? 'Filed Successfully' : (r.status === 'failed' ? 'Validation Error' : 'Not Filed Yet');
 
                       return (

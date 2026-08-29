@@ -7,6 +7,7 @@ import BillingSubNav from '../../pages/billing/BillingSubNav';
 import ReportsSubNav from '../../pages/billing/ReportsSubNav';
 import { billingMode } from '../../pages/billing/billingProfile';
 import { buildFyOptions, currentFyLabel, currentFyRange, fyDateRange } from '../../pages/billing/billingUtils';
+import { CONTACT } from '../../data/nav';
 
 function HomeIcon() {
   return (
@@ -384,28 +385,96 @@ export function ClientAvatarMenu() {
   );
 }
 
+function HeadsetIcon({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z" />
+      <path d="M16 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-5Z" />
+      <path d="M3 14c0-4.97 4.03-9 9-9s9 4.03 9 9" />
+      <path d="M21 14v1a1 1 0 0 1-1 1h-1" />
+    </svg>
+  );
+}
+
+/** Small modal opened from the sidebar's Contact Support button — shows the support
+ * mobile number and email with one-tap "Call Now" / "Send Email" actions. */
+function ContactSupportModal({ onClose }) {
+  return (
+    <div className="bp-modal-backdrop" role="presentation" onClick={onClose}>
+      <div className="bp-modal bp-contact-modal" role="dialog" aria-modal="true" aria-label="Contact Support" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="bp-modal-close" onClick={onClose} aria-label="Close">×</button>
+        <div className="bp-contact-modal-icon"><HeadsetIcon /></div>
+        <p className="bp-modal-title">Contact Support</p>
+        <p className="bp-contact-modal-text">
+          We're here to help you with any queries. Reach out to us through any of the following:
+        </p>
+        <div className="bp-contact-modal-rows">
+          <div className="bp-contact-modal-row">
+            <span className="bp-contact-modal-row-icon phone">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+            </span>
+            <span className="bp-contact-modal-row-info">
+              <p className="bp-contact-modal-row-label">Mobile</p>
+              <p className="bp-contact-modal-row-value">{CONTACT.phone}</p>
+            </span>
+            <a href={CONTACT.phoneHref} className="bp-contact-modal-row-action phone">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              Call Now
+            </a>
+          </div>
+          <div className="bp-contact-modal-row">
+            <span className="bp-contact-modal-row-icon email">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-10 5L2 7" />
+              </svg>
+            </span>
+            <span className="bp-contact-modal-row-info">
+              <p className="bp-contact-modal-row-label">Email</p>
+              <p className="bp-contact-modal-row-value">{CONTACT.email}</p>
+            </span>
+            <a href={CONTACT.emailHref} className="bp-contact-modal-row-action email">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-10 5L2 7" />
+              </svg>
+              Send Email
+            </a>
+          </div>
+        </div>
+        <p className="bp-contact-modal-footer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          </svg>
+          We typically respond within 24 hours.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** "Need Help?" card pinned to the bottom of the Client Portal sidebar. */
 function NeedHelpCard() {
+  const [showContact, setShowContact] = useState(false);
   return (
     <div className="bp-help-card">
       <div className="bp-help-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" style={{ display: 'none' }} />
-          <path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Z" />
-          <path d="M16 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-5Z" />
-          <path d="M3 14c0-4.97 4.03-9 9-9s9 4.03 9 9" />
-          <path d="M21 14v1a1 1 0 0 1-1 1h-1" />
-        </svg>
+        <HeadsetIcon />
       </div>
       <p className="bp-help-title">Need Help?</p>
       <p className="bp-help-text">We're here to help you with any queries.</p>
-      <a href="/contact" target="_blank" rel="noreferrer" className="bp-help-btn">
+      <button type="button" className="bp-help-btn" onClick={() => setShowContact(true)}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
         Contact Support
         <span className="bp-help-arrow" aria-hidden="true" style={{ marginLeft: 'auto', fontWeight: 'bold' }}>&rsaquo;</span>
-      </a>
+      </button>
+      {showContact && <ContactSupportModal onClose={() => setShowContact(false)} />}
     </div>
   );
 }
@@ -508,8 +577,8 @@ function PortalFrame({
 function gstModeLabel(profile) {
   const mode = billingMode(profile);
   if (mode === 'retail') return 'Non-GST';
-  if (mode === 'composition') return 'GST Composition';
-  return profile?.gst_filing_frequency === 'quarterly' ? 'GST Quarterly' : 'GST Monthly';
+  if (mode === 'composition') return 'Composition Scheme';
+  return profile?.gst_filing_frequency === 'quarterly' ? 'Regular (Quarterly)' : 'Regular (Monthly)';
 }
 
 /** Title + GSTIN badge — the left side of the shared topbar, same spot as before. */

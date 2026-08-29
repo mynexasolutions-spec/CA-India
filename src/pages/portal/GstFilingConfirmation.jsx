@@ -255,9 +255,9 @@ export default function GstFilingConfirmation() {
                       <th style={{ textAlign: 'center' }}>Invoice No</th>
                       <th style={{ textAlign: 'center' }}>Date</th>
                       <th style={{ textAlign: 'center' }}>Taxable Val (₹)</th>
+                      <th style={{ textAlign: 'center' }}>IGST (₹)</th>
                       <th style={{ textAlign: 'center' }}>CGST (₹)</th>
                       <th style={{ textAlign: 'center' }}>SGST (₹)</th>
-                      <th style={{ textAlign: 'center' }}>IGST (₹)</th>
                       <th style={{ textAlign: 'center' }}>Total (₹)</th>
                     </tr>
                   </thead>
@@ -267,9 +267,9 @@ export default function GstFilingConfirmation() {
                         <td style={{ fontWeight: 700, color: 'var(--bp-navy)' }}>{bill.number}</td>
                         <td>{formatDateOnly(bill.document_date)}</td>
                         <td style={{ fontWeight: 600 }}>₹{Number(bill.taxable_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td>₹{Number(bill.igst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td>₹{Number(bill.cgst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td>₹{Number(bill.sgst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td>₹{Number(bill.igst_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td style={{ fontWeight: 700, color: '#166534' }}>₹{Number(bill.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       </tr>
                     ))}
@@ -299,16 +299,16 @@ export default function GstFilingConfirmation() {
                 <div style={{ fontSize: 18, fontWeight: 850, color: 'var(--bp-navy)' }}>₹{previewData.summary.taxable_value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
               </div>
               <div className="bp-card" style={{ padding: 14, textAlign: 'center', background: '#fff' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Total IGST</div>
+                <div style={{ fontSize: 18, fontWeight: 850, color: 'var(--bp-navy)' }}>₹{previewData.summary.total_igst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
+              </div>
+              <div className="bp-card" style={{ padding: 14, textAlign: 'center', background: '#fff' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Total CGST</div>
                 <div style={{ fontSize: 18, fontWeight: 850, color: 'var(--bp-navy)' }}>₹{previewData.summary.total_cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
               </div>
               <div className="bp-card" style={{ padding: 14, textAlign: 'center', background: '#fff' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Total SGST</div>
                 <div style={{ fontSize: 18, fontWeight: 850, color: 'var(--bp-navy)' }}>₹{previewData.summary.total_sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
-              </div>
-              <div className="bp-card" style={{ padding: 14, textAlign: 'center', background: '#fff' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--bp-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Total IGST</div>
-                <div style={{ fontSize: 18, fontWeight: 850, color: 'var(--bp-navy)' }}>₹{previewData.summary.total_igst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</div>
               </div>
               <div className="bp-card" style={{ padding: 14, textAlign: 'center', background: '#fff', borderColor: '#2563eb' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', marginBottom: 4 }}>Total GST</div>

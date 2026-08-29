@@ -15,6 +15,8 @@ class GstFilingRequest extends Model
         'filing_period',
         'return_type',
         'status',
+        'filing_date',
+        'ack_no',
         'total_bills',
         'taxable_value',
         'total_cgst',
@@ -25,6 +27,7 @@ class GstFilingRequest extends Model
     ];
 
     protected $casts = [
+        'filing_date' => 'date',
         'total_bills' => 'integer',
         'taxable_value' => 'decimal:2',
         'total_cgst' => 'decimal:2',

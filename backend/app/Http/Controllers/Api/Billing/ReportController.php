@@ -196,23 +196,26 @@ class ReportController extends Controller
             'invoice_register', 'document_register' => (clone $base)->with('customer:id,name')->orderBy('created_at')->get(),
             'gst_summary' => $this->gstSummaryMatrix($base, $pid),
             'gst_liability' => $this->gstLiability($pid, $from, $to),
+            // Net figures = Tax Invoice + Bill of Supply + Debit Note − Credit Note, same
+            // convention as party_wise below — a credit note against a HSN/SAC code reduces
+            // that code's reported quantity/value/tax, it doesn't add on top of it.
             'hsn_summary', 'hsn_wise' => DB::table('document_line_items as li')
                 ->join('commercial_documents as d', 'd.id', '=', 'li.commercial_document_id')
                 ->where('d.client_profile_id', $pid)
                 ->whereDate('d.created_at', '>=', $from)
                 ->whereDate('d.created_at', '<=', $to)
-                ->where('d.type', 'tax_invoice')
+                ->whereIn('d.type', ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'])
                 ->where('d.status', 'issued')
                 ->select(
                     'li.hsn_sac',
                     DB::raw('MAX(li.description) as description'),
-                    DB::raw('SUM(li.qty) as qty'),
-                    DB::raw('SUM(li.taxable_amount) as taxable'),
+                    DB::raw("SUM(CASE WHEN d.type = 'credit_note' THEN -li.qty ELSE li.qty END) as qty"),
+                    DB::raw("SUM(CASE WHEN d.type = 'credit_note' THEN -li.taxable_amount ELSE li.taxable_amount END) as taxable"),
                     DB::raw('AVG(li.gst_rate) as gst_rate'),
-                    DB::raw('SUM(li.cgst_amount) as cgst'),
-                    DB::raw('SUM(li.sgst_amount) as sgst'),
-                    DB::raw('SUM(li.igst_amount) as igst'),
-                    DB::raw('SUM(li.total_amount) as total')
+                    DB::raw("SUM(CASE WHEN d.type = 'credit_note' THEN -li.cgst_amount ELSE li.cgst_amount END) as cgst"),
+                    DB::raw("SUM(CASE WHEN d.type = 'credit_note' THEN -li.sgst_amount ELSE li.sgst_amount END) as sgst"),
+                    DB::raw("SUM(CASE WHEN d.type = 'credit_note' THEN -li.igst_amount ELSE li.igst_amount END) as igst"),
+                    DB::raw("SUM(CASE WHEN d.type = 'credit_note' THEN -li.total_amount ELSE li.total_amount END) as total")
                 )
                 ->groupBy('li.hsn_sac')->get(),
             // Credit Notes reduce a party's business value — signed -1 here so the mixed
@@ -230,14 +233,18 @@ class ReportController extends Controller
             'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
                 ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
                 ->groupBy('month')->orderBy('month')->get(),
+            // A Debit Note adds to what a party owes; a Credit Note reduces it — both now
+            // included alongside Tax Invoice/Bill of Supply so "Total Outstanding" nets as
+            // Tax Invoice + Bill of Supply + Debit Note − Credit Note, not just the sales
+            // documents on their own.
             'outstanding', 'pending_dues', 'outstanding_report' => (clone $base)
-                ->whereIn('type', ['tax_invoice', 'bill_of_supply'])
+                ->whereIn('type', ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'])
                 ->whereIn('status', ['issued', 'partial'])
                 ->with('customer:id,name')
                 ->orderBy('created_at')
                 ->get(),
             'paid_invoices' => (clone $base)
-                ->whereIn('type', ['tax_invoice', 'bill_of_supply'])
+                ->whereIn('type', ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'])
                 ->where('status', 'paid')
                 ->with('customer:id,name')
                 ->orderByDesc('created_at')

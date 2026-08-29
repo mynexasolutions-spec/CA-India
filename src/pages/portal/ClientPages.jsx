@@ -7,7 +7,7 @@ import { LoadingBlock } from '../../components/Spinner';
 import { useClientPortal } from '../../components/portal/PortalShell';
 import { billingMode } from '../billing/billingProfile';
 import { currentFyLabel, currentFyRange, fyDateRange, fyQuarterOptions, money } from '../billing/billingUtils';
-import { ComplianceStatus, DashCard, LiveBadge, SalesBarChart, shortMoney } from './ClientDashboardWidgets';
+import { ComplianceStatus, DashCard, SalesBarChart, shortMoney } from './ClientDashboardWidgets';
 
 const card = {
   background: '#fff',
@@ -90,8 +90,8 @@ const PROFILE_FIELDS = [
 function gstConfigLabel(profile) {
   const mode = billingMode(profile);
   if (mode === 'retail') return 'Non-GST';
-  if (mode === 'composition') return 'GST Composition';
-  return profile?.gst_filing_frequency === 'quarterly' ? 'GST Quarterly' : 'GST Monthly';
+  if (mode === 'composition') return 'Composition Scheme';
+  return profile?.gst_filing_frequency === 'quarterly' ? 'Regular (Quarterly)' : 'Regular (Monthly)';
 }
 
 /** "(Monthly)" / "(Quarterly)" suffix for Regular-dealer card titles — the spec's condition
@@ -375,13 +375,13 @@ export function ClientDashboard() {
           Welcome back, {data.profile?.business_name} <span style={{ color: '#90cdf4', fontWeight: 700 }}>({gstConfigLabel(profile)})</span>
         </h1>
         <p style={{ color: '#cbd5e1', fontSize: 13, marginTop: 8, maxWidth: 650, lineHeight: 1.5, position: 'relative', zIndex: 1 }}>
-          Your dashboard automatically shows key insights for Financial Year {fy}. Track your GST position, invoices, compliance status and manage your billing efficiently.
+          Your dashboard provides a clear overview of key business insights, GST compliance, invoices and financial activity for the current Financial Year {fy}.
         </p>
       </div>
 
       {mode === 'regular' && gst && (
         <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20, alignItems: 'stretch' }}>
-          <DashCard title={returnTitle('GST Reconciliation', profile)} icon={<ReconciliationIcon />} iconColor="#2563eb" badge={<LiveBadge />}>
+          <DashCard title={returnTitle('GST Reconciliation', profile)} icon={<ReconciliationIcon />} iconColor="#2563eb">
             <div className="bp-stat-grid-2" style={{ gap: 12 }}>
               <StatTile label="GSTR-2B Invoices" value={gst.total_gstr2b_invoices} color="#2563eb" bg="rgba(37,99,235,0.08)" />
               <StatTile label="Matched" value={gst.matched_invoices} color="#15803d" bg="rgba(21,128,61,0.08)" />
@@ -433,7 +433,7 @@ export function ClientDashboard() {
 
       {isComposition && composition && (
         <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', marginBottom: 20, alignItems: 'stretch' }}>
-          <DashCard title={returnTitle('GST Reconciliation', profile)} icon={<ReconciliationIcon />} iconColor="#2563eb" badge={<LiveBadge />}>
+          <DashCard title={returnTitle('GST Reconciliation', profile)} icon={<ReconciliationIcon />} iconColor="#2563eb">
             <div className="bp-stat-grid-2" style={{ gap: 12 }}>
               <StatTile label="CMP-08 Filed" value={composition.total_gstr2b_invoices} color="#2563eb" bg="rgba(37,99,235,0.08)" />
               <StatTile label="CMP-08 Matched" value={composition.matched_invoices} color="#15803d" bg="rgba(21,128,61,0.08)" />

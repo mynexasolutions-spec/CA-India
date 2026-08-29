@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, getAuthToken } from '../../api/client';
+import { useAuth } from '../../auth/AuthContext';
 import { LoadingBlock } from '../../components/Spinner';
-import { buildFyOptions, fyMonthOptions } from '../billing/billingUtils';
+import { buildFyOptions, fyMonthOptions, fyQuarterPeriodOptions } from '../billing/billingUtils';
 import NumberedPagination from '../billing/NumberedPagination';
 
 const COLUMNS = [
@@ -34,6 +35,16 @@ function eligibilityBadge(v) {
 }
 
 export default function ClientGstr2b() {
+  const { user } = useAuth();
+  const profile = user?.client_profile;
+  // GSTR-2B has no filing action of its own — it mirrors GSTR-3B's cycle 1:1
+  // (BillingPolicy::gstr2bFrequency on the backend), and is always quarterly for
+  // Composition dealers.
+  const gstr2bQuarterly = !!profile && (
+    profile.dealer_type === 'composition' ||
+    (profile.gstr2b_filing_frequency ?? profile.gst_filing_frequency) === 'quarterly'
+  );
+
   const [fy, setFy] = useState('');
   const [taxPeriod, setTaxPeriod] = useState('');
   const [supplierGstin, setSupplierGstin] = useState('');
@@ -52,7 +63,7 @@ export default function ClientGstr2b() {
   const [err, setErr] = useState('');
   const [pendingStatus, setPendingStatus] = useState(null);
 
-  const monthOptions = fy ? fyMonthOptions(fy) : [];
+  const periodOptions = fy ? (gstr2bQuarterly ? fyQuarterPeriodOptions(fy) : fyMonthOptions(fy)) : [];
 
   const buildQuery = useCallback((extra = {}) => {
     const qs = new URLSearchParams({
@@ -310,7 +321,7 @@ export default function ClientGstr2b() {
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>Tax Period</span>
             <select className="bp-select" style={{ height: 40, boxSizing: 'border-box', minWidth: 120 }} value={taxPeriod} onChange={(e) => setTaxPeriod(e.target.value)} disabled={!fy}>
               <option value="">All</option>
-              {monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              {periodOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

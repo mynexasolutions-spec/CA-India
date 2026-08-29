@@ -481,9 +481,6 @@ td, th { vertical-align: top; }
   if ($billStateLine) {
       $leftLines += 1;
   }
-  if ($c && $c->phone) {
-      $leftLines += 1;
-  }
   $leftLines += 1; // GSTIN line
 
   $rightLines = ceil($customerLabelLen / 36) + ceil($custNameLen / 25);
@@ -491,9 +488,6 @@ td, th { vertical-align: top; }
       $rightLines += ceil(strlen($shipAddr) / 38);
   }
   if ($shipStateLine) {
-      $rightLines += 1;
-  }
-  if ($c && $c->phone) {
       $rightLines += 1;
   }
   $rightLines += 1; // GSTIN line
@@ -513,7 +507,6 @@ td, th { vertical-align: top; }
             @if($billAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $billAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($billStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $billStateLine }}</td></tr>@endif
-            @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
         @else
           <div class="party-line">—</div>
@@ -531,7 +524,6 @@ td, th { vertical-align: top; }
             @if($shipAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($shipStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipStateLine }}</td></tr>@endif
-            @if($c->phone)<tr><td class="pf-lab">Mobile</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->phone }}</td></tr>@endif
           </table>
         @else
           <div class="party-line">—</div>

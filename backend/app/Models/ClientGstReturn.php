@@ -17,6 +17,7 @@ class ClientGstReturn extends Model
         'return_type',
         'status',
         'filed_on',
+        'ack_no',
         'filed_by',
     ];
 

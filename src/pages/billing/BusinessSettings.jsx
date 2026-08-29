@@ -254,6 +254,7 @@ export default function BusinessSettings() {
   const [approved, setApproved] = useState(null);
   const [sections, setSections] = useState(null);
   const [form, setForm] = useState(null);
+  const [baseline, setBaseline] = useState(null);
   const [activeTab, setActiveTab] = useState('branding');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -264,7 +265,9 @@ export default function BusinessSettings() {
       .then((d) => {
         setApproved(d.approved);
         setSections(d.sections);
-        setForm(mergeDraft(d.approved, d.sections));
+        const merged = mergeDraft(d.approved, d.sections);
+        setForm(merged);
+        setBaseline(merged);
       })
       .catch((e) => setErr(e.message));
   };
@@ -274,6 +277,11 @@ export default function BusinessSettings() {
   if (!form) return <LoadingBlock />;
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // A section's own submit button only lights up once one of its fields has actually
+  // been edited — never lets a client re-fire an approval request with no real change.
+  const isSectionDirty = (section) =>
+    !!baseline && (SECTION_FIELDS[section] || []).some((k) => (form[k] ?? '') !== (baseline[k] ?? ''));
 
   const upload = async (field, file) => {
     setErr('');
@@ -306,48 +314,18 @@ export default function BusinessSettings() {
     }
   };
 
-  const submitAll = async () => {
-    setBusy(true);
-    setErr('');
-    setMsg('');
-    try {
-      await Promise.all([
-        api('/client/change-requests', {
-          method: 'POST',
-          body: {
-            section: 'bank',
-            ...Object.fromEntries(
-              (SECTION_FIELDS.bank || []).map((k) => [k, form[k] ?? ''])
-            ),
-          },
-        }),
-        api('/client/change-requests', {
-          method: 'POST',
-          body: {
-            section: 'invoice_settings',
-            ...Object.fromEntries(
-              (SECTION_FIELDS.invoice_settings || []).map((k) => [k, form[k] ?? ''])
-            ),
-          },
-        }),
-        api('/client/change-requests', {
-          method: 'POST',
-          body: {
-            section: 'numbering',
-            ...Object.fromEntries(
-              (SECTION_FIELDS.numbering || []).map((k) => [k, form[k] ?? ''])
-            ),
-          },
-        }),
-      ]);
-      load();
-      setMsg('All changes submitted for administrator approval successfully.');
-    } catch (ex) {
-      setErr(ex.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const SectionSubmitButton = ({ section }) => (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 14 }}>
+      <button
+        type="button"
+        className="bp-btn bp-btn-primary"
+        disabled={busy || !isSectionDirty(section)}
+        onClick={() => submitSection(section)}
+      >
+        {busy ? 'Submitting…' : 'Submit for Approval'}
+      </button>
+    </div>
+  );
 
   return (
     <div className="bp-section-wrap">
@@ -421,7 +399,7 @@ export default function BusinessSettings() {
               </label>
             ))}
           </div>
-          {/* Submit is now handled globally at the bottom of the page */}
+          <SectionSubmitButton section="bank" />
           <ApprovalStatus data={sections?.bank} />
         </div>
 
@@ -443,7 +421,7 @@ export default function BusinessSettings() {
               />
             </label>
           </div>
-          {/* Submit is now handled globally at the bottom of the page */}
+          <SectionSubmitButton section="invoice_settings" />
           <ApprovalStatus data={sections?.invoice_settings} />
         </div>
 
@@ -468,50 +446,29 @@ export default function BusinessSettings() {
               </Fragment>
             ))}
           </div>
-          {/* Submit is now handled globally at the bottom of the page */}
+          <SectionSubmitButton section="numbering" />
           <ApprovalStatus data={sections?.numbering} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, background: '#eef4fc', border: '1px solid #d7e6f7', borderRadius: 10, padding: '16px 20px', marginTop: 20 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, color: 'var(--bp-navy)', display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
-            <InfoIcon /> Click the button on the right to submit all your changes (Bank Details, Invoice Settings, Document Numbering) for administrator approval.
-          </span>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <button
-              type="button"
-              className="bp-btn bp-btn-primary"
-              style={{
-                height: 40,
-                padding: '0 24px',
-                background: 'linear-gradient(135deg, #0a3d82 0%, #1e5aab 100%)',
-                boxShadow: '0 4px 10px rgba(10, 61, 130, 0.25)',
-              }}
-              disabled={busy}
-              onClick={submitAll}
-            >
-              {busy ? 'Submitting Changes…' : 'Submit All Changes'}
-            </button>
-            <Link
-              to="/portal/settings/history"
-              className="bp-btn bp-btn-outline"
-              style={{
-                height: 40,
-                whiteSpace: 'nowrap',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              View Request History
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
-            </Link>
-          </div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+        <Link
+          to="/portal/settings/history"
+          className="bp-btn bp-btn-outline"
+          style={{
+            height: 40,
+            whiteSpace: 'nowrap',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          View Request History
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </Link>
       </div>
     </div>
   );
@@ -549,21 +506,6 @@ export function ChangeRequestHistory() {
           <div className="bp-section-kicker">Request History</div>
           <p className="bp-section-desc">Every settings change you've submitted, and its approval status.</p>
         </div>
-        <Link
-          to="/portal/settings"
-          className="bp-btn bp-btn-outline"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          Back to Settings
-        </Link>
       </div>
 
       <div className="bp-toolbar" style={{ marginBottom: 0 }}>

@@ -56,18 +56,27 @@ class DashboardController extends Controller
      * change." Grouped in PHP rather than SQL so it behaves identically on SQLite (dev) and
      * MySQL (prod).
      *
+     * Net figures follow the same convention as the rest of the dashboard: Tax Invoice + Bill of
+     * Supply + Debit Note − Credit Note (a dealer only ever issues the document types that apply
+     * to their registration, so the other types simply contribute zero).
+     *
      * @return array<int, array{period: string, label: string, taxable_value: float, gst_amount: float}>
      */
-    private function monthlyTrend(int $pid, string $from, string $to, string $mode, string $frequency): array
+    private function monthlyTrend(int $pid, string $from, string $to, string $frequency): array
     {
-        $type = $mode === 'composition' ? 'bill_of_supply' : 'tax_invoice';
+        $signedTypes = [
+            'tax_invoice' => 1,
+            'bill_of_supply' => 1,
+            'debit_note' => 1,
+            'credit_note' => -1,
+        ];
 
         $rows = CommercialDocument::where('client_profile_id', $pid)
-            ->where('type', $type)
+            ->whereIn('type', array_keys($signedTypes))
             ->where('status', 'issued')
             ->whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
-            ->get(['created_at', 'taxable_amount', 'cgst_amount', 'sgst_amount', 'igst_amount']);
+            ->get(['type', 'created_at', 'taxable_amount', 'cgst_amount', 'sgst_amount', 'igst_amount']);
 
         $buckets = [];
         if ($frequency === 'quarterly') {
@@ -127,8 +136,9 @@ class DashboardController extends Controller
             if (!$key || !isset($buckets[$key])) {
                 continue;
             }
-            $buckets[$key]['taxable_value'] += (float) $row->taxable_amount;
-            $buckets[$key]['gst_amount'] += (float) $row->cgst_amount + (float) $row->sgst_amount + (float) $row->igst_amount;
+            $sign = $signedTypes[$row->type];
+            $buckets[$key]['taxable_value'] += $sign * (float) $row->taxable_amount;
+            $buckets[$key]['gst_amount'] += $sign * ((float) $row->cgst_amount + (float) $row->sgst_amount + (float) $row->igst_amount);
         }
 
         return array_values($buckets);
@@ -189,7 +199,7 @@ class DashboardController extends Controller
         // Composition's compliance cycle is quarterly by law, independent of whatever
         // gst_filing_frequency happens to be saved — don't rely solely on that field for it.
         $trendFrequency = $mode === 'composition' ? 'quarterly' : $frequency;
-        $monthlyTrend = $this->monthlyTrend($pid, $from, $to, $mode, $trendFrequency);
+        $monthlyTrend = $this->monthlyTrend($pid, $from, $to, $trendFrequency);
 
         $recent = CommercialDocument::where('client_profile_id', $pid);
         $this->applyPeriod($recent, $from, $to);

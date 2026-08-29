@@ -141,3 +141,105 @@ every existing row to "subscribed" (unchanged behavior) with no separate SQL ste
 9. Flip this entry to ✅ with today's date once confirmed live
 
 ---
+
+## ⬜ 2026-08-29 — GST Filing Requests now auto-sync to Client Portal → GST Returns
+
+**Migrations**:
+- `2026_08_29_000000_add_filing_details_to_gst_filing_requests_table`
+- `2026_08_29_000001_add_ack_no_to_client_gst_returns_table`
+
+**What changed**: Added `filing_date` (date, nullable) + `ack_no` (string, nullable) to
+`gst_filing_requests`, and `ack_no` (string, nullable) to `client_gst_returns`. Previously,
+Admin marking a GST Filing Request "GST Filed" (`/admin/gst-filing-requests/{id}` → Review)
+only updated that request's own `status` — it never touched `client_gst_returns`, so the
+Client Portal's GST Returns → Filing History table stayed empty even after the CA had filed
+the return. These two tables were disconnected data sources reporting on the same fact.
+
+**Why**: Client-reported bug — filed GSTR-1 for July 2026 via Admin, but the client's own GST
+Returns page still showed "No return filings history found." and "Next Due Date: —". Client
+spec: Admin and Client Portal "must use the same GST filing record/database. No manual entry
+should be required on the Client Portal."
+
+**Behavior after this change**:
+- Admin → GST Filing Requests → Review: once a request is "Approved for Filing", the "Mark as
+  GST Filed" action now requires **Filing Date** and **ACK. No.** (backend-enforced via
+  `required_if:status,GST Filed`, not just a frontend disabled button).
+- On that transition, `GstFilingController@updateStatus` (Admin) does an
+  `updateOrCreate` on `client_gst_returns` (`client_profile_id` + `tax_period` [=
+  `filing_period`] + `return_type` [`GSTR-1` → `GSTR1`]) with `status=filed`,
+  `filed_on=filing_date`, `ack_no`, `filed_by`=the admin user. This is the same table the
+  Compliance Status dashboard widget and the GST Returns page already read from — no new
+  read path needed.
+- Client Portal → GST Returns: "Filing History" table's Filed On / ACK. No. columns now
+  populate (frontend was reading a `filed_at` field that never existed on the model — fixed to
+  read the real `filed_on` field). "Filing Frequency" card now shows GSTR-1's own resolved
+  cycle ("Monthly", "Monthly (QRMP)", or "Quarterly") instead of always showing the raw
+  GSTR-3B `gst_filing_frequency`. "Next Due Date" is now computed server-side
+  (`GstReturnController@nextDue`, reusing the same period-grid/due-date logic as the
+  Compliance widget) as the soonest not-yet-filed period across every return type the dealer
+  actually files — it no longer goes blank, and no longer mis-computes off the *last filed*
+  period.
+
+**Data backfill needed?** No schema-level backfill (both new columns are nullable). **One
+manual action**: any `gst_filing_requests` row already sitting at status `GST Filed` from
+*before* this deploy (created via the old code path) has no `filing_date`/`ack_no` and never
+created its `client_gst_returns` row, so it won't appear in that client's Filing History.
+Fix per-row, not via SQL: open Admin → GST Filing Requests → that request's Review page — it
+detects `status === 'GST Filed' && !ack_no` and re-shows the Filing Date/ACK No. fields
+("Save Filing Details" button); filling them in and saving runs the exact same sync path as a
+fresh filing. (Known example on this server: REQ-0005, client "Calculation Private Limited",
+period `2026-07`.)
+
+**Files touched**:
+- `backend/database/migrations/2026_08_29_000000_add_filing_details_to_gst_filing_requests_table.php`
+- `backend/database/migrations/2026_08_29_000001_add_ack_no_to_client_gst_returns_table.php`
+- `backend/app/Models/GstFilingRequest.php` (`$fillable`, `filing_date` cast)
+- `backend/app/Models/ClientGstReturn.php` (`$fillable`)
+- `backend/app/Http/Controllers/Api/Admin/GstFilingController.php` (`updateStatus` validation + sync)
+- `backend/app/Http/Controllers/Api/Client/GstReturnController.php` (`index()` adds
+  `filing_frequency_label` + `next_due`; new private `nextDue()`)
+- `src/pages/admin/AdminGstFilingReview.jsx` (Filing Date/ACK No. inputs, gated "Mark as GST
+  Filed" button, backfill affordance for pre-fix rows)
+- `src/pages/client/ClientGstDashboard.jsx` (`filed_at` → `filed_on` fix, Filing Frequency
+  card, Next Due Date card)
+
+**Follow-up fixes (same day, no new migration — pure application logic, no schema/data change)**:
+- GSTR-2B's Tax Period picker (Admin upload + Client reconciliation) now shows **Monthly or
+  Quarterly** periods depending on that client's actual GSTR-2B cadence (mirrors GSTR-3B's
+  cycle 1:1 by default via `gstr2b_filing_frequency`, always quarterly for Composition) —
+  new `BillingPolicy::gstr2bFrequency()`; `Admin\Gstr2bController::upload()`'s `tax_period`
+  validation now accepts `YYYY-Qn` alongside `YYYY-MM`, and `deriveFinancialYear()` handles
+  both shapes. New shared frontend helpers `fyQuarterPeriodOptions()` / `periodLabel()` in
+  `src/pages/billing/billingUtils.js`, wired into `src/pages/admin/AdminClientGstr2b.jsx` and
+  `src/pages/portal/ClientGstr2b.jsx`.
+- Client Portal → GST Returns → "Integrated GST Filing Confirmation" panel: its "Return
+  Period" filter had the same hardcoded-months bug, **plus** a pre-existing independent bug
+  where "Return Type" compared `'GSTR-1'`/`'GSTR-3B'` (hyphenated) against the stored
+  `'GSTR1'`/`'GSTR3B'` values — meaning that filter never matched anything. Both fixed:
+  dropdown values now match the stored format, "Return Period" switches between Month/Quarter
+  options per the selected Return Type's actual cadence, and `calculateDueDate()` now handles
+  quarterly periods (and no longer silently mis-detects GSTR-3B due to the same hyphen bug).
+  `GstReturnController::index()` now also returns `gstr1_quarterly` / `gstr3b_quarterly`
+  booleans for this.
+- HSN/SAC Summary report and Outstanding/Paid Invoices report (`ReportController.php`) now
+  net **Tax Invoice + Bill of Supply + Debit Note − Credit Note** instead of summing only
+  Tax Invoice (HSN) or only Tax Invoice + Bill of Supply (Outstanding) — pure query-logic
+  fix, no schema change.
+
+**Production checklist**:
+1. `git pull origin main`
+2. `cd backend && composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd`
+3. Back up `database.sqlite` (see step 2 in the file header)
+4. `php artisan migrate --force` — applies both migrations; no manual backfill SQL needed
+5. `php artisan config:clear && php artisan route:clear && php artisan cache:clear`
+6. `cd .. && npm ci && npm run build`
+7. `sudo systemctl restart php8.4-fpm`
+8. Verify: as Admin, open REQ-0005's Review page, confirm it now shows the Filing Date/ACK
+   No. fields (since `ack_no` is still empty on that row), fill in a real filing date + ACK
+   number, save. Then log in as that client (Calculation Private Limited) and confirm GST
+   Returns → Filing History now shows that row (Tax Period `2026-07`, Filed On = the date
+   just entered, ACK. No. matching), Filing Frequency card reads correctly, and Next Due Date
+   is no longer "—".
+9. Flip this entry to ✅ with today's date once confirmed live
+
+---

@@ -86,9 +86,10 @@ function ChartTooltip({ hover }) {
   );
 }
 
-/** Monthly / quarterly Taxable Value + GST Amount bars, pure inline SVG (no chart library),
- * with a custom bold tooltip that appears immediately on hover instead of the browser's
- * slow-to-appear native SVG <title> tooltip. */
+/** Monthly / quarterly Net Taxable Value + Net GST Amount trend line, pure inline SVG (no
+ * chart library), with a custom bold tooltip that appears immediately on hover instead of the
+ * browser's slow-to-appear native SVG <title> tooltip. "Net" = Tax Invoice + Bill of Supply +
+ * Debit Note − Credit Note, computed server-side. */
 export function SalesBarChart({ data }) {
   const rows = Array.isArray(data) ? data : [];
   const [hover, setHover] = useState(null);
@@ -105,21 +106,32 @@ export function SalesBarChart({ data }) {
     );
   }
 
+  // Net figures can dip below zero in a period where credit notes outweigh sales — the line
+  // still plots that dip, but the baseline (0) stays pinned to the chart's bottom edge rather
+  // than the axis re-centering, so every other period stays readable at a glance.
   const max = Math.max(1, ...rows.map((r) => Math.max(r.taxable_value || 0, r.gst_amount || 0)));
   const padLeft = 8;
-  const padTop = 34; // headroom so the tallest bar's tooltip never needs to render above the chart
+  const padTop = 34; // headroom so the topmost point's tooltip never needs to render above the chart
   const padBottom = 8; // month labels now render as HTML below the SVG, not as SVG <text>
   const chartH = CHART_H - padBottom;
   const groupW = (CHART_W - padLeft) / rows.length;
-  const barW = Math.min(16, groupW / 3.2);
+  const plotH = chartH - padTop;
 
   const showTip = (x, topY, label, seriesLabel, value, color) =>
     setHover({ x, topY, label, seriesLabel, value, color });
 
+  const pointX = (i) => padLeft + i * groupW + groupW / 2;
+  const pointY = (v) => chartH - (Math.max(v || 0, 0) / max) * plotH;
+
+  const series = [
+    { key: 'taxable_value', label: 'Net Taxable Value', color: '#2563eb' },
+    { key: 'gst_amount', label: 'Net GST Amount', color: '#15803d' },
+  ];
+
   return (
     // The tooltip lives in this outer, non-scrolling wrapper (not the overflow-x:auto one below) —
     // `overflow-x: auto` implicitly forces `overflow-y` to clip too, which was hiding the tooltip
-    // whenever a bar (like the tall Taxable Value bar) reached near the top of the chart.
+    // whenever a point (like the tallest Net Taxable Value point) reached near the top of the chart.
     <div style={{ position: 'relative' }}>
       <ChartTooltip hover={hover} />
       {/* Plain HTML div for the leave handler — SVG elements can miss mouseleave when the
@@ -133,31 +145,37 @@ export function SalesBarChart({ data }) {
             aria-label="Monthly sales overview"
           >
             {[0.25, 0.5, 0.75, 1].map((f) => (
-              <line key={f} x1={padLeft} x2={CHART_W} y1={chartH - (chartH - padTop) * f} y2={chartH - (chartH - padTop) * f} stroke="#eef2f7" strokeWidth="1" />
+              <line key={f} x1={padLeft} x2={CHART_W} y1={chartH - plotH * f} y2={chartH - plotH * f} stroke="#eef2f7" strokeWidth="1" />
             ))}
-            {rows.map((r, i) => {
-              const x = padLeft + i * groupW + groupW / 2;
-              const tH = ((r.taxable_value || 0) / max) * (chartH - padTop);
-              const gH = ((r.gst_amount || 0) / max) * (chartH - padTop);
-              const tX = x - barW - 2;
-              const gX = x + 2;
-              return (
-                <g key={r.period}>
-                  <rect
-                    x={tX} y={chartH - tH} width={barW} height={Math.max(tH, 1)} rx="3" fill="#2563eb"
-                    onMouseEnter={() => showTip(tX + barW / 2, chartH - tH, r.label, 'Taxable Value', r.taxable_value, '#2563eb')}
+            {series.map(({ key, label, color }) => (
+              <polyline
+                key={key}
+                points={rows.map((r, i) => `${pointX(i)},${pointY(r[key])}`).join(' ')}
+                fill="none"
+                stroke={color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+            {rows.map((r, i) => (
+              <g key={r.period}>
+                {series.map(({ key, label, color }) => (
+                  <circle
+                    key={key}
+                    cx={pointX(i)}
+                    cy={pointY(r[key])}
+                    r="4.5"
+                    fill="#fff"
+                    stroke={color}
+                    strokeWidth="2.5"
+                    onMouseEnter={() => showTip(pointX(i), pointY(r[key]), r.label, label, r[key], color)}
                     onMouseLeave={() => setHover(null)}
                     style={{ cursor: 'pointer' }}
                   />
-                  <rect
-                    x={gX} y={chartH - gH} width={barW} height={Math.max(gH, 1)} rx="3" fill="#15803d"
-                    onMouseEnter={() => showTip(gX + barW / 2, chartH - gH, r.label, 'GST Amount', r.gst_amount, '#15803d')}
-                    onMouseLeave={() => setHover(null)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                </g>
-              );
-            })}
+                ))}
+              </g>
+            ))}
           </svg>
           {/* Month labels as plain HTML, not SVG <text> — an SVG scales its whole coordinate
               system (viewBox) to fit the card, which was quietly shrinking "10px" text below its
@@ -174,12 +192,11 @@ export function SalesBarChart({ data }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 20, marginTop: 8, fontSize: 12, fontWeight: 700, color: 'var(--bp-muted)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: '#2563eb', display: 'inline-block' }} /> Taxable Value
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: '#15803d', display: 'inline-block' }} /> GST Amount
-        </span>
+        {series.map(({ key, label, color }) => (
+          <span key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 3, background: color, display: 'inline-block' }} /> {label}
+          </span>
+        ))}
       </div>
     </div>
   );

@@ -132,6 +132,14 @@ export function fyQuarterOptions(fy) {
   return defs.map((d) => ({ ...d, value: `Q${d.q}` }));
 }
 
+/** Same four quarters as fyQuarterOptions(), but with the FY's start year folded into
+ * `value` (e.g. "2026-Q1") — the actual tax_period shape stored/filtered on everywhere
+ * a quarterly-cadence return (GSTR-1 QRMP, GSTR-2B, GSTR-3B, CMP-08) is tracked. */
+export function fyQuarterPeriodOptions(fy) {
+  const [y1] = String(fy).split('-');
+  return fyQuarterOptions(fy).map((q) => ({ ...q, value: `${y1}-${q.value}` }));
+}
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -142,6 +150,20 @@ export function monthLabel(period) {
   const [y, m] = String(period).split('-').map(Number);
   if (!y || !m || m < 1 || m > 12) return period;
   return `${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+/** Formats either shape a tax_period can take: 'YYYY-MM' (a monthly-cadence return) or
+ * 'YYYY-Qn' (a quarterly-cadence one) -> a human label. Lets a table that mixes clients
+ * on different filing frequencies render whichever shape a given row actually has. */
+export function periodLabel(period) {
+  const [year, rest] = String(period || '').split('-');
+  if (!year || !rest) return period || '—';
+  if (/^Q[1-4]$/.test(rest)) {
+    const fyLabel = `${year}-${String(parseInt(year, 10) + 1).slice(-2)}`;
+    const q = fyQuarterOptions(fyLabel).find((o) => o.value === rest);
+    return q ? `${q.label} FY${fyLabel}` : `${rest} ${year}`;
+  }
+  return monthLabel(period);
 }
 
 /** The 12 calendar months of an Indian FY (Apr y1 -> Mar y1+1) as { value: 'YYYY-MM', label }. */

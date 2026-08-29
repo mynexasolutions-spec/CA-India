@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientGstReturn;
+use App\Models\ClientProfile;
 use App\Services\Billing\BillingPolicy;
 use Illuminate\Http\Request;
 
@@ -21,12 +22,81 @@ class GstReturnController extends Controller
 
         $lastFiled = $returns->firstWhere('status', 'filed');
 
+        // The client-visible cycle for a Regular dealer is GSTR-1's own (independent of
+        // GSTR-3B's) — same resolution BillingPolicy::gstr1Frequency() uses everywhere
+        // else, so a QRMP client (quarterly GSTR-3B, monthly GSTR-1 via IFF) reads as
+        // "Monthly (QRMP)" here rather than the misleading "Quarterly".
+        $gstr3bFrequency = $profile->gst_filing_frequency ?? 'monthly';
+        $gstr1Frequency = BillingPolicy::gstr1Frequency($profile);
+        $filingFrequencyLabel = $gstr1Frequency === 'quarterly'
+            ? 'Quarterly'
+            : ($gstr3bFrequency === 'quarterly' ? 'Monthly (QRMP)' : 'Monthly');
+
         return response()->json([
             'last_filed' => $lastFiled ? $lastFiled->tax_period : null,
-            'frequency' => $profile->gst_filing_frequency ?? 'monthly',
+            'frequency' => $gstr3bFrequency,
+            'filing_frequency_label' => $filingFrequencyLabel,
             'dealer_type' => $profile->dealer_type,
+            // Per-return-type cadence, for any UI (e.g. the Integrated Confirmation panel's
+            // Return Period picker) that needs to know whether GSTR-1 or GSTR-3B specifically
+            // is monthly or quarterly for this client — GSTR-1 can be monthly (QRMP/IFF) even
+            // when GSTR-3B stays quarterly, so these are never assumed to match each other.
+            'gstr1_quarterly' => $gstr1Frequency === 'quarterly',
+            'gstr3b_quarterly' => $profile->dealer_type === 'composition' || $gstr3bFrequency === 'quarterly',
             'returns' => $returns,
+            'next_due' => $this->nextDue($profile),
         ]);
+    }
+
+    /**
+     * The soonest not-yet-filed period (across every return type this dealer actually
+     * files) within the current FY's period grid — same grid + filed-status logic as
+     * compliance(), so this never disagrees with the Compliance Status widget. Returns
+     * null only once every applicable period in the FY has already been filed.
+     */
+    private function nextDue(ClientProfile $profile): ?array
+    {
+        $startYear = $this->fyStartYear(null);
+        $isComposition = $profile->dealer_type === 'composition';
+        $gstr3bFrequency = $profile->gst_filing_frequency ?? 'monthly';
+        $gstr3bQuarterly = $isComposition || $gstr3bFrequency === 'quarterly';
+        $gstr1Quarterly = BillingPolicy::gstr1Frequency($profile) === 'quarterly';
+
+        $candidates = [];
+        $collect = function (string $type, string $label, array $periods) use ($profile, &$candidates) {
+            $filedPeriods = ClientGstReturn::where('client_profile_id', $profile->id)
+                ->where('return_type', $type)
+                ->whereIn('tax_period', array_column($periods, 'period'))
+                ->where('status', 'filed')
+                ->pluck('tax_period')
+                ->all();
+
+            foreach ($periods as $p) {
+                if (! in_array($p['period'], $filedPeriods, true)) {
+                    $candidates[] = [
+                        'date' => $p['due_date'],
+                        'return_type' => $label,
+                        'period' => $p['period'],
+                        'period_label' => $p['label'],
+                    ];
+                }
+            }
+        };
+
+        if ($isComposition) {
+            $collect(ClientGstReturn::TYPE_CMP08, 'CMP-08', $this->buildPeriods(true, $startYear, 'due_cmp08'));
+        } else {
+            $collect(ClientGstReturn::TYPE_GSTR1, 'GSTR-1', $this->buildPeriods($gstr1Quarterly, $startYear, 'due_gstr1', $gstr3bQuarterly));
+            $collect(ClientGstReturn::TYPE_GSTR3B, 'GSTR-3B', $this->buildPeriods($gstr3bQuarterly, $startYear, 'due_gstr3b'));
+        }
+
+        if (! $candidates) {
+            return null;
+        }
+
+        usort($candidates, fn ($a, $b) => strcmp($a['date'], $b['date']));
+
+        return $candidates[0];
     }
 
     /** Indian FY: 1 Apr – 31 Mar. e.g. "2026-27" -> starts 2026. */

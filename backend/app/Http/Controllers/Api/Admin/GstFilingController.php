@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ClientGstReturn;
 use App\Models\GstFilingRequest;
 use Illuminate\Http\Request;
 
@@ -29,11 +30,41 @@ class GstFilingController extends Controller
     {
         $request->validate([
             'status' => 'required|string|in:Pending CA Review,Approved for Filing,Correction Required,GST Filed',
+            // Mandatory only for the "GST Filed" transition — the admin can't mark a
+            // request filed without both, per spec.
+            'filing_date' => 'required_if:status,GST Filed|date',
+            'ack_no' => 'required_if:status,GST Filed|string|max:50',
         ]);
 
         $filingRequest = GstFilingRequest::findOrFail($id);
         $filingRequest->status = $request->status;
+
+        if ($request->status === 'GST Filed') {
+            $filingRequest->filing_date = $request->filing_date;
+            $filingRequest->ack_no = $request->ack_no;
+        }
+
         $filingRequest->save();
+
+        // Admin Portal and Client Portal read the filing status from the same underlying
+        // record: marking a request "GST Filed" here immediately upserts the matching
+        // client_gst_returns row, so it shows up in Client Portal → GST Returns → Filing
+        // History (and the Compliance Status widget) with no separate manual entry.
+        if ($request->status === 'GST Filed') {
+            ClientGstReturn::updateOrCreate(
+                [
+                    'client_profile_id' => $filingRequest->client_profile_id,
+                    'tax_period' => $filingRequest->filing_period,
+                    'return_type' => str_replace('-', '', $filingRequest->return_type), // 'GSTR-1' -> 'GSTR1'
+                ],
+                [
+                    'status' => 'filed',
+                    'filed_on' => $filingRequest->filing_date,
+                    'ack_no' => $filingRequest->ack_no,
+                    'filed_by' => $request->user()->id,
+                ]
+            );
+        }
 
         return response()->json([
             'message' => 'Status updated successfully.',

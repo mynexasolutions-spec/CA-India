@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { api } from '../../api/client';
-import { buildFyOptions, currentFyLabel, fyMonthOptions, monthLabel } from '../billing/billingUtils';
+import { buildFyOptions, currentFyLabel, fyMonthOptions, fyQuarterPeriodOptions, periodLabel } from '../billing/billingUtils';
 
 const PREVIEWABLE_EXT = ['xls', 'xlsx', 'csv'];
 
@@ -227,6 +227,14 @@ function currentMonthValue() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function currentQuarterValue(fy) {
+  const d = new Date();
+  const m = d.getMonth() + 1;
+  const q = m >= 4 && m <= 6 ? 1 : m >= 7 && m <= 9 ? 2 : m >= 10 && m <= 12 ? 3 : 4;
+  const [y1] = String(fy).split('-');
+  return `${y1}-Q${q}`;
+}
+
 export default function AdminClientGstr2b() {
   const { id } = useParams();
   const [client, setClient] = useState(null);
@@ -234,11 +242,14 @@ export default function AdminClientGstr2b() {
   const [loading, setLoading] = useState(true);
 
   const [fy, setFy] = useState(currentFyLabel());
-  const monthOptions = fyMonthOptions(fy);
-  const [taxPeriod, setTaxPeriod] = useState(() => {
-    const cur = currentMonthValue();
-    return monthOptions.some((o) => o.value === cur) ? cur : (monthOptions[0]?.value || '');
-  });
+  // GSTR-2B has no filing action of its own — it mirrors GSTR-3B's cycle 1:1
+  // (BillingPolicy::gstr2bFrequency), and is always quarterly for Composition dealers.
+  const gstr2bQuarterly = !!client && (
+    client.dealer_type === 'composition' ||
+    (client.gstr2b_filing_frequency ?? client.gst_filing_frequency) === 'quarterly'
+  );
+  const periodOptions = gstr2bQuarterly ? fyQuarterPeriodOptions(fy) : fyMonthOptions(fy);
+  const [taxPeriod, setTaxPeriod] = useState('');
   const [file, setFile] = useState(null);
   const [previewGrid, setPreviewGrid] = useState(null);
   const [previewErr, setPreviewErr] = useState('');
@@ -276,10 +287,20 @@ export default function AdminClientGstr2b() {
     loadRecords();
   }, [id]);
 
+  // Picks a sensible default period once the client's actual GSTR-2B cadence is known
+  // (client loads asynchronously, so this can't be resolved at useState-initializer
+  // time) and whenever the FY or that cadence changes the available options.
+  useEffect(() => {
+    if (!periodOptions.length) return;
+    if (periodOptions.some((o) => o.value === taxPeriod)) return;
+    const cur = gstr2bQuarterly ? currentQuarterValue(fy) : currentMonthValue();
+    setTaxPeriod(periodOptions.some((o) => o.value === cur) ? cur : periodOptions[0].value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodOptions, gstr2bQuarterly, fy]);
+
   const handleFyChange = (newFy) => {
     setFy(newFy);
-    const opts = fyMonthOptions(newFy);
-    setTaxPeriod(opts[0]?.value || '');
+    setTaxPeriod(''); // re-picked by the effect above once periodOptions recomputes for newFy
   };
 
   const doUpload = async (period, uploadFile) => {
@@ -311,7 +332,7 @@ export default function AdminClientGstr2b() {
         }
       }
 
-      setMsg(`Saved GSTR-2B for ${monthLabel(period)}${invoiceNote}`);
+      setMsg(`Saved GSTR-2B for ${periodLabel(period)}${invoiceNote}`);
       loadRecords();
     } catch (e) {
       setErr(e.message);
@@ -458,7 +479,7 @@ export default function AdminClientGstr2b() {
   };
 
   const handleDelete = async (record) => {
-    if (!window.confirm(`Delete the GSTR-2B file for ${monthLabel(record.tax_period)}?`)) return;
+    if (!window.confirm(`Delete the GSTR-2B file for ${periodLabel(record.tax_period)}?`)) return;
     setErr('');
     setMsg('');
     try {
@@ -535,7 +556,7 @@ export default function AdminClientGstr2b() {
           <label>
             Tax Period
             <select className="bp-select" value={taxPeriod} onChange={(e) => setTaxPeriod(e.target.value)}>
-              {monthOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              {periodOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
           </label>
           <label>
@@ -585,7 +606,7 @@ export default function AdminClientGstr2b() {
         <div className="bp-card" style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div>
-              <h3 style={{ margin: 0 }}>Invoices — {monthLabel(invoicesRecord.tax_period)}</h3>
+              <h3 style={{ margin: 0 }}>Invoices — {periodLabel(invoicesRecord.tax_period)}</h3>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--bp-muted)' }}>
                 Override ITC eligibility per invoice line if the parsed statement got it wrong.
               </p>
@@ -682,7 +703,7 @@ export default function AdminClientGstr2b() {
               {records.map((r) => (
                 <tr key={r.id}>
                   <td>{r.financial_year}</td>
-                  <td>{monthLabel(r.tax_period)}</td>
+                  <td>{periodLabel(r.tax_period)}</td>
                   <td>{r.file_name || '—'}</td>
                   <td>
                     {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}

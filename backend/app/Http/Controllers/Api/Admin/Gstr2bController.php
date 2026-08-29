@@ -32,7 +32,9 @@ class Gstr2bController extends Controller
         ClientProfile::findOrFail($clientId);
 
         $data = $request->validate([
-            'tax_period' => 'required|regex:/^\d{4}-\d{2}$/',
+            // 'YYYY-MM' for a monthly-cadence client, 'YYYY-Qn' for a quarterly one — see
+            // BillingPolicy::gstr2bFrequency().
+            'tax_period' => 'required|regex:/^\d{4}-(0[1-9]|1[0-2]|Q[1-4])$/',
             'file' => 'required|file|mimes:pdf,xls,xlsx,json,csv|max:10240',
         ]);
 
@@ -187,6 +189,14 @@ class Gstr2bController extends Controller
 
     private function deriveFinancialYear(string $taxPeriod): string
     {
+        // Quarter periods already encode the FY's start year directly (e.g. "2026-Q4" is
+        // Jan-Mar 2027, still FY 2026-27) — same convention as GstFilingController.
+        if (preg_match('/^(\d{4})-Q[1-4]$/', $taxPeriod, $m)) {
+            $startYear = (int) $m[1];
+
+            return $startYear.'-'.substr((string) ($startYear + 1), -2);
+        }
+
         [$year, $month] = array_map('intval', explode('-', $taxPeriod));
         $startYear = $month >= 4 ? $year : $year - 1;
 

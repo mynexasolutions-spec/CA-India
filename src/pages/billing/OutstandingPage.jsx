@@ -85,21 +85,6 @@ const AlertDocIcon = () => (
     <circle cx="16" cy="24" r="1.3" fill="white"/>
   </svg>
 );
-const ClockIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="16" cy="17" r="11" stroke="white" strokeWidth="1.8" fill="none"/>
-    <path d="M16 10v7l5 3" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-    <path d="M11 3h10" stroke="white" strokeWidth="1.6" strokeLinecap="round"/>
-  </svg>
-);
-const CalendarDueIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="6" width="24" height="22" rx="3" stroke="white" strokeWidth="1.8" fill="none"/>
-    <path d="M4 13h24" stroke="white" strokeWidth="1.6"/>
-    <path d="M10 2v6M22 2v6" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-    <circle cx="21" cy="20" r="4" fill="white" fillOpacity="0.9"/>
-  </svg>
-);
 const CheckCircleIcon = () => (
   <svg width="26" height="26" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="16" cy="16" r="12" stroke="white" strokeWidth="1.8" fill="none"/>
@@ -119,6 +104,8 @@ function fmtDate(v) {
 
 function docPath(doc) {
   if (doc.type === 'bill_of_supply') return `/portal/billing/bill-of-supply/${doc.id}`;
+  if (doc.type === 'debit_note') return `/portal/billing/debit-notes/${doc.id}`;
+  if (doc.type === 'credit_note') return `/portal/billing/credit-notes/${doc.id}`;
   return `/portal/billing/invoices/${doc.id}`;
 }
 
@@ -232,16 +219,14 @@ export default function OutstandingPage() {
     [unpaidRows, paidRows]
   );
 
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const in7Str   = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-  const amt = (r) => Number(r.grand_total || r.total_amount || 0);
-
-  const overdueRows = unpaidRows.filter((r) => r.due_date && String(r.due_date).slice(0, 10) < todayStr);
-  const dueSoonRows = unpaidRows.filter((r) => r.due_date && String(r.due_date).slice(0, 10) >= todayStr && String(r.due_date).slice(0, 10) <= in7Str);
+  // Net = Tax Invoice + Bill of Supply + Debit Note − Credit Note — a credit note reduces
+  // what the party owes/was paid, it doesn't add on top of the other document types.
+  const amt = (r) => {
+    const v = Number(r.grand_total || r.total_amount || 0);
+    return r.type === 'credit_note' ? -v : v;
+  };
 
   const kpiOutstanding = { count: unpaidRows.length, total: unpaidRows.reduce((s, r) => s + amt(r), 0) };
-  const kpiOverdue     = { count: overdueRows.length, total: overdueRows.reduce((s, r) => s + amt(r), 0) };
-  const kpiDueSoon     = { count: dueSoonRows.length, total: dueSoonRows.reduce((s, r) => s + amt(r), 0) };
   const kpiPaid        = { count: paidRows.length, total: paidRows.reduce((s, r) => s + amt(r), 0) };
 
   const tabRows = tab === 'unpaid' ? unpaidRows : tab === 'paid' ? paidRows : allRows;
@@ -278,7 +263,7 @@ export default function OutstandingPage() {
         <div>
           <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--bp-navy)' }}>Outstanding</h2>
           <p style={{ margin: '3px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
-            Track unpaid invoices and overdue amounts.
+            Track unpaid and paid invoices, debit notes and credit notes.
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
@@ -356,6 +341,9 @@ export default function OutstandingPage() {
       </div>
 
       {/* ── KPI Cards ──────────────────────────────────────── */}
+      {/* Kept the original 4-column basis so each card stays the same width it always
+          was — only 2 of the 4 slots are filled now, the rest of the row stays empty
+          instead of stretching these two cards edge-to-edge. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
         {/* Total Outstanding */}
         <div style={{ padding: '16px 20px', background: 'linear-gradient(145deg,#fef2f2,#fee2e2)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -366,30 +354,6 @@ export default function OutstandingPage() {
             <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Total Outstanding (Unpaid)</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--bp-navy)', lineHeight: 1.1 }}>{money(kpiOutstanding.total)}</div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{kpiOutstanding.count} Invoices</div>
-          </div>
-        </div>
-
-        {/* Overdue Amount */}
-        <div style={{ padding: '16px 20px', background: 'linear-gradient(145deg,#fff7ed,#fed7aa)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: '#ea580c', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #ea580c44' }}>
-            <ClockIcon />
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Overdue Amount</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--bp-navy)', lineHeight: 1.1 }}>{money(kpiOverdue.total)}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{kpiOverdue.count} Invoices</div>
-          </div>
-        </div>
-
-        {/* Due Soon */}
-        <div style={{ padding: '16px 20px', background: 'linear-gradient(145deg,#fffbeb,#fef3c7)', borderRadius: 14, border: '1.5px solid rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px #f59e0b44' }}>
-            <CalendarDueIcon />
-          </div>
-          <div>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Due Soon (Next 7 Days)</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--bp-navy)', lineHeight: 1.1 }}>{money(kpiDueSoon.total)}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{kpiDueSoon.count} Invoices</div>
           </div>
         </div>
 
@@ -459,6 +423,8 @@ export default function OutstandingPage() {
                   <option value="">All Types</option>
                   <option value="tax_invoice">Tax Invoice</option>
                   <option value="bill_of_supply">Bill of Supply</option>
+                  <option value="debit_note">Debit Note</option>
+                  <option value="credit_note">Credit Note</option>
                 </select>
                 {docTypeFilter && (
                   <button type="button" onClick={() => setDocTypeFilter('')}
@@ -509,7 +475,7 @@ export default function OutstandingPage() {
                       <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, color: '#475569' }}>{fmtDate(r.document_date)}</td>
                       <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 700, color: 'var(--bp-navy)' }}>{r.customer?.name || '—'}</td>
                       <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, color: '#475569' }}>{docTypeLabel(r.type)}</td>
-                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 600 }}>{Number(r.grand_total || r.total_amount || 0).toLocaleString('en-IN')}</td>
+                      <td style={{ padding: '13px 16px', textAlign: 'center', fontSize: 13, fontWeight: 600, color: r.type === 'credit_note' ? '#dc2626' : 'inherit' }}>{amt(r).toLocaleString('en-IN')}</td>
                       <td style={{ padding: '13px 16px', textAlign: 'center' }}>
                         <span className={`bp-badge ${paymentStatusBadge(r.status)}`}>{paymentStatusLabel(r.status)}</span>
                       </td>

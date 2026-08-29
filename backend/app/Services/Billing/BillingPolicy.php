@@ -188,6 +188,24 @@ class BillingPolicy
         return $profile->gstr1_filing_frequency ?? $gstr3b;
     }
 
+    /**
+     * GSTR-2B's display/reconciliation cadence for this client. GSTR-2B has no filing
+     * action of its own — it mirrors GSTR-3B's cycle 1:1 by default
+     * (gstr2b_filing_frequency falls back to gst_filing_frequency), and is always
+     * quarterly for Composition dealers (they never carry GSTR-1/2B/3B frequencies of
+     * their own — see ClientProfileController::normalizeGstFields()).
+     */
+    public static function gstr2bFrequency(ClientProfile $profile): string
+    {
+        if ($profile->dealer_type === 'composition') {
+            return 'quarterly';
+        }
+
+        $gstr3b = $profile->gst_filing_frequency ?? 'monthly';
+
+        return $profile->gstr2b_filing_frequency ?? $gstr3b;
+    }
+
     public static function isPeriodFiled(ClientProfile $profile, ?string $documentDate): bool
     {
         if (!$documentDate || !$profile->has_gst) {
