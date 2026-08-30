@@ -20,6 +20,10 @@ class ClientProfileController extends Controller
 {
     private const ENCRYPTED = ['gst_portal_password', 'tan_portal_password', 'it_portal_password'];
 
+    /** Fixed domain half of every client login email — the admin only ever chooses the
+     * part before the @, here on the server so it can never be overridden via the API. */
+    private const LOGIN_EMAIL_DOMAIN = 'abkhanassociates.com';
+
     private function assertClientsUnlocked(Request $request): void
     {
         abort_unless(
@@ -213,7 +217,7 @@ class ClientProfileController extends Controller
         return DB::transaction(function () use ($request, $data) {
             $user = User::create([
                 'name' => $data['client_name'] ?? $data['business_name'] ?? 'Client',
-                'email' => $data['email'],
+                'email' => $data['login_email'],
                 'password' => Hash::make($data['password']),
                 'phone' => $data['mobile'] ?? $data['phone'] ?? null,
                 'role' => 'client',
@@ -245,10 +249,10 @@ class ClientProfileController extends Controller
         $data = $this->validatePayload($request, false, $profile);
 
         return DB::transaction(function () use ($request, $data, $profile) {
-            if (isset($data['client_name']) || isset($data['mobile']) || isset($data['email']) || isset($data['password']) || isset($data['is_active'])) {
+            if (isset($data['client_name']) || isset($data['mobile']) || isset($data['login_email']) || isset($data['password']) || isset($data['is_active'])) {
                 $userUpdate = array_filter([
                     'name' => $data['client_name'] ?? null,
-                    'email' => $data['email'] ?? null,
+                    'email' => $data['login_email'] ?? null,
                     'phone' => $data['mobile'] ?? null,
                     'is_active' => $data['is_active'] ?? null,
                 ], fn ($v) => $v !== null);
@@ -605,7 +609,13 @@ class ClientProfileController extends Controller
         $rules = [
             'client_name' => ($creating ? 'required' : 'sometimes').'|string',
             'business_name' => 'nullable|string',
-            'email' => ($creating ? 'required' : 'sometimes').'|email|unique:users,email'.($profile ? ','.$profile->user_id : ''),
+            // Business/personal contact email — stored on the client profile only, never
+            // used for login, so it carries no uniqueness constraint against `users`.
+            'email' => ($creating ? 'required' : 'sometimes').'|email',
+            // Login email is admin-chosen prefix + a fixed firm domain (see below) — kept
+            // deliberately separate from the contact email above so a client's login
+            // never has to match (or be blocked by) whatever personal email they gave.
+            'login_prefix' => ($creating ? 'required' : 'sometimes').'|string|max:64|regex:/^[a-zA-Z0-9._-]+$/',
             'password' => ($creating ? 'required' : 'nullable').'|string|min:8',
             'mobile' => 'nullable|string',
             'phone' => 'nullable|string',
@@ -671,7 +681,18 @@ class ClientProfileController extends Controller
             'amendment_next_number' => 'nullable|integer|min:1',
         ];
 
-        return $request->validate($rules);
+        $data = $request->validate($rules);
+
+        if (array_key_exists('login_prefix', $data)) {
+            $loginEmail = strtolower(trim($data['login_prefix'])).'@'.self::LOGIN_EMAIL_DOMAIN;
+            $taken = User::where('email', $loginEmail)
+                ->when($profile, fn ($q) => $q->where('id', '!=', $profile->user_id))
+                ->exists();
+            abort_if($taken, 422, 'This login email is already in use by another client.');
+            $data['login_email'] = $loginEmail;
+        }
+
+        return $data;
     }
 
     private function normalizeGstFields(array $data): array

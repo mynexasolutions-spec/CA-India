@@ -4,6 +4,11 @@ import { api, getAuthToken } from '../../api/client';
 import PasswordField from '../../components/PasswordField';
 import StateSelect from '../../components/StateSelect';
 
+// Fixed domain half of every client login email — mirrors
+// ClientProfileController::LOGIN_EMAIL_DOMAIN on the backend, which is the actual
+// source of truth (the server appends this regardless of what the client sends).
+const LOGIN_EMAIL_DOMAIN = 'abkhanassociates.com';
+
 const TABS = [
   { id: 'personal', label: 'Personal and Business Information' },
   { id: 'registration', label: 'Registration and Compliance Details' },
@@ -36,7 +41,7 @@ const empty = () => ({
   udyam: '', shop_establishment: '', iec: '', cin: '', llpin: '', pt_reg: '', esic: '', pf: '',
   bank_name: '', bank_branch: '', bank_account: '', account_holder_name: '',
   bank_ifsc: '', swift_code: '', account_type: '', upi_id: '',
-  client_code: '', password: '', is_active: true,
+  client_code: '', password: '', is_active: true, login_prefix: '',
   terms_conditions: '',
   invoice_prefix: 'INV', bill_of_supply_prefix: 'BOS', credit_note_prefix: 'CN',
   debit_note_prefix: 'DN', quotation_prefix: 'QT', amendment_prefix: 'AMD',
@@ -57,11 +62,16 @@ export default function ClientProfileForm() {
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  // The client's actual current login email (read-only, shown next to the prefix
+  // input) — kept out of `form` since it's never submitted as-is; only a changed
+  // `login_prefix` gets sent, and the server rebuilds prefix+domain from that.
+  const [currentLoginEmail, setCurrentLoginEmail] = useState('');
 
   useEffect(() => {
     if (!isEdit) return;
     api(`/admin/clients/${id}`).then((d) => {
-      setForm({ ...empty(), ...d, password: '', is_active: d.user?.is_active ?? true });
+      setForm({ ...empty(), ...d, password: '', login_prefix: '', is_active: d.user?.is_active ?? true });
+      setCurrentLoginEmail(d.user?.email || '');
     }).catch((e) => setErr(e.message));
   }, [id, isEdit]);
 
@@ -454,7 +464,34 @@ export default function ClientProfileForm() {
           {tab === 'credentials' && (
             <div className="cp-grid">
               <Field label="Client ID"><input className="bp-input" placeholder="Auto-generated if blank" value={form.client_code} onChange={(e) => set('client_code', e.target.value)} /></Field>
-              <Field label="Login Email"><input className="bp-input" type="email" required value={form.email} onChange={(e) => set('email', e.target.value)} /></Field>
+              <Field label="Login Email">
+                <div style={{ display: 'flex', width: '100%', boxSizing: 'border-box' }}>
+                  <input
+                    className="bp-input"
+                    style={{ flex: '1 1 auto', width: 'auto', minWidth: 0, borderTopRightRadius: 0, borderBottomRightRadius: 0, borderRight: 'none' }}
+                    placeholder="businessname"
+                    required={!isEdit}
+                    value={form.login_prefix}
+                    onChange={(e) => set('login_prefix', e.target.value.replace(/[^a-zA-Z0-9._-]/g, ''))}
+                  />
+                  <span
+                    style={{
+                      flexShrink: 0, whiteSpace: 'nowrap', boxSizing: 'border-box',
+                      padding: '9px 10px', fontSize: 12.5, fontWeight: 700, color: 'var(--bp-muted)',
+                      background: 'var(--bp-sky, #f1f5f9)', border: '1px solid var(--bp-border)',
+                      borderTopRightRadius: 8, borderBottomRightRadius: 8,
+                    }}
+                  >
+                    @{LOGIN_EMAIL_DOMAIN}
+                  </span>
+                </div>
+                {isEdit && (
+                  <div style={{ fontSize: 12, color: 'var(--bp-muted)', marginTop: 6 }}>
+                    Current login email: <strong>{currentLoginEmail || '—'}</strong>. Leave the box above blank to
+                    keep it unchanged, or type a new prefix to replace it.
+                  </div>
+                )}
+              </Field>
               <div className="full">
                 <PasswordField label={isEdit ? 'New Password (leave blank to keep)' : 'Password'} required={!isEdit} value={form.password} onChange={(e) => set('password', e.target.value)} autoComplete="new-password" />
               </div>

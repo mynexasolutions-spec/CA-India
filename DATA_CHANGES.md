@@ -75,7 +75,7 @@ Frequency" field.
 
 ---
 
-## ⬜ 2026-08-25 — GST Compliance subscription gate
+## ✅ 2026-08-29 — GST Compliance subscription gate
 
 **Migration**: `2026_08_25_000000_add_gst_compliance_enabled_to_client_profiles_table`
 
@@ -142,7 +142,7 @@ every existing row to "subscribed" (unchanged behavior) with no separate SQL ste
 
 ---
 
-## ⬜ 2026-08-29 — GST Filing Requests now auto-sync to Client Portal → GST Returns
+## ✅ 2026-08-29 — GST Filing Requests now auto-sync to Client Portal → GST Returns
 
 **Migrations**:
 - `2026_08_29_000000_add_filing_details_to_gst_filing_requests_table`

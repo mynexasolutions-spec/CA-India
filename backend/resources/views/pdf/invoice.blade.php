@@ -473,9 +473,10 @@ td, th { vertical-align: top; }
 @php
   // Calibrated against the .pf-val column's actual rendered wrap width (9.8px font,
   // 48%-wide cell minus the 60px+8px label/colon columns) — a plain name/address string
-  // wraps at ~46-50 chars there, not the narrower 25/38 this used to assume, which
-  // overestimated the line count and left a visible gap at the bottom of the box.
-  $pfValCharsPerLine = 44;
+  // wraps at ~46-48 chars there (verified against two different real addresses), not the
+  // narrower 25/38 this used to assume, which overestimated the line count and left a
+  // visible gap at the bottom of the box.
+  $pfValCharsPerLine = 47;
   $customerLabelLen = strlen($customerLabel);
   $custNameLen = $c ? strlen($c->name) : 0;
 
