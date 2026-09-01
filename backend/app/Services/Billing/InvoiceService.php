@@ -91,9 +91,11 @@ class InvoiceService
             if ($keepIssued) {
                 $payload['issued_at'] = $doc->issued_at;
             }
+            $oldLines = $doc->lineItems()->orderBy('id')->get(['hsn_sac'])->map(fn ($l) => ['hsn_sac' => $l->hsn_sac])->all();
             $doc->update($payload);
             $doc->lineItems()->delete();
             $this->syncLines($doc, $calc['lines']);
+            $this->cascadeHsnCorrectionToCreditNotes($doc, $oldLines, $calc['lines']);
 
             $doc = $doc->fresh()->load(['lineItems', 'customer', 'clientProfile', 'referenceDocument']);
             if ($keepIssued) {
@@ -493,6 +495,60 @@ class InvoiceService
                 'total_amount' => $line['total_amount'] ?? 0,
                 'sort_order' => $line['sort_order'] ?? 0,
             ]);
+        }
+    }
+
+    /**
+     * When an invoice/bill-of-supply line item's HSN/SAC is corrected via edit, any
+     * already-issued Credit Notes raised against it still carry the OLD HSN as a
+     * one-time snapshot taken at their own creation time (src/pages/billing/InvoiceForm.jsx's
+     * mapDocLines() copies it once when the credit note form loads) — nothing keeps a
+     * credit note's line in sync with its source invoice's line after that. Left alone,
+     * this leaves the HSN/SAC Summary report (ReportController::build, 'hsn_summary')
+     * with an orphaned negative row under the old code instead of netting against the
+     * corrected one. This cascades the correction forward.
+     *
+     * Conservative by design: a credit note's line at position $i is only updated when it
+     * still exactly matches the invoice's PRE-edit HSN there — a credit note whose lines
+     * were customized differently after creation (different HSN, reordered, partial) is
+     * left untouched rather than guessed at.
+     */
+    private function cascadeHsnCorrectionToCreditNotes(CommercialDocument $doc, array $oldLines, array $newLines): void
+    {
+        $changedByPosition = [];
+        foreach ($newLines as $i => $newLine) {
+            $oldHsn = $oldLines[$i]['hsn_sac'] ?? null;
+            $newHsn = $newLine['hsn_sac'] ?? null;
+            if ($oldHsn !== null && $newHsn !== null && $oldHsn !== $newHsn) {
+                $changedByPosition[$i] = ['old' => $oldHsn, 'new' => $newHsn];
+            }
+        }
+        if (! $changedByPosition) {
+            return;
+        }
+
+        $creditNotes = CommercialDocument::where('reference_document_id', $doc->id)
+            ->where('type', 'credit_note')
+            ->with('lineItems')
+            ->get();
+
+        foreach ($creditNotes as $creditNote) {
+            $lines = $creditNote->lineItems->sortBy('id')->values();
+            $touched = false;
+            foreach ($changedByPosition as $i => $change) {
+                $line = $lines->get($i);
+                if ($line && $line->hsn_sac === $change['old']) {
+                    $line->update(['hsn_sac' => $change['new']]);
+                    $touched = true;
+                }
+            }
+            if ($touched) {
+                try {
+                    $this->generatePdf($creditNote->fresh()->load(['lineItems', 'customer', 'clientProfile', 'referenceDocument']));
+                } catch (\Throwable $e) {
+                    // Non-fatal — the DB correction still stands even if PDF regen fails.
+                }
+            }
         }
     }
 
