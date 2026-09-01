@@ -91,6 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::post('/gst-filing/request', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'store']);
                 Route::get('/gst-filing/requests', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'index']);
                 Route::get('/gst-filing/requests/{id}', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'show']);
+                // GST Returns workspace (GSTR-1 / GSTR-3B tabs) — Filing Periods table data source.
+                Route::get('/gst-filing/periods', [\App\Http\Controllers\Api\Client\GstFilingController::class, 'periods']);
             });
         });
 

@@ -9,9 +9,35 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      #boot-loader{position:fixed;inset:0;z-index:99999;background:linear-gradient(165deg,#0d3459 0%,#0b2e4d 55%,#092338 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .35s ease;}
+      #boot-loader .boot-mark{display:flex;flex-direction:column;align-items:center;gap:20px;animation:boot-rise .5s ease-out both;}
+      #boot-loader img{width:60px;height:60px;object-fit:contain;}
+      #boot-loader .boot-ring{width:30px;height:30px;border-radius:50%;border:2.5px solid rgba(255,255,255,.2);border-top-color:#fff;animation:boot-spin .8s linear infinite;}
+      #boot-loader span{color:rgba(255,255,255,.85);font:500 13px/1.4 system-ui,-apple-system,Segoe UI,sans-serif;letter-spacing:.02em;}
+      @keyframes boot-spin{to{transform:rotate(360deg);}}
+      @keyframes boot-rise{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+      body.app-ready #boot-loader{opacity:0;pointer-events:none;}
+    </style>
   </head>
   <body>
+    <div id="boot-loader">
+      <div class="boot-mark">
+        <img src="/assets/ca-india-logo.png" alt="" width="60" height="60" />
+        <div class="boot-ring"></div>
+        <span>Loading Client Portal…</span>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      window.addEventListener('load', function () {
+        document.body.classList.add('app-ready');
+        setTimeout(function () {
+          var el = document.getElementById('boot-loader');
+          if (el) el.remove();
+        }, 400);
+      });
+    </script>
   </body>
 </html>

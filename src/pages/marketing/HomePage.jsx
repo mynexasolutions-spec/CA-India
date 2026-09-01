@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Seo, { firmJsonLd } from '../../components/seo/Seo';
 import { CONTACT, REGISTRATIONS, SERVICES } from '../../data/nav';
 import { api } from '../../api/client';
+import BillingHeroCard from '../../components/marketing/BillingHeroCard';
 
 const serviceDescriptions = {
   '/services/accounting': 'Bookkeeping, management reporting, and outsourced accounting support.',
@@ -76,17 +77,6 @@ const globalNetwork = [
     name: 'Kuwait',
     text: 'Trusted advisors providing tax, audit & business consultation services.',
   },
-];
-
-const billingFeatures = [
-  'GST Invoices',
-  'Credit & Debit Notes',
-  'Quotation & Proforma Invoice',
-  'Customer Management',
-  'Product Management',
-  'GST Reports',
-  'PDF & Excel Export',
-  'WhatsApp & Email Sharing',
 ];
 
 const testimonials = [
@@ -330,50 +320,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="section billing-showcase" id="billing">
-        <div className="container billing-grid">
-          <div>
-            <p className="eyebrow" style={{ color: 'var(--gold-light)' }}>Client Portal Add-on</p>
-            <h2>Powerful Billing &amp; GST Invoice Management Software</h2>
-            <p>
-              Create GST-compliant invoices, manage customers, products, reports and business finances from one
-              secure platform, included with your Client Portal access.
-            </p>
-            <ul className="feat-list">
-              {billingFeatures.map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-            <div className="billing-actions">
-              <Link to="/billing-management" className="btn btn-gold">Explore Billing Software</Link>
-              <Link to="/login" className="btn btn-outline">Login to Portal</Link>
-            </div>
-          </div>
-          <div className="billing-mock">
-            <div className="home-page__invoice-mock">
-              <div className="home-page__invoice-mock-head">
-                <div>
-                  <span>Tax Invoice</span>
-                  <strong>INV-2026-0143</strong>
-                </div>
-                <span className="home-page__invoice-badge">GST Ready</span>
-              </div>
-              <div className="home-page__invoice-mock-rows">
-                <div><span>Professional Fees</span><span>₹18,000</span></div>
-                <div><span>GST @ 18%</span><span>₹3,240</span></div>
-                <div><span>Round Off</span><span>₹0</span></div>
-              </div>
-              <div className="home-page__invoice-mock-total">
-                <span>Total Payable</span>
-                <strong>₹21,240</strong>
-              </div>
-              <div className="home-page__invoice-mock-actions">
-                <span>PDF</span>
-                <span>WhatsApp</span>
-                <span>Email</span>
-              </div>
-            </div>
-          </div>
+      <section className="billing-hero-section" id="billing">
+        <div className="container">
+          <BillingHeroCard exploreTo="/billing-management" />
         </div>
       </section>
 

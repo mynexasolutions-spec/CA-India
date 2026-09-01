@@ -7,18 +7,26 @@ use App\Models\ClientProfile;
 use App\Models\CommercialDocument;
 use App\Models\GstFilingRequest;
 use App\Services\Billing\BillingPolicy;
+use App\Services\Gst\Gstr2bReconciliationService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
 /**
- * GST Filing Confirmation — GSTR-1 only (spec §7: "Under Return Type, only GSTR-1
- * should be available. Remove other options and enforce the restriction at backend
- * level."). GSTR-3B has no client-facing confirmation workflow at all.
+ * GST Filing Confirmation — GSTR-1 (spec §7 of the original Billing guide) and GSTR-3B
+ * (client-portal "GST Returns" spec: GSTR-1 and GSTR-3B as tabs of one GST Returns
+ * module). GSTR-3B carries one extra rule GSTR-1 does not: a filing request may not be
+ * created for a period whose GSTR-2B reconciliation is still pending — see
+ * assertReconciliationComplete() and Gstr2bReconciliationService, which derive
+ * reconciliation status from ClientGstr2bRecord/ClientGstr2bInvoice.match_status (no
+ * explicit status column exists). For a quarterly/QRMP GSTR-3B period, "reconciled"
+ * means every one of the 3 underlying calendar months is reconciled — GSTR-2B is never
+ * treated as one quarterly statement.
  *
  * QRMP-aware (spec §5): the accepted filing_period FORMAT depends on the client's
- * resolved GSTR-1 cycle (BillingPolicy::gstr1Frequency()) — "YYYY-MM" for a monthly
- * filer, "YYYY-Qn" for a client on quarterly GSTR-1. A client can't submit the wrong
- * shape for their own profile; this is enforced here, not just hidden in the UI.
+ * resolved cycle for the given return_type (BillingPolicy::gstr1Frequency() /
+ * gstr3bFrequency()) — "YYYY-MM" for a monthly filer, "YYYY-Qn" for a quarterly one. A
+ * client can't submit the wrong shape for their own profile; this is enforced here, not
+ * just hidden in the UI.
  */
 class GstFilingController extends Controller
 {
@@ -45,10 +53,23 @@ class GstFilingController extends Controller
         return [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()];
     }
 
-    /** Rejects a filing_period whose shape doesn't match this client's actual GSTR-1
-     * cycle — a quarterly filer can't submit a bare month and vice versa. */
-    private static function assertPeriodMatchesFrequency(ClientProfile $profile, string $period): void
+    /** Rejects a filing_period whose shape doesn't match this client's actual cycle for
+     * the given return_type — a quarterly filer can't submit a bare month and vice versa.
+     * $returnType defaults to 'GSTR-1' so the original (unmodified) GSTR-1 branch below
+     * still runs exactly as before for any existing caller that doesn't pass it. */
+    private static function assertPeriodMatchesFrequency(ClientProfile $profile, string $period, string $returnType = 'GSTR-1'): void
     {
+        if ($returnType === 'GSTR-3B') {
+            $quarterly = BillingPolicy::gstr3bFrequency($profile) === 'quarterly';
+            $isQuarterFormat = (bool) preg_match('/^\d{4}-Q[1-4]$/', $period);
+            $isMonthFormat = (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period);
+
+            abort_if($quarterly && ! $isQuarterFormat, 422, 'Your GSTR-3B is filed quarterly — select a quarter, not a month.');
+            abort_if(! $quarterly && ! $isMonthFormat, 422, 'Your GSTR-3B is filed monthly — select a month, not a quarter.');
+
+            return;
+        }
+
         $quarterly = BillingPolicy::gstr1Frequency($profile) === 'quarterly';
         $isQuarterFormat = (bool) preg_match('/^\d{4}-Q[1-4]$/', $period);
         $isMonthFormat = (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period);
@@ -57,19 +78,44 @@ class GstFilingController extends Controller
         abort_if(! $quarterly && ! $isMonthFormat, 422, 'Your GSTR-1 is filed monthly — select a month, not a quarter.');
     }
 
+    /** GSTR-3B mandatory reconciliation gate (client-portal GST Returns spec §6) — a
+     * no-op for GSTR-1 (first line), so this can never affect the existing GSTR-1
+     * store() path. For GSTR-3B, blocks creating the filing request outright when the
+     * applicable GSTR-2B period(s) aren't fully reconciled yet. */
+    private static function assertReconciliationComplete(int $clientProfileId, string $returnType, string $period): void
+    {
+        if ($returnType !== 'GSTR-3B') {
+            return;
+        }
+
+        abort_unless(
+            Gstr2bReconciliationService::isPeriodReconciled($clientProfileId, $period),
+            422,
+            'GSTR reconciliation is pending for the selected period. Please complete GSTR-2B reconciliation before raising the GSTR-3B filing request.'
+        );
+    }
+
     public function preview(Request $request)
     {
         $request->validate([
             'financial_year' => 'required|string',
             'filing_period' => 'required|string', // "YYYY-MM" or "YYYY-Qn" — see assertPeriodMatchesFrequency()
-            'return_type' => 'required|string|in:GSTR-1',
+            'return_type' => 'required|string|in:GSTR-1,GSTR-3B',
         ]);
 
         $profile = $request->user()->clientProfile;
         $clientProfileId = $profile->id;
         $period = $request->filing_period;
-        self::assertPeriodMatchesFrequency($profile, $period);
+        $returnType = $request->return_type;
+        self::assertPeriodMatchesFrequency($profile, $period, $returnType);
         [$periodStart, $periodEnd] = self::periodBounds($period);
+
+        // Informational only (never blocks preview) — the frontend uses this to decide
+        // whether the "Send Filing Request" action is enabled, and store() enforces the
+        // actual block. Null for GSTR-1, which has no reconciliation gate.
+        $reconciliationStatus = $returnType === 'GSTR-3B'
+            ? (Gstr2bReconciliationService::isPeriodReconciled($clientProfileId, $period) ? 'completed' : 'pending')
+            : null;
 
         // Allowed types for GST calculation
         $types = ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'];
@@ -108,7 +154,8 @@ class GstFilingController extends Controller
                 'total_sgst' => $sgst,
                 'total_igst' => $igst,
                 'total_gst' => $totalGst,
-            ]
+            ],
+            'reconciliation_status' => $reconciliationStatus,
         ]);
     }
 
@@ -117,13 +164,14 @@ class GstFilingController extends Controller
         $request->validate([
             'financial_year' => 'required|string',
             'filing_period' => 'required|string', // "YYYY-MM" or "YYYY-Qn" — see assertPeriodMatchesFrequency()
-            'return_type' => 'required|string|in:GSTR-1',
+            'return_type' => 'required|string|in:GSTR-1,GSTR-3B',
             'client_declaration' => 'required|accepted',
         ]);
 
         $profile = $request->user()->clientProfile;
         $clientProfileId = $profile->id;
-        self::assertPeriodMatchesFrequency($profile, $request->filing_period);
+        self::assertPeriodMatchesFrequency($profile, $request->filing_period, $request->return_type);
+        self::assertReconciliationComplete($clientProfileId, $request->return_type, $request->filing_period);
 
         // Check if there's already an active request for this period
         $existing = GstFilingRequest::where('client_profile_id', $clientProfileId)
@@ -199,7 +247,143 @@ class GstFilingController extends Controller
     public function show(Request $request, $id)
     {
         $filingRequest = GstFilingRequest::with('documents')->where('client_profile_id', $request->user()->clientProfile->id)->findOrFail($id);
-        
+
         return response()->json($filingRequest);
+    }
+
+    /**
+     * Data source for the client GST Returns workspace's "Filing Periods" table (one
+     * tab each for GSTR-1 and GSTR-3B). Builds the FY period grid via
+     * Gstr2bReconciliationService::periodGrid() (deliberately independent of
+     * GstReturnController::buildPeriods() — see that service's docblock), joins in this
+     * client's own GstFilingRequest per period, and — for GSTR-3B only — attaches
+     * reconciliation status so the frontend can render the "Reconciliation Pending" /
+     * "View Reconciliation" state without a second round trip.
+     */
+    public function periods(Request $request)
+    {
+        $request->validate([
+            'financial_year' => 'required|string',
+            'return_type' => 'required|string|in:GSTR-1,GSTR-3B',
+        ]);
+
+        $profile = $request->user()->clientProfile;
+        $clientProfileId = $profile->id;
+        $returnType = $request->return_type;
+
+        abort_unless(preg_match('/^(\d{4})-/', $request->financial_year, $m), 422, 'Invalid financial_year.');
+        $startYear = (int) $m[1];
+
+        $gstr3bQuarterly = BillingPolicy::gstr3bFrequency($profile) === 'quarterly';
+        $quarterly = $returnType === 'GSTR-3B'
+            ? $gstr3bQuarterly
+            : BillingPolicy::gstr1Frequency($profile) === 'quarterly';
+        // GSTR-1 tracked monthly via IFF while the client's overall (GSTR-3B) cadence is
+        // still quarterly — same QRMP due-date distinction as GstReturnController::buildPeriods().
+        $qrmpMonthlyGstr1 = $returnType === 'GSTR-1' && ! $quarterly && $gstr3bQuarterly;
+
+        $grid = Gstr2bReconciliationService::periodGrid($returnType, $quarterly, $startYear, $qrmpMonthlyGstr1);
+
+        $existingRequests = GstFilingRequest::where('client_profile_id', $clientProfileId)
+            ->where('return_type', $returnType)
+            ->get()
+            ->keyBy('filing_period');
+
+        $periods = array_map(function (array $p) use ($existingRequests, $returnType, $clientProfileId, $quarterly) {
+            $existing = $existingRequests->get($p['period']);
+
+            $reconciliationStatus = null;
+            $reconciliationBreakdown = null;
+            if ($returnType === 'GSTR-3B') {
+                $reconciliationStatus = Gstr2bReconciliationService::isPeriodReconciled($clientProfileId, $p['period'])
+                    ? 'completed'
+                    : 'pending';
+                if ($quarterly) {
+                    $reconciliationBreakdown = Gstr2bReconciliationService::quarterMonthBreakdown($clientProfileId, $p['period']);
+                }
+            }
+
+            [$status, $action] = self::resolvePeriodStatusAndAction($existing, $returnType, $reconciliationStatus);
+
+            return [
+                'period' => $p['period'],
+                'period_label' => $p['period_label'],
+                'due_date' => $p['due_date'],
+                'status' => $status,
+                'filed_on' => $existing?->filing_date,
+                'ack_no' => $existing?->ack_no,
+                'filing_request_id' => $existing?->id,
+                'reconciliation_status' => $reconciliationStatus,
+                'reconciliation_month_breakdown' => $reconciliationBreakdown,
+                'action' => $action,
+            ];
+        }, $grid);
+
+        return response()->json([
+            'financial_year' => $request->financial_year,
+            'return_type' => $returnType,
+            'quarterly' => $quarterly,
+            'summary' => self::periodsSummary($profile, $returnType, $quarterly, $gstr3bQuarterly, $existingRequests, $periods),
+            'periods' => $periods,
+        ]);
+    }
+
+    /** Per-return-type summary cards (Dealer Type / Filing Frequency / Last Filed
+     * Return / Next Due Date) for the GST Returns workspace header — computed here
+     * rather than reusing GstReturnController::index() (whose "next_due"/frequency
+     * label are combined across GSTR-1+GSTR-3B, not split per tab as the spec's two
+     * reference screenshots require), again to avoid touching that controller. */
+    private static function periodsSummary(ClientProfile $profile, string $returnType, bool $quarterly, bool $gstr3bQuarterly, $existingRequests, array $periods): array
+    {
+        if ($returnType === 'GSTR-3B') {
+            $frequencyLabel = $quarterly ? 'Quarterly' : 'Monthly';
+        } else {
+            // Same formula as GstReturnController::index()'s filing_frequency_label —
+            // GSTR-1's own cycle, "Monthly (QRMP)" when tracked monthly via IFF while
+            // the overall (GSTR-3B) cadence is quarterly.
+            $frequencyLabel = $quarterly ? 'Quarterly' : ($gstr3bQuarterly ? 'Monthly (QRMP)' : 'Monthly');
+        }
+
+        $lastFiledRequest = $existingRequests->where('status', 'GST Filed')
+            ->sortByDesc(fn ($r) => $r->filing_date ?? $r->filing_period)
+            ->first();
+
+        $nextDuePeriod = collect($periods)->first(fn ($p) => $p['status'] !== 'Filed Successfully');
+
+        return [
+            'dealer_type' => $profile->dealer_type,
+            'filing_frequency_label' => $frequencyLabel,
+            'last_filed' => $lastFiledRequest ? [
+                'period' => $lastFiledRequest->filing_period,
+                'filed_on' => $lastFiledRequest->filing_date,
+            ] : null,
+            'next_due' => $nextDuePeriod ? [
+                'period' => $nextDuePeriod['period'],
+                'period_label' => $nextDuePeriod['period_label'],
+                'date' => $nextDuePeriod['due_date'],
+            ] : null,
+        ];
+    }
+
+    /** Row status label + action ('request_filing' | 'view_details' | 'view_reconciliation')
+     * for one Filing Periods table row. An existing request always wins (mirrors store()'s
+     * own uniqueness check — a 'Correction Required' request re-enables Request Filing,
+     * matching store()'s `whereNotIn('status', ['Correction Required'])` allowance);
+     * otherwise a GSTR-3B period with pending reconciliation routes to View Reconciliation. */
+    private static function resolvePeriodStatusAndAction(?GstFilingRequest $existing, string $returnType, ?string $reconciliationStatus): array
+    {
+        if ($existing) {
+            return match ($existing->status) {
+                'GST Filed' => ['Filed Successfully', 'view_details'],
+                'Correction Required' => ['Correction Required', 'request_filing'],
+                default => [$existing->status, 'view_details'],
+            };
+        }
+
+        if ($returnType === 'GSTR-3B' && $reconciliationStatus === 'pending') {
+            return ['Reconciliation Pending', 'view_reconciliation'];
+        }
+
+        return ['Request Not Raised', 'request_filing'];
     }
 }

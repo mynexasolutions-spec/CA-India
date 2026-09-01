@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, getAuthToken } from '../../api/client';
 import { useAuth } from '../../auth/AuthContext';
 import { LoadingBlock } from '../../components/Spinner';
@@ -45,14 +46,23 @@ export default function ClientGstr2b() {
     (profile.gstr2b_filing_frequency ?? profile.gst_filing_frequency) === 'quarterly'
   );
 
-  const [fy, setFy] = useState('');
-  const [taxPeriod, setTaxPeriod] = useState('');
+  // "View Reconciliation" deep-link (GSTR-3B reconciliation gate popup, GST Returns
+  // workspace) pre-fills these via ?financial_year=&tax_period= — no-op when absent,
+  // so ordinary in-page navigation to this route is unaffected.
+  const [searchParams] = useSearchParams();
+  const initialFy = searchParams.get('financial_year') || '';
+  const initialTaxPeriod = searchParams.get('tax_period') || '';
+
+  const [fy, setFy] = useState(initialFy);
+  const [taxPeriod, setTaxPeriod] = useState(initialTaxPeriod);
   const [supplierGstin, setSupplierGstin] = useState('');
   const [supplierName, setSupplierName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [matchStatus, setMatchStatus] = useState('');
 
-  const [appliedFilters, setAppliedFilters] = useState({});
+  const [appliedFilters, setAppliedFilters] = useState(
+    initialFy || initialTaxPeriod ? { financial_year: initialFy, tax_period: initialTaxPeriod } : {}
+  );
   const [sort, setSort] = useState('invoice_date');
   const [dir, setDir] = useState('desc');
   const [page, setPage] = useState(1);

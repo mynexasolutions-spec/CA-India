@@ -70,8 +70,17 @@ export default function ClientProfileForm() {
   useEffect(() => {
     if (!isEdit) return;
     api(`/admin/clients/${id}`).then((d) => {
-      setForm({ ...empty(), ...d, password: '', login_prefix: '', is_active: d.user?.is_active ?? true });
-      setCurrentLoginEmail(d.user?.email || '');
+      const loginEmail = d.user?.email || '';
+      const suffix = `@${LOGIN_EMAIL_DOMAIN}`;
+      // Pre-fill with the existing prefix so the field reads as "this is what it is,
+      // edit to change" like every other field — a legacy login email predating this
+      // scheme (a different domain entirely) can't be split into a prefix, so that case
+      // is left blank with the full current email shown as a note instead.
+      const loginPrefix = loginEmail.toLowerCase().endsWith(suffix.toLowerCase())
+        ? loginEmail.slice(0, loginEmail.length - suffix.length)
+        : '';
+      setForm({ ...empty(), ...d, password: '', login_prefix: loginPrefix, is_active: d.user?.is_active ?? true });
+      setCurrentLoginEmail(loginEmail);
     }).catch((e) => setErr(e.message));
   }, [id, isEdit]);
 
@@ -487,8 +496,14 @@ export default function ClientProfileForm() {
                 </div>
                 {isEdit && (
                   <div style={{ fontSize: 12, color: 'var(--bp-muted)', marginTop: 6 }}>
-                    Current login email: <strong>{currentLoginEmail || '—'}</strong>. Leave the box above blank to
-                    keep it unchanged, or type a new prefix to replace it.
+                    {currentLoginEmail.toLowerCase().endsWith(`@${LOGIN_EMAIL_DOMAIN}`) ? (
+                      <>This is the client's current login email — edit the prefix above to change it.</>
+                    ) : (
+                      <>
+                        Current login email: <strong>{currentLoginEmail || '—'}</strong>. Type a prefix above to
+                        switch it to the new @{LOGIN_EMAIL_DOMAIN} format.
+                      </>
+                    )}
                   </div>
                 )}
               </Field>

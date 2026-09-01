@@ -42,7 +42,7 @@ const ReportsDashboard = lazy(() => import('./pages/billing/ReportsDashboard'));
 const EditRequestPage = lazy(() => import('./pages/portal/EditRequestPage'));
 const AmendmentsPage = lazy(() => import('./pages/portal/AmendmentsPage'));
 const ClientGstr2b = lazy(() => import('./pages/portal/ClientGstr2b'));
-const ClientGstDashboard = lazy(() => import('./pages/client/ClientGstDashboard'));
+const GstReturnsWorkspace = lazy(() => import('./pages/portal/GstReturnsWorkspace'));
 const GstFilingConfirmation = lazy(() => import('./pages/portal/GstFilingConfirmation'));
 
 /* ── Admin pages (lazy-loaded — only fetched when admin logs in) ── */
@@ -170,7 +170,7 @@ export default function App() {
           <Route path="billing/parties/new" element={<PartyForm />} />
           <Route path="billing/parties/:id/edit" element={<PartyForm />} />
           <Route path="gstr-2b" element={<GstComplianceGate><ClientGstr2b /></GstComplianceGate>} />
-          <Route path="gst-returns" element={<GstComplianceGate><ClientGstDashboard /></GstComplianceGate>} />
+          <Route path="gst-returns" element={<GstComplianceGate><GstReturnsWorkspace /></GstComplianceGate>} />
           <Route path="gst-filing" element={<GstComplianceGate><GstFilingConfirmation /></GstComplianceGate>} />
           <Route path="billing" element={<ClientBillingLayout />}>
             <Route index element={<BillingDashboard />} />

@@ -273,14 +273,42 @@ export default function InvoiceDetail() {
             type="button"
             className="bp-btn bp-btn-amber"
             disabled={busyAction === 'email'}
-            title="Email this document — sends a viewable link, not a PDF attachment"
+            title="Open your mail app with the PDF attached"
             onClick={async () => {
               setBusyAction('email'); setMsg(''); setActionErr('');
               try {
-                const r = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
-                setMsg(r.message || 'Email sent successfully.');
+                const r = await api(`/billing/documents/${doc.id}/pdf`);
+                const pdfUrl = r.url.startsWith('http') ? r.url : `${window.location.origin}${r.url}`;
+                const filename = `${doc.number}.pdf`;
+                let sharedAsFile = false;
+
+                // Web Share API (Level 2, files) — lets the OS share sheet hand the real
+                // PDF to whichever mail app the user picks (Gmail/Outlook/etc.), with the
+                // file genuinely attached in that app's own compose window. A mailto: link
+                // can never carry an attachment, so that's not an option here.
+                if (navigator.canShare) {
+                  try {
+                    const res = await fetch(pdfUrl);
+                    const blob = await res.blob();
+                    const file = new File([blob], filename, { type: 'application/pdf' });
+                    if (navigator.canShare({ files: [file] })) {
+                      await navigator.share({ files: [file], title: `${docTypeLabel(doc.type)} ${doc.number}` });
+                      sharedAsFile = true;
+                      setMsg('Shared the PDF file.');
+                    }
+                  } catch (shareErr) {
+                    if (shareErr?.name === 'AbortError') sharedAsFile = true; // user cancelled the share sheet
+                  }
+                }
+
+                if (!sharedAsFile) {
+                  // Desktop / unsupported browsers — no share sheet available, so fall back
+                  // to sending the email directly from the server (PDF attached there too).
+                  const er = await api(`/billing/documents/${doc.id}/email`, { method: 'POST', body: {} });
+                  setMsg(er.message || 'Email sent successfully.');
+                }
               } catch (e) {
-                setActionErr(e.message || 'Failed to send email.');
+                setActionErr(e.message || 'Failed to email document.');
               } finally {
                 setBusyAction('');
               }
@@ -298,16 +326,45 @@ export default function InvoiceDetail() {
               type="button"
               className="bp-btn bp-btn-green"
               disabled={busyAction === 'whatsapp'}
-              title="Share a link to this document via WhatsApp"
-              onClick={() => {
+              title="Share the PDF file via WhatsApp"
+              onClick={async () => {
                 setBusyAction('whatsapp'); setMsg(''); setActionErr('');
-                // Dynamic origin (not a hardcoded domain) so the shared link always points
-                // at wherever the app is actually running, for THIS document's share_token.
-                const shareLink = `${window.location.origin}/api/billing/share/${doc.share_token}`;
-                const waText = `${docTypeLabel(doc.type)} ${doc.number}: ${shareLink}`;
-                window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank', 'noreferrer');
-                setMsg('Opened WhatsApp with the document link.');
-                setBusyAction('');
+                try {
+                  const r = await api(`/billing/documents/${doc.id}/pdf`);
+                  const pdfUrl = r.url.startsWith('http') ? r.url : `${window.location.origin}${r.url}`;
+                  const filename = `${doc.number}.pdf`;
+                  let sharedAsFile = false;
+
+                  // Web Share API (Level 2, files) — the only way a browser can hand an
+                  // actual PDF file to WhatsApp from a website; wa.me links only support
+                  // pre-filled text, never a file attachment. Supported on most mobile
+                  // browsers, not on desktop — fall back to the link there.
+                  if (navigator.canShare) {
+                    try {
+                      const res = await fetch(pdfUrl);
+                      const blob = await res.blob();
+                      const file = new File([blob], filename, { type: 'application/pdf' });
+                      if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({ files: [file], title: `${docTypeLabel(doc.type)} ${doc.number}` });
+                        sharedAsFile = true;
+                        setMsg('Shared the PDF file.');
+                      }
+                    } catch (shareErr) {
+                      if (shareErr?.name === 'AbortError') sharedAsFile = true; // user cancelled the share sheet
+                    }
+                  }
+
+                  if (!sharedAsFile) {
+                    const shareLink = `${window.location.origin}/api/billing/share/${doc.share_token}`;
+                    const waText = `${docTypeLabel(doc.type)} ${doc.number}: ${shareLink}`;
+                    window.open(`https://wa.me/?text=${encodeURIComponent(waText)}`, '_blank', 'noreferrer');
+                    setMsg("Opened WhatsApp with the document link — this browser can't attach the PDF file directly.");
+                  }
+                } catch (e) {
+                  setActionErr(e.message || 'Failed to share document.');
+                } finally {
+                  setBusyAction('');
+                }
               }}
             >
               {busyAction === 'whatsapp' ? 'Sharing…' : (<><WhatsAppIcon /> WhatsApp</>)}

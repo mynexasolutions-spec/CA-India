@@ -142,6 +142,64 @@ every existing row to "subscribed" (unchanged behavior) with no separate SQL ste
 
 ---
 
+## ⬜ 2026-08-27 — GSTR-2B filing/reconciliation cadence per client
+
+**Migration**: `2026_08_27_120000_add_gstr2b_filing_frequency_to_client_profiles_table`
+
+**What changed**: Added `gstr2b_filing_frequency` (nullable string, `monthly`|`quarterly`) to
+`client_profiles`, alongside the existing `gst_filing_frequency` (GSTR-3B) and
+`gstr1_filing_frequency` columns. GSTR-2B has no filing action of its own — it's an
+auto-drafted GSTN statement — but the portal tracks its own display/reconciliation cadence per
+client so Admin → Edit Client shows Monthly/Quarterly consistently across GSTR-1/GSTR-2B/GSTR-3B,
+and so the GSTR-2B upload/reconciliation period picker (Admin + Client) offers the right period
+shape (`YYYY-MM` vs `YYYY-Qn`) for that client.
+
+**Why**: Follow-up to the GST Filing Requests auto-sync work — GSTR-2B's Tax Period picker was
+hardcoded to months only, wrong for a client whose GSTR-2B cadence is quarterly. (This migration
+was written as part of that same day's follow-up fixes but was missed from that entry's
+**Files touched** list below — the note there claiming "no new migration" for the GSTR-2B cadence
+fix was inaccurate; this is that migration.)
+
+**Behavior after this change**:
+- Defaults to `NULL` for every existing row, meaning "inherit `gst_filing_frequency`" (GSTR-3B's
+  cycle) — resolved in application code (`ClientProfileController::normalizeGstFields()` /
+  `BillingPolicy::gstr2bFrequency()`), same inheritance pattern as `gstr1_filing_frequency`.
+  No client's behavior changes on deploy until an admin explicitly sets it.
+- Composition dealers: forced to `NULL` (they don't file GSTR-2B/1/3B at all).
+- Admin → Edit Client now has a "GSTR-2B Filing Frequency" field; GSTR-2B upload (Admin) and
+  reconciliation (Client) period pickers now show Monthly or Quarterly periods based on this
+  resolved value.
+
+**Data backfill needed?** No. All existing rows stay `NULL` (inherit GSTR-3B's cadence, same as
+today) until an admin sets one explicitly.
+
+**Files touched**:
+- `backend/database/migrations/2026_08_27_120000_add_gstr2b_filing_frequency_to_client_profiles_table.php`
+- `backend/app/Models/ClientProfile.php` (`$fillable`)
+- `backend/app/Http/Controllers/Api/Admin/ClientProfileController.php` (validation, normalization, field list)
+- `backend/app/Services/Billing/BillingPolicy.php` (new `gstr2bFrequency()`)
+- `backend/app/Http/Controllers/Api/Admin/Gstr2bController.php` (`upload()` accepts `YYYY-Qn`, `deriveFinancialYear()` handles both shapes)
+- `src/pages/admin/ClientProfileForm.jsx` (new "GSTR-2B Filing Frequency" field)
+- `src/pages/admin/AdminClientGstr2b.jsx` / `src/pages/portal/ClientGstr2b.jsx` (period picker now Monthly or Quarterly)
+- `src/pages/billing/billingUtils.js` (`fyQuarterPeriodOptions()`, `periodLabel()` helpers)
+
+**Production checklist**:
+1. `git pull origin main`
+2. `cd backend && composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd`
+3. Back up `database.sqlite` (see step 2 in the file header)
+4. `php artisan migrate --force` — applies the migration; **no manual backfill SQL needed**
+5. `php artisan config:clear && php artisan route:clear && php artisan cache:clear`
+6. `cd .. && npm ci && npm run build`
+7. `sudo systemctl restart php8.4-fpm`
+8. Verify: Admin → Edit Client on any real client — "GSTR-2B Filing Frequency" field shows
+   (blank/inherit by default); GSTR-2B upload period picker still works exactly as before
+   (monthly, since `gst_filing_frequency` unchanged). Then set one demo client's GSTR-2B
+   frequency to "Quarterly" and confirm both Admin upload and Client reconciliation period
+   pickers switch to quarter options for that client.
+9. Flip this entry to ✅ with today's date once confirmed live
+
+---
+
 ## ✅ 2026-08-29 — GST Filing Requests now auto-sync to Client Portal → GST Returns
 
 **Migrations**:

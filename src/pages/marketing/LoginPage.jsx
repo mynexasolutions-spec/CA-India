@@ -113,7 +113,7 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState(() => (
     searchParams.get('timeout') === '1' ? 'Your session expired due to inactivity. Please sign in again.' : ''

@@ -189,6 +189,23 @@ class BillingPolicy
     }
 
     /**
+     * GSTR-3B's own filing cadence for this client — 'quarterly' for Composition dealers
+     * (always) or when gst_filing_frequency is 'quarterly', 'monthly' otherwise. Mirrors
+     * the inline $gstr3bQuarterly formula already duplicated in GstReturnController
+     * (index/nextDue/compliance), given here as one shared definition for the GSTR-3B
+     * reconciliation-gate feature (GstFilingController::periods()/assertReconciliationComplete())
+     * without touching GstReturnController's own working inline copies.
+     */
+    public static function gstr3bFrequency(ClientProfile $profile): string
+    {
+        if ($profile->dealer_type === 'composition') {
+            return 'quarterly';
+        }
+
+        return ($profile->gst_filing_frequency ?? 'monthly') === 'quarterly' ? 'quarterly' : 'monthly';
+    }
+
+    /**
      * GSTR-2B's display/reconciliation cadence for this client. GSTR-2B has no filing
      * action of its own — it mirrors GSTR-3B's cycle 1:1 by default
      * (gstr2b_filing_frequency falls back to gst_filing_frequency), and is always

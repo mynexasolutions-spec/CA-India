@@ -8,6 +8,8 @@ import ReportsSubNav from '../../pages/billing/ReportsSubNav';
 import { billingMode } from '../../pages/billing/billingProfile';
 import { buildFyOptions, currentFyLabel, currentFyRange, fyDateRange } from '../../pages/billing/billingUtils';
 import { CONTACT } from '../../data/nav';
+import '../../pages/billing/billing.css';
+import '../../pages/billing/admin-overview.css';
 
 function HomeIcon() {
   return (
@@ -90,16 +92,6 @@ const ClientPortalCtx = createContext(null);
 
 export function useClientPortal() {
   return useContext(ClientPortalCtx);
-}
-
-let portalStylesLoaded = false;
-function usePortalStyles() {
-  useEffect(() => {
-    if (portalStylesLoaded) return;
-    portalStylesLoaded = true;
-    import('../../pages/billing/billing.css');
-    import('../../pages/billing/admin-overview.css');
-  }, []);
 }
 
 const ADMIN_BILLING_NAV = [
@@ -496,7 +488,6 @@ function PortalFrame({
   brand, subtitle, title, userLabel, nav, loginPath, extraTopRight, footLinks = [],
   shellClassName = '', headerContent, rightContent, sidebarFoot,
 }) {
-  usePortalStyles();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
