@@ -143,6 +143,19 @@ function HashDocIcon() {
   );
 }
 
+function TruckDocIcon() {
+  return (
+    <svg width="34" height="34" viewBox="0 0 24 24">
+      <DocBase />
+      <circle cx="17.3" cy="17.3" r="5" fill="currentColor" stroke="#fff" strokeWidth="1.2" />
+      <rect x="14.3" y="16.2" width="3.4" height="2.1" fill="#fff" stroke="none" />
+      <rect x="17.7" y="17" width="1.5" height="1.3" fill="#fff" stroke="none" />
+      <circle cx="15.6" cy="18.7" r="0.55" fill="currentColor" stroke="none" />
+      <circle cx="18.3" cy="18.7" r="0.55" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function WorkflowIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -216,6 +229,7 @@ const documentTypes = [
   { icon: <MinusDocIcon />, title: 'Debit Note', text: 'Record additional charges and upward adjustments.' },
   { icon: <MinusDocIcon />, title: 'Credit Note', text: 'Record returns, discounts and downward adjustments.' },
   { icon: <HashDocIcon />, title: 'Quotation', text: 'Share professional quotations with your customers.' },
+  { icon: <TruckDocIcon />, title: 'Delivery Challan', text: 'Track goods movement with vehicle, transporter and e-way bill details.' },
 ];
 
 const automationItems = [

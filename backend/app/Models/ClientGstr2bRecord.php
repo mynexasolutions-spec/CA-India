@@ -7,9 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class ClientGstr2bRecord extends Model
 {
     protected $fillable = [
-        'client_profile_id', 'financial_year', 'tax_period',
+        'client_profile_id', 'financial_year', 'tax_period', 'no_bills',
         'file_path', 'file_name', 'file_type', 'file_size', 'uploaded_by',
     ];
+
+    protected function casts(): array
+    {
+        return ['no_bills' => 'boolean'];
+    }
 
     public function clientProfile()
     {

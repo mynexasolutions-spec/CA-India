@@ -399,6 +399,15 @@ class DocumentController extends Controller
             'lines.*.discount_percent' => 'nullable|numeric',
             'lines.*.discount_amount' => 'nullable|numeric',
             'lines.*.product_id' => 'nullable|integer',
+            // Delivery Challan spec — only meaningful when type = delivery_challan, but kept
+            // nullable/unconditional so other document types never trip this validation.
+            'reason_for_transportation' => 'nullable|in:job_work,repair,returnable_goods,branch_transfer,other',
+            'reason_for_transportation_other' => 'nullable|required_if:reason_for_transportation,other|string|max:200',
+            'vehicle_no' => 'nullable|string|max:20',
+            'transporter_name' => 'nullable|string|max:150',
+            'eway_bill_no' => 'nullable|string|max:30',
+            'receiver_name' => 'nullable|string|max:150',
+            'receiver_signature_datetime' => 'nullable|date',
         ];
 
         return $request->validate($rules);

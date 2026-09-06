@@ -21,6 +21,7 @@ const CREATE_OPTIONS = [
   { type: 'bill_of_supply', label: 'Bill of Supply', to: '/portal/billing/bill-of-supply/new' },
   { type: 'debit_note', label: 'Debit Note', to: '/portal/billing/debit-notes/new' },
   { type: 'credit_note', label: 'Credit Note', to: '/portal/billing/credit-notes/new' },
+  { type: 'delivery_challan', label: 'Delivery Challan', to: '/portal/billing/delivery-challan/new' },
 ];
 
 function PlusIcon() {

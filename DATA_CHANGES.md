@@ -301,3 +301,200 @@ period `2026-07`.)
 9. Flip this entry to ✅ with today's date once confirmed live
 
 ---
+
+## ⬜ 2026-09-06 — Branch (If any) field for Parties
+
+**Migration**: `2026_09_06_000000_add_branch_name_to_customers_table`
+
+**What changed**: Added `branch_name` (nullable string) to `customers`. The "Add New
+Company" (Parties) form now has an optional "Branch (If any)" field, and the party
+search/picker on document creation shows it next to the GSTIN when set (e.g.
+`27ABCDE1234Q1Z3 (Branch Name - Kalyan)`) — lets a user tell branches of the same company
+apart when picking a party.
+
+**Why**: Client-requested field, screenshot spec ("Add Branch (if any) under Parties Tab
+in New Company... should display while selecting Party").
+
+**Behavior after this change**: Defaults to `NULL` for every existing party — no visible
+change until a user fills it in on a party (new or edited). Nothing else reads or depends
+on this column yet.
+
+**Data backfill needed?** No — nullable, no default data required.
+
+**Files touched**:
+- `backend/database/migrations/2026_09_06_000000_add_branch_name_to_customers_table.php`
+- `backend/app/Models/Customer.php` (`$fillable`)
+- `backend/app/Http/Controllers/Api/Billing/MasterController.php` (validation)
+- `src/pages/billing/PartyForm.jsx` (new "Branch (If any)" field)
+- `src/pages/billing/PartySearchSelect.jsx` (shows branch name next to GSTIN in the picker)
+
+**Production checklist**:
+1. `git pull origin main`
+2. `cd backend && composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd`
+3. Back up `database.sqlite` first
+4. `php artisan migrate --force` — applies the migration; no manual backfill SQL needed
+5. `php artisan config:clear && php artisan route:clear && php artisan cache:clear`
+6. `cd .. && npm ci && npm run build`
+7. `sudo systemctl restart php8.4-fpm`
+8. Verify: Parties → Add New Company — "Branch (If any)" field saves correctly; on a
+   document's Party picker, a party with a branch name set shows it next to the GSTIN.
+9. Flip this entry to ✅ with today's date once confirmed live
+
+---
+
+## ⬜ 2026-09-06 — Delivery Challan document type
+
+**Migrations**:
+- `2026_09_06_000100_add_delivery_challan_fields_to_commercial_documents_table`
+- `2026_09_06_000200_add_delivery_challan_next_number_to_client_profiles`
+
+**What changed**: Added a brand-new "Delivery Challan" document type end-to-end — new
+columns on `commercial_documents` (`reason_for_transportation`,
+`reason_for_transportation_other`, `vehicle_no`, `transporter_name`, `eway_bill_no`,
+`receiver_name`, `receiver_signature_datetime`) and a dedicated
+`delivery_challan_next_number` counter on `client_profiles` (so its numbering never shares
+or skips the Tax Invoice sequence). Delivery Challan now appears in the "Create Document"
+dropdown (after Credit Note), the Billing Section tabs, has its own Create/Edit/List/Detail
+pages reusing the existing invoice-style form, prints on the PDF with a Transportation
+Details + Receiver Acknowledgement section, and is listed as a document type on the public
+marketing page.
+
+**Why**: Client spec — "Quotation Credit Note ke niche uske baad Delivery Challan bhi add
+kar dena", plus the extra fields (Reason for Transportation, Vehicle No., Transporter Name,
+E-Way Bill No., Receiver Name, Receiver Signature & Date/Time).
+
+**Behavior after this change**: Purely additive — every existing document type/row is
+unaffected. Also fixed two real pre-existing bugs found while building this: (1)
+`BillingPolicy::allowedTypes()` never actually included `'delivery_challan'` for any
+dealer type, so creating one would have 422'd even after this deploy without that fix;
+(2) delivery challans would otherwise have silently shared the Tax Invoice number counter.
+Both are already fixed in the application code that ships with this deploy — no separate
+action needed for those two.
+
+**Data backfill needed?** No — all new columns are nullable, and the new counter defaults
+to `1`.
+
+**Files touched** (highlights — this touched many files; see git history for the full list):
+- Both migrations above
+- `backend/app/Models/CommercialDocument.php`, `ClientProfile.php` (`$fillable`, casts)
+- `backend/app/Services/Billing/BillingPolicy.php` (`allowedTypes()` fix)
+- `backend/app/Services/Billing/InvoiceService.php` (numbering, docPayload, duplicate)
+- `backend/app/Http/Controllers/Api/Billing/DocumentController.php` (validation)
+- `backend/resources/views/pdf/invoice.blade.php` (Transportation Details / Receiver
+  Acknowledgement sections)
+- `src/App.jsx` (routes), `src/pages/billing/InvoiceForm.jsx`, `InvoiceList.jsx`,
+  `InvoiceDetail.jsx`, `BillingDashboard.jsx`, `BillingSubNav.jsx`, `billingUtils.js`,
+  `billingProfile.js`
+- `src/pages/marketing/BillingManagement.jsx` (new tile + icon)
+
+**Production checklist**:
+1. `git pull origin main`
+2. `cd backend && composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd`
+3. Back up `database.sqlite` first
+4. `php artisan migrate --force` — applies both migrations; no manual backfill SQL needed
+5. `php artisan config:clear && php artisan route:clear && php artisan cache:clear`
+6. `cd .. && npm ci && npm run build`
+7. `sudo systemctl restart php8.4-fpm`
+8. Verify: as a client, Create Document → Delivery Challan appears after Credit Note;
+   create one with all the new fields filled in, confirm it saves, appears in the Billing
+   Section's Delivery Challan tab, and its PDF shows Transportation Details + Receiver
+   Acknowledgement correctly. Also confirm its document number is its own independent
+   sequence (e.g. `DC-01`), not skipping/sharing the Tax Invoice numbering.
+9. Flip this entry to ✅ with today's date once confirmed live
+
+---
+
+## ⬜ 2026-09-06 — GSTR-2B "No Bills" status (Admin) for the GSTR-3B reconciliation gate
+
+**Migration**: `2026_09_06_000300_add_no_bills_to_client_gstr2b_records_table`
+
+**What changed**: Added `no_bills` (boolean, default `false`) to `client_gstr2b_records`,
+and made `file_path` on that table nullable. Admin → Client → GSTR-2B now has a "Mark
+'No Bills in GSTR-2B'" button (per period) as an alternative to uploading a file — it
+creates/updates that period's record with no file attached, which satisfies the existing
+reconciliation check (`Gstr2bReconciliationService::isMonthReconciled()`) with zero
+invoices, so the client can raise their GSTR-3B filing request directly for that period
+without a real GSTR-2B statement.
+
+**Why**: Client spec — "If GSTR-2B contains bills, remain Reconciliation Pending... In the
+Admin Portal, provide a simple status option: GSTR-2B Bills Available / No Bills in
+GSTR-2B... period-wise."
+
+**Behavior after this change**: Defaults to `false` for every existing record — no
+existing upload's behavior changes. Only newly-created "No Bills" records (via the new
+button) are affected.
+
+**Data backfill needed?** No — additive, default-`false` column.
+
+**Files touched**:
+- `backend/database/migrations/2026_09_06_000300_add_no_bills_to_client_gstr2b_records_table.php`
+- `backend/app/Models/ClientGstr2bRecord.php` (`$fillable`, cast)
+- `backend/app/Http/Controllers/Api/Admin/Gstr2bController.php` (new `markNoBills()`;
+  `upload()` and `destroy()` now null-guard `file_path`)
+- `backend/routes/api.php` (`POST /admin/clients/{id}/gstr2b/no-bills`)
+- `src/pages/admin/AdminClientGstr2b.jsx` (new button + "No Bills in GSTR-2B" badge in the
+  Uploaded Statements table)
+
+**Production checklist**:
+1. `git pull origin main`
+2. `cd backend && composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd`
+3. Back up `database.sqlite` first
+4. `php artisan migrate --force` — applies the migration; no manual backfill SQL needed
+5. `php artisan config:clear && php artisan route:clear && php artisan cache:clear`
+6. `cd .. && npm ci && npm run build`
+7. `sudo systemctl restart php8.4-fpm`
+8. Verify: Admin → a client → GSTR-2B → pick a period with no upload yet → "Mark 'No Bills
+   in GSTR-2B'" → confirm it shows the badge in the table. Then, as that client, confirm
+   raising a GSTR-3B filing request for that exact period no longer shows "Reconciliation
+   Pending" and can be submitted directly.
+9. Flip this entry to ✅ with today's date once confirmed live
+
+---
+
+## ⬜ 2026-09-06 — HSN/SAC master code list import (21,935 HSN + 681 SAC codes)
+
+**Migration**: None — `hsn_sac_codes` table already existed
+(`2026_07_25_090000_create_hsn_sac_codes_table`). This is a pure data import, not a schema
+change.
+
+**What changed**: Imported the full official government HSN/SAC master list into
+`hsn_sac_codes`. Before this, the table only had 23 HSN + 10 SAC demo/seed codes — real
+invoices needing any HSN/SAC code outside that tiny list would find nothing in the HSN/SAC
+search (Document creation → HSN/SAC field). Imported from a client-supplied file,
+`HSN_SAC (1).xlsx` (sheets `HSN_MSTR` / `SAC_MSTR`, columns A=code/B=description — exactly
+the format the existing `php artisan billing:import-hsn-sac` command expects). This session
+had no PHP/artisan available locally, so the import was done straight into the local dev
+`database.sqlite` via a one-off Python script instead — same upsert semantics as that command:
+unique on `(type, code)`, only inserts new codes / updates matched ones, never touches or
+deletes any other row.
+
+**Why**: User reported "some code missing"; checked the local DB and found only 33 total
+codes against 22,616 in the official government master.
+
+**Behavior after this change**: No application code changed. The existing HSN/SAC search
+endpoint (`Admin\MasterConfigController::hsnSacList`, used by `HsnSacSelect.jsx`) now has
+full coverage automatically — nothing to wire up. This only *adds/updates* `hsn_sac_codes`
+rows; it doesn't touch any client, party, or document data.
+
+**Data backfill needed?** Yes — **this entire entry is the backfill.** Production's
+`hsn_sac_codes` table almost certainly has the same small ~33-row seed set and needs the
+identical import run against it.
+
+**Files touched**: None — data-only, no code changed. Source file: `HSN_SAC (1).xlsx`
+(client-supplied; not committed to the repo — get it from the user again, or reuse a saved
+copy, before deploying this entry).
+
+**Production checklist**:
+1. Get `HSN_SAC (1).xlsx` onto the production server (e.g. `scp` it up).
+2. SSH in, `cd /var/www/caindia/backend`
+3. Back up `database.sqlite` first (per this file's header instructions) — always back up
+   before any DB write, even an additive one.
+4. `php artisan billing:import-hsn-sac "/path/to/HSN_SAC (1).xlsx"` — prints codes imported
+   and final HSN/SAC totals (expect ~21,935 HSN / ~681 SAC).
+5. No `migrate`, no `composer install`, no frontend build, no service restart needed — this
+   only writes table rows, nothing schema- or code-related.
+6. Verify: open any Document create form → HSN/SAC field → search for a code that previously
+   wasn't found (e.g. full 8-digit HSN `01011010`) and confirm it now appears.
+7. Flip this entry to ✅ with today's date once confirmed live.
+
+---

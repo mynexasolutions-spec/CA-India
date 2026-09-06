@@ -103,7 +103,7 @@ class GstLiabilityService
     {
         $turnover = (float) CommercialDocument::where('client_profile_id', $clientProfileId)
             ->where('type', 'bill_of_supply')
-            ->where('status', 'issued')
+            ->whereIn('status', ['issued', 'partial', 'paid'])
             ->whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
             ->sum('taxable_amount');

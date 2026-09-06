@@ -30,8 +30,9 @@ use Carbon\Carbon;
  */
 class GstFilingController extends Controller
 {
-    /** Start/end date bounds (YYYY-MM-DD) for a filing period — either a "YYYY-MM"
-     * month or a "YYYY-Qn" Indian-FY quarter (Q1 = Apr-Jun … Q4 = Jan-Mar).
+    /** Start/end date bounds (YYYY-MM-DD) for a filing period — a "YYYY-MM" month, a
+     * "YYYY-Qn" Indian-FY quarter (Q1 = Apr-Jun … Q4 = Jan-Mar), or a bare "YYYY" FY
+     * start year (GSTR-4's Annual period: Apr 1 that year -> Mar 31 the next).
      * whereBetween on real date bounds works identically on MySQL and SQLite, unlike a
      * MySQL-only DATE_FORMAT() comparison. */
     private static function periodBounds(string $period): array
@@ -48,6 +49,12 @@ class GstFilingController extends Controller
             return $ranges[(int) $m[2]];
         }
 
+        if (preg_match('/^(\d{4})$/', $period, $m)) {
+            $year = (int) $m[1];
+
+            return [$year.'-04-01', ($year + 1).'-03-31'];
+        }
+
         $start = Carbon::createFromFormat('Y-m-d', $period.'-01')->startOfMonth();
 
         return [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()];
@@ -60,7 +67,10 @@ class GstFilingController extends Controller
     private static function assertPeriodMatchesFrequency(ClientProfile $profile, string $period, string $returnType = 'GSTR-1'): void
     {
         if ($returnType === 'GSTR-3B') {
-            $quarterly = BillingPolicy::gstr3bFrequency($profile) === 'quarterly';
+            // GST Filing Return Type & Period Logic spec: GSTR-3B's period shape follows
+            // the client's GSTR-2B frequency (not a separate gstr3bFrequency reading) —
+            // GSTR-2B Monthly -> GSTR-3B Monthly, GSTR-2B Quarterly -> GSTR-3B Quarterly.
+            $quarterly = BillingPolicy::gstr2bFrequency($profile) === 'quarterly';
             $isQuarterFormat = (bool) preg_match('/^\d{4}-Q[1-4]$/', $period);
             $isMonthFormat = (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period);
 
@@ -70,12 +80,27 @@ class GstFilingController extends Controller
             return;
         }
 
-        $quarterly = BillingPolicy::gstr1Frequency($profile) === 'quarterly';
-        $isQuarterFormat = (bool) preg_match('/^\d{4}-Q[1-4]$/', $period);
-        $isMonthFormat = (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period);
+        // Composition — CMP-08: no GSTR-2B applicability, always quarterly, no dependence
+        // on any monthly/quarterly profile setting.
+        if ($returnType === 'CMP-08') {
+            abort_unless((bool) preg_match('/^\d{4}-Q[1-4]$/', $period), 422, 'CMP-08 is filed quarterly — select a quarter.');
 
-        abort_if($quarterly && ! $isQuarterFormat, 422, 'Your GSTR-1 is filed quarterly (QRMP) — select a quarter, not a month.');
-        abort_if(! $quarterly && ! $isMonthFormat, 422, 'Your GSTR-1 is filed monthly — select a month, not a quarter.');
+            return;
+        }
+
+        // Composition — GSTR-4: Annual, one period per Financial Year (a bare "YYYY"
+        // FY start year), never a month or quarter.
+        if ($returnType === 'GSTR-4') {
+            abort_unless((bool) preg_match('/^\d{4}$/', $period), 422, 'GSTR-4 is filed annually — select a financial year.');
+
+            return;
+        }
+
+        // GST Filing Return Type & Period Logic spec: GSTR-1's Filing Period is always
+        // Monthly — even a QRMP (quarterly GSTR-3B) dealer still tracks GSTR-1 monthly
+        // via IFF, so gstr1_filing_frequency is no longer consulted here.
+        $isMonthFormat = (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period);
+        abort_if(! $isMonthFormat, 422, 'GSTR-1 is filed monthly — select a month, not a quarter.');
     }
 
     /** GSTR-3B mandatory reconciliation gate (client-portal GST Returns spec §6) — a
@@ -100,7 +125,7 @@ class GstFilingController extends Controller
         $request->validate([
             'financial_year' => 'required|string',
             'filing_period' => 'required|string', // "YYYY-MM" or "YYYY-Qn" — see assertPeriodMatchesFrequency()
-            'return_type' => 'required|string|in:GSTR-1,GSTR-3B',
+            'return_type' => 'required|string|in:GSTR-1,GSTR-3B,CMP-08,GSTR-4',
         ]);
 
         $profile = $request->user()->clientProfile;
@@ -124,7 +149,7 @@ class GstFilingController extends Controller
         // created in, not the period implied by its back-dated Document Date.
         $bills = CommercialDocument::where('client_profile_id', $clientProfileId)
             ->whereIn('type', $types)
-            ->whereIn('status', ['issued', 'paid'])
+            ->whereIn('status', ['issued', 'paid', 'partial'])
             ->whereDate('created_at', '>=', $periodStart)
             ->whereDate('created_at', '<=', $periodEnd)
             ->get();
@@ -164,7 +189,7 @@ class GstFilingController extends Controller
         $request->validate([
             'financial_year' => 'required|string',
             'filing_period' => 'required|string', // "YYYY-MM" or "YYYY-Qn" — see assertPeriodMatchesFrequency()
-            'return_type' => 'required|string|in:GSTR-1,GSTR-3B',
+            'return_type' => 'required|string|in:GSTR-1,GSTR-3B,CMP-08,GSTR-4',
             'client_declaration' => 'required|accepted',
         ]);
 
@@ -173,9 +198,12 @@ class GstFilingController extends Controller
         self::assertPeriodMatchesFrequency($profile, $request->filing_period, $request->return_type);
         self::assertReconciliationComplete($clientProfileId, $request->return_type, $request->filing_period);
 
-        // Check if there's already an active request for this period
+        // Check if there's already an active request for this period + return type — scoped
+        // to return_type too, since GSTR-1 and GSTR-3B (or CMP-08 and GSTR-3B's own quarter
+        // periods) can share the exact same period string without being the same request.
         $existing = GstFilingRequest::where('client_profile_id', $clientProfileId)
             ->where('filing_period', $request->filing_period)
+            ->where('return_type', $request->return_type)
             ->whereNotIn('status', ['Correction Required']) // Allow new one if old was correction required? Or just block if Pending/Approved
             ->first();
             
@@ -192,7 +220,7 @@ class GstFilingController extends Controller
         // created in, not the period implied by its back-dated Document Date.
         $bills = CommercialDocument::where('client_profile_id', $clientProfileId)
             ->whereIn('type', $types)
-            ->whereIn('status', ['issued', 'paid'])
+            ->whereIn('status', ['issued', 'paid', 'partial'])
             ->whereDate('created_at', '>=', $periodStart)
             ->whereDate('created_at', '<=', $periodEnd)
             ->get();
@@ -264,7 +292,7 @@ class GstFilingController extends Controller
     {
         $request->validate([
             'financial_year' => 'required|string',
-            'return_type' => 'required|string|in:GSTR-1,GSTR-3B',
+            'return_type' => 'required|string|in:GSTR-1,GSTR-3B,CMP-08,GSTR-4',
         ]);
 
         $profile = $request->user()->clientProfile;
@@ -274,13 +302,20 @@ class GstFilingController extends Controller
         abort_unless(preg_match('/^(\d{4})-/', $request->financial_year, $m), 422, 'Invalid financial_year.');
         $startYear = (int) $m[1];
 
-        $gstr3bQuarterly = BillingPolicy::gstr3bFrequency($profile) === 'quarterly';
-        $quarterly = $returnType === 'GSTR-3B'
-            ? $gstr3bQuarterly
-            : BillingPolicy::gstr1Frequency($profile) === 'quarterly';
-        // GSTR-1 tracked monthly via IFF while the client's overall (GSTR-3B) cadence is
-        // still quarterly — same QRMP due-date distinction as GstReturnController::buildPeriods().
-        $qrmpMonthlyGstr1 = $returnType === 'GSTR-1' && ! $quarterly && $gstr3bQuarterly;
+        // GST Filing Return Type & Period Logic spec: GSTR-3B's cadence follows the
+        // client's GSTR-2B frequency; GSTR-1 is always Monthly (tracked via IFF under
+        // QRMP), so it never becomes quarterly here regardless of gstr1_filing_frequency.
+        // CMP-08 is always Quarterly regardless of any profile setting (no GSTR-2B
+        // applicability at all); GSTR-4 is Annual — periodGrid() ignores $quarterly for it.
+        $gstr2bQuarterly = BillingPolicy::gstr2bFrequency($profile) === 'quarterly';
+        $quarterly = match ($returnType) {
+            'GSTR-3B' => $gstr2bQuarterly,
+            'CMP-08' => true,
+            default => false,
+        };
+        // GSTR-1 tracked monthly via IFF while the client's overall (GSTR-2B/3B) cadence
+        // is quarterly — same QRMP due-date distinction as GstReturnController::buildPeriods().
+        $qrmpMonthlyGstr1 = $returnType === 'GSTR-1' && $gstr2bQuarterly;
 
         $grid = Gstr2bReconciliationService::periodGrid($returnType, $quarterly, $startYear, $qrmpMonthlyGstr1);
 
@@ -323,7 +358,7 @@ class GstFilingController extends Controller
             'financial_year' => $request->financial_year,
             'return_type' => $returnType,
             'quarterly' => $quarterly,
-            'summary' => self::periodsSummary($profile, $returnType, $quarterly, $gstr3bQuarterly, $existingRequests, $periods),
+            'summary' => self::periodsSummary($profile, $returnType, $quarterly, $gstr2bQuarterly, $existingRequests, $periods),
             'periods' => $periods,
         ]);
     }
@@ -333,16 +368,16 @@ class GstFilingController extends Controller
      * rather than reusing GstReturnController::index() (whose "next_due"/frequency
      * label are combined across GSTR-1+GSTR-3B, not split per tab as the spec's two
      * reference screenshots require), again to avoid touching that controller. */
-    private static function periodsSummary(ClientProfile $profile, string $returnType, bool $quarterly, bool $gstr3bQuarterly, $existingRequests, array $periods): array
+    private static function periodsSummary(ClientProfile $profile, string $returnType, bool $quarterly, bool $gstr2bQuarterly, $existingRequests, array $periods): array
     {
-        if ($returnType === 'GSTR-3B') {
-            $frequencyLabel = $quarterly ? 'Quarterly' : 'Monthly';
-        } else {
-            // Same formula as GstReturnController::index()'s filing_frequency_label —
-            // GSTR-1's own cycle, "Monthly (QRMP)" when tracked monthly via IFF while
-            // the overall (GSTR-3B) cadence is quarterly.
-            $frequencyLabel = $quarterly ? 'Quarterly' : ($gstr3bQuarterly ? 'Monthly (QRMP)' : 'Monthly');
-        }
+        $frequencyLabel = match ($returnType) {
+            'GSTR-3B' => $quarterly ? 'Quarterly' : 'Monthly',
+            'CMP-08' => 'Quarterly',
+            'GSTR-4' => 'Annual',
+            // GSTR-1 is always Monthly — "Monthly (QRMP)" only changes the label when
+            // tracked via IFF while the overall (GSTR-2B/3B) cadence is quarterly.
+            default => $gstr2bQuarterly ? 'Monthly (QRMP)' : 'Monthly',
+        };
 
         $lastFiledRequest = $existingRequests->where('status', 'GST Filed')
             ->sortByDesc(fn ($r) => $r->filing_date ?? $r->filing_period)

@@ -14,6 +14,8 @@ class CommercialDocument extends Model
         'tax_deduction_type', 'tds_tcs_section_id', 'tds_tcs_rate', 'tds_tcs_amount',
         'status', 'cancellation_reason', 'cancelled_at', 'edit_allowed', 'issued_at', 'notes', 'terms',
         'payment_terms', 'currency', 'pdf_path', 'share_token',
+        'reason_for_transportation', 'reason_for_transportation_other', 'vehicle_no',
+        'transporter_name', 'eway_bill_no', 'receiver_name', 'receiver_signature_datetime',
     ];
 
     protected function casts(): array
@@ -36,6 +38,7 @@ class CommercialDocument extends Model
             'grand_total' => 'decimal:2',
             'tds_tcs_rate' => 'decimal:2',
             'tds_tcs_amount' => 'decimal:2',
+            'receiver_signature_datetime' => 'datetime',
         ];
     }
 

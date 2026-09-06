@@ -12,11 +12,13 @@ const GST_LINKS = [
   { to: '/portal/billing/debit-notes', label: 'Debit Notes', type: 'debit_note' },
   { to: '/portal/billing/credit-notes', label: 'Credit Notes', type: 'credit_note' },
   { to: '/portal/billing/quotation', label: 'Quotations', type: 'quotation' },
+  { to: '/portal/billing/delivery-challan', label: 'Delivery Challan', type: 'delivery_challan' },
 ];
 
 const RETAIL_LINKS = [
   { to: '/portal/billing', label: 'All Bills', end: true, type: null },
   { to: '/portal/billing/invoices', label: 'Invoices', type: 'tax_invoice' },
+  { to: '/portal/billing/delivery-challan', label: 'Delivery Challan', type: 'delivery_challan' },
 ];
 
 export default function BillingSubNav() {

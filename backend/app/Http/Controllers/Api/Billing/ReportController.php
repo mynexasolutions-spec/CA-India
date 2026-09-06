@@ -14,6 +14,12 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    // Mark Paid/Unpaid is a payment-status change only — it must never remove a document
+    // from GST Summary, HSN/SAC Summary, Party-wise Details, or Sales reports. All three
+    // "issued family" statuses count as live, finalized documents; only draft/cancelled
+    // are excluded. Matches GstLiabilityService::calculate()'s status filter.
+    private const ISSUED_STATUSES = ['issued', 'partial', 'paid'];
+
     public function __construct(private readonly GstLiabilityService $liabilityService) {}
 
     private function profileId(Request $request): int
@@ -191,7 +197,7 @@ class ReportController extends Controller
             ->whereDate('created_at', '<=', $to);
 
         return match ($type) {
-            'sales_register', 'sales_summary' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
+            'sales_register', 'sales_summary' => (clone $base)->where('type', 'tax_invoice')->whereIn('status', self::ISSUED_STATUSES)
                 ->with('customer:id,name')->orderBy('created_at')->get(),
             'invoice_register', 'document_register' => (clone $base)->with('customer:id,name')->orderBy('created_at')->get(),
             'gst_summary' => $this->gstSummaryMatrix($base, $pid),
@@ -205,7 +211,7 @@ class ReportController extends Controller
                 ->whereDate('d.created_at', '>=', $from)
                 ->whereDate('d.created_at', '<=', $to)
                 ->whereIn('d.type', ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'])
-                ->where('d.status', 'issued')
+                ->whereIn('d.status', self::ISSUED_STATUSES)
                 ->select(
                     'li.hsn_sac',
                     DB::raw('MAX(li.description) as description'),
@@ -222,7 +228,7 @@ class ReportController extends Controller
             // per-customer taxable/total sums net them out instead of adding them on top.
             'party_wise', 'customer_wise', 'party_wise_sales' => (clone $base)
                 ->whereIn('type', ['tax_invoice', 'bill_of_supply', 'debit_note', 'credit_note'])
-                ->where('status', 'issued')
+                ->whereIn('status', self::ISSUED_STATUSES)
                 ->select(
                     'customer_id',
                     DB::raw('COUNT(*) as invoices'),
@@ -230,7 +236,7 @@ class ReportController extends Controller
                     DB::raw("SUM(CASE WHEN type = 'credit_note' THEN -COALESCE(NULLIF(grand_total,0), total_amount) ELSE COALESCE(NULLIF(grand_total,0), total_amount) END) as total")
                 )
                 ->groupBy('customer_id')->with('customer:id,name')->get(),
-            'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->where('status', 'issued')
+            'monthly_sales' => (clone $base)->where('type', 'tax_invoice')->whereIn('status', self::ISSUED_STATUSES)
                 ->selectRaw(BillingPolicy::monthGroupExpr('created_at').' as month, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total')
                 ->groupBy('month')->orderBy('month')->get(),
             // A Debit Note adds to what a party owes; a Credit Note reduces it — both now
@@ -271,7 +277,7 @@ class ReportController extends Controller
     private function gstSummaryMatrix($base, int $pid): array
     {
         $bucket = function (string $type) use ($base): array {
-            $scope = (clone $base)->where('type', $type)->where('status', 'issued');
+            $scope = (clone $base)->where('type', $type)->whereIn('status', self::ISSUED_STATUSES);
 
             return [
                 'taxable_value' => (float) (clone $scope)->sum('taxable_amount'),

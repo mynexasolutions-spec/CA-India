@@ -47,7 +47,9 @@ class BillingPolicy
             default => ['tax_invoice', 'credit_note', 'debit_note', 'quotation'],
         };
 
-        return array_values(array_unique([...$base, 'amendment']));
+        // Delivery Challan is a goods-movement document, not a GST supply document — every
+        // dealer type (including non-GST retail) can raise one, unlike the other types above.
+        return array_values(array_unique([...$base, 'amendment', 'delivery_challan']));
     }
 
     public static function assertDocumentType(ClientProfile $profile, string $type): void
@@ -320,5 +322,15 @@ class BillingPolicy
         return DB::connection()->getDriverName() === 'sqlite'
             ? "strftime('%Y-%m', {$column})"
             : "DATE_FORMAT({$column}, '%Y-%m')";
+    }
+
+    /** Same driver-agnostic approach as monthGroupExpr() — MySQL's YEAR() doesn't exist
+     * on SQLite (production runs SQLite, see database.sqlite), so a raw YEAR(column) in a
+     * selectRaw()/groupBy() throws "no such function: YEAR" there. */
+    public static function yearGroupExpr(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('%Y', {$column})"
+            : "YEAR({$column})";
     }
 }

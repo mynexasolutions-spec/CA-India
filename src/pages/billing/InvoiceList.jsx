@@ -60,6 +60,9 @@ function buildActions(d, { onConvert, onDuplicate, onSend, onMarkPaid, onCancel 
   if (d.type === 'credit_note') {
     return [view, downloadPdf, editOrRequest, cancel];
   }
+  if (d.type === 'delivery_challan') {
+    return [view, downloadPdf, editOrRequest, duplicate, send, cancel];
+  }
   // tax_invoice / amendment / default
   return [view, downloadPdf, editOrRequest, duplicate, send, markPaid, cancel];
 }

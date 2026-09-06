@@ -186,6 +186,13 @@ class InvoiceService
             'terms' => $source->terms,
             'status' => 'draft',
             'lines' => $lines,
+            'reason_for_transportation' => $source->reason_for_transportation,
+            'reason_for_transportation_other' => $source->reason_for_transportation_other,
+            'vehicle_no' => $source->vehicle_no,
+            'transporter_name' => $source->transporter_name,
+            'eway_bill_no' => $source->eway_bill_no,
+            'receiver_name' => $source->receiver_name,
+            'receiver_signature_datetime' => $source->receiver_signature_datetime,
         ]);
     }
 
@@ -196,6 +203,94 @@ class InvoiceService
         abort_unless(! $doc->converted_document_id, 422, 'Converted quotations cannot be deleted.');
         $doc->lineItems()->delete();
         $doc->delete();
+    }
+
+    /**
+     * Admin-only hard delete of ANY document type — unlike the client-side cancel(),
+     * which only ever changes status and keeps the document forever (by design, for GST
+     * audit trail integrity). This exists so an admin can clean up demo/test documents
+     * created while showing a prospective client the product, without having to delete
+     * the entire client company just to remove a few sample bills.
+     *
+     * Deliberately more cautious than destroyQuotation() above: refuses to delete a
+     * document that anything else still points to, rather than trying to null/repair
+     * those references — a document with a Credit/Debit Note or Amendment against it, or
+     * one already attached to a submitted GST Filing Request, should not be silently
+     * deletable even by an admin.
+     */
+    public function adminDelete(CommercialDocument $doc): void
+    {
+        abort_if(
+            CommercialDocument::where('reference_document_id', $doc->id)->exists(),
+            422,
+            'This document has a Credit Note, Debit Note, or Amendment issued against it — delete those first.'
+        );
+        abort_if(
+            DB::table('gst_filing_request_document')->where('commercial_document_id', $doc->id)->exists(),
+            422,
+            'This document is attached to a GST Filing Request and cannot be deleted.'
+        );
+
+        DB::transaction(function () use ($doc) {
+            // A quotation this doc was converted from (or that was converted into this
+            // doc, for the quotation's own converted_document_id) would otherwise be left
+            // pointing at a row that no longer exists.
+            CommercialDocument::where('converted_document_id', $doc->id)->update(['converted_document_id' => null]);
+
+            $doc->lineItems()->delete();
+            if (DB::getSchemaBuilder()->hasTable('document_edit_requests')) {
+                DB::table('document_edit_requests')->where('commercial_document_id', $doc->id)->delete();
+            }
+            if ($doc->pdf_path && Storage::disk('public')->exists($doc->pdf_path)) {
+                Storage::disk('public')->delete($doc->pdf_path);
+            }
+            $doc->delete();
+        });
+    }
+
+    /**
+     * Admin — Full Billing Access & Control spec: an admin can change any document's
+     * Number, Date, or Status whenever required, bypassing the GST-period lock that
+     * governs the client's own updateDraft(). Moving status to 'draft' clears the
+     * cancellation/issue markers so the document behaves like a fresh draft the client
+     * can edit or recreate through the normal client-side flow. Line items/amounts are
+     * left untouched — this is a metadata correction, not a re-calculation.
+     */
+    public function adminUpdate(CommercialDocument $doc, array $data): CommercialDocument
+    {
+        return DB::transaction(function () use ($doc, $data) {
+            $payload = [];
+
+            if (! empty($data['number']) && $data['number'] !== $doc->number) {
+                BillingPolicy::assertUniqueNumber($doc->clientProfile, $data['number'], $doc->id);
+                $payload['number'] = $data['number'];
+            }
+
+            if (! empty($data['document_date'])) {
+                $payload['document_date'] = $data['document_date'];
+            }
+
+            if (! empty($data['status']) && $data['status'] !== $doc->status) {
+                $payload['status'] = $data['status'];
+                if ($data['status'] === 'draft') {
+                    $payload['cancellation_reason'] = null;
+                    $payload['cancelled_at'] = null;
+                    $payload['edit_allowed'] = false;
+                    $payload['issued_at'] = null;
+                } elseif ($data['status'] === 'cancelled') {
+                    $payload['cancelled_at'] = $doc->cancelled_at ?: now();
+                    $payload['cancellation_reason'] = $doc->cancellation_reason ?: 'Reverted by admin.';
+                } elseif (in_array($data['status'], ['issued', 'paid', 'partial'], true) && ! $doc->issued_at) {
+                    $payload['issued_at'] = now();
+                }
+            }
+
+            if ($payload) {
+                $doc->update($payload);
+            }
+
+            return $doc->fresh(['lineItems', 'customer', 'clientProfile', 'referenceDocument', 'tdsTcsSection']);
+        });
     }
 
     /**
@@ -301,6 +396,7 @@ class InvoiceService
             'bill_of_supply' => 'BOS',
             'quotation' => 'QT',
             'amendment' => 'AMD',
+            'delivery_challan' => 'DC',
             default => strtoupper(substr($type, 0, 3)),
         };
     }
@@ -372,6 +468,7 @@ class InvoiceService
             'debit_note' => 'debit_note_next_number',
             'quotation' => 'quotation_next_number',
             'amendment' => 'amendment_next_number',
+            'delivery_challan' => 'delivery_challan_next_number',
             default => 'invoice_next_number', // tax_invoice and fallbacks
         };
     }
@@ -471,6 +568,13 @@ class InvoiceService
             'payment_terms' => $data['payment_terms'] ?? null,
             'currency' => $data['currency'] ?? 'INR',
             'share_token' => $data['share_token'] ?? Str::random(40),
+            'reason_for_transportation' => $data['reason_for_transportation'] ?? null,
+            'reason_for_transportation_other' => $data['reason_for_transportation_other'] ?? null,
+            'vehicle_no' => $data['vehicle_no'] ?? null,
+            'transporter_name' => $data['transporter_name'] ?? null,
+            'eway_bill_no' => $data['eway_bill_no'] ?? null,
+            'receiver_name' => $data['receiver_name'] ?? null,
+            'receiver_signature_datetime' => $data['receiver_signature_datetime'] ?? null,
         ];
     }
 

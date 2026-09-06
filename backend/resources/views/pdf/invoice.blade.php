@@ -50,28 +50,31 @@ td, th { vertical-align: top; }
 .meta-text { color: #475569; font-size: 9.5px; line-height: 1.4; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
+.doc-title-wrap { text-align: center; margin: 0 0 8px; }
 .doc-title {
   display: inline-block;
   background: #1e40af;
   color: #ffffff;
-  font-size: 17px;
+  font-size: 11.5px;
   font-weight: bold;
-  margin: 0 0 8px;
   letter-spacing: 1px;
   text-transform: uppercase;
   text-decoration: none;
   text-align: center;
-  padding: 7px 18px;
-  border-radius: 8px;
+  padding: 5px 16px;
+  border-radius: 999px;
 }
 .inv-meta { width: 100%; }
-.inv-meta td { padding: 2.5px 0; font-size: 10px; }
-.inv-meta .lab { width: 104px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; }
+.inv-meta td { padding: 2.5px 0; font-size: 10px; vertical-align: middle; }
+.inv-meta .icon-cell { width: 16px; }
+.inv-meta .icon-cell img { width: 11px; height: 11px; display: block; }
+.inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 4px; }
 .inv-meta .colon { width: 10px; color: #334155; font-weight: bold; text-align: center; }
 .inv-meta .val { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
 .inv-meta .val-plain { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
 
-.hdr-rule { border: 0; border-top: 1.4px solid #1e40af; margin: 6px 0 12px; }
+.hdr-rule { border: 0; border-top: 1.4px solid #1e40af; margin: 6px 0 8px; }
+.hdr-info-card { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; }
 
 /* ===== Receiver / Consignee ===== */
 .party-wrap { width: 100%; table-layout: fixed; margin-top: 0; }
@@ -95,14 +98,14 @@ td, th { vertical-align: top; }
   border-radius: 10px 10px 0 0;
 }
 .party-body {
-  padding: 10px 12px;
+  padding: 5px 12px 10px;
   background: #ffffff;
   border-bottom: 1.2px solid #1e40af;
   border-left: 1.2px solid #1e40af;
   border-right: 1.2px solid #1e40af;
   border-radius: 0 0 10px 10px;
 }
-.party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 5px; }
+.party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 3px; }
 .party-line { color: #334155; font-size: 9.8px; margin: 2px 0; }
 .party-line b { color: #0f172a; }
 .party-fields td { padding: 2px 0; font-size: 9.8px; color: #334155; }
@@ -297,6 +300,10 @@ td, th { vertical-align: top; }
   $gstinIcon = file_exists($asset('icon-gstin.png')) ? $asset('icon-gstin.png') : null;
   $emailIcon = file_exists($asset('icon-email.png')) ? $asset('icon-email.png') : null;
   $phoneIcon = file_exists($asset('icon-phone.png')) ? $asset('icon-phone.png') : null;
+  $docNumIcon = file_exists($asset('icon-doc-number.png')) ? $asset('icon-doc-number.png') : null;
+  $calendarIcon = file_exists($asset('icon-calendar.png')) ? $asset('icon-calendar.png') : null;
+  $chartIcon = file_exists($asset('icon-chart-fy.png')) ? $asset('icon-chart-fy.png') : null;
+  $reverseIcon = file_exists($asset('icon-reverse.png')) ? $asset('icon-reverse.png') : null;
 
   $termsSource = $doc->terms ?: ($p->terms_conditions ?: '');
   $termsLines = [];
@@ -316,6 +323,16 @@ td, th { vertical-align: top; }
       'All disputes are subject to Mumbai Jurisdiction.',
     ];
   }
+
+  $isDeliveryChallan = $doc->type === 'delivery_challan';
+  $reasonForTransportLabel = match ($doc->reason_for_transportation) {
+    'job_work' => 'Job Work',
+    'repair' => 'Repair',
+    'returnable_goods' => 'Returnable Goods',
+    'branch_transfer' => 'Branch Transfer',
+    'other' => $doc->reason_for_transportation_other ?: 'Other',
+    default => '—',
+  };
 
   $splitDesc = function ($desc) {
     $parts = preg_split("/\r\n|\n|\r/", (string) $desc, 2);
@@ -371,90 +388,102 @@ td, th { vertical-align: top; }
 
 <div class="frame">
 
-{{-- HEADER --}}
+{{-- HEADER: Logo + Company Name only — the seller/document details card sits below,
+     separately, so the two never carry doubled-up spacing between them. --}}
+<table>
+  <tr>
+    @if($logoPath)
+    <td class="logo-cell">
+      <img class="logo-img" src="{{ $logoPath }}" alt="logo">
+    </td>
+    @endif
+    <td>
+      <div class="company-name">{{ strtoupper($business) }}</div>
+    </td>
+  </tr>
+</table>
+
+<hr class="hdr-rule">
+
+{{-- Single bordered card: seller details (left, icon-led) + document meta (right,
+     icon-led) — both sides share the exact same icon treatment. --}}
+<div class="hdr-info-card">
 <table>
   <tr>
     <td style="width:60%;">
-      <table>
-        <tr>
-          @if($logoPath)
-          <td class="logo-cell">
-            <img class="logo-img" src="{{ $logoPath }}" alt="logo">
-          </td>
-          @endif
-          <td>
-            <div class="company-name">{{ strtoupper($business) }}</div>
+      <table class="meta-row"><tr>
+        <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
+        <td class="meta-text">{{ implode(', ', $addressParts) ?: '—' }}</td>
+      </tr></table>
 
-            <table class="meta-row"><tr>
-              <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
-              <td class="meta-text">{{ implode(', ', $addressParts) ?: '—' }}</td>
-            </tr></table>
+      @if(($p->has_gst && $p->gstin) || $p->pan)
+      <table class="meta-row"><tr>
+        <td class="meta-icon-cell">@if($gstinIcon)<img src="{{ $gstinIcon }}" alt="">@endif</td>
+        <td class="meta-text">
+          @if($p->has_gst && $p->gstin)<b>GSTIN :</b> {{ $p->gstin }}@endif
+          @if($p->pan){{ ($p->has_gst && $p->gstin) ? '  |  ' : '' }}<b>PAN :</b> {{ $p->pan }}@endif
+        </td>
+      </tr></table>
+      @endif
 
-            @if(($p->has_gst && $p->gstin) || $p->pan)
-            <table class="meta-row"><tr>
-              <td class="meta-icon-cell">@if($gstinIcon)<img src="{{ $gstinIcon }}" alt="">@endif</td>
-              <td class="meta-text">
-                @if($p->has_gst && $p->gstin)<b>GSTIN :</b> {{ $p->gstin }}@endif
-                @if($p->pan){{ ($p->has_gst && $p->gstin) ? '  |  ' : '' }}<b>PAN :</b> {{ $p->pan }}@endif
-              </td>
-            </tr></table>
-            @endif
+      @if($email)
+      <table class="meta-row"><tr>
+        <td class="meta-icon-cell">@if($emailIcon)<img src="{{ $emailIcon }}" alt="">@endif</td>
+        <td class="meta-text"><b>Email :</b> {{ $email }}</td>
+      </tr></table>
+      @endif
 
-            @if($email)
-            <table class="meta-row"><tr>
-              <td class="meta-icon-cell">@if($emailIcon)<img src="{{ $emailIcon }}" alt="">@endif</td>
-              <td class="meta-text"><b>Email :</b> {{ $email }}</td>
-            </tr></table>
-            @endif
+      @if($phone)
+      <table class="meta-row"><tr>
+        <td class="meta-icon-cell">@if($phoneIcon)<img src="{{ $phoneIcon }}" alt="">@endif</td>
+        <td class="meta-text"><b>Phone :</b> {{ $phone }}</td>
+      </tr></table>
+      @endif
 
-            @if($phone)
-            <table class="meta-row"><tr>
-              <td class="meta-icon-cell">@if($phoneIcon)<img src="{{ $phoneIcon }}" alt="">@endif</td>
-              <td class="meta-text"><b>Phone :</b> {{ $phone }}</td>
-            </tr></table>
-            @endif
-
-            @if($p->state || $p->state_code)
-            <table class="meta-row"><tr>
-              <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
-              <td class="meta-text"><b>State :</b> {{ $stateLine($p->state, $p->state_code) }}</td>
-            </tr></table>
-            @endif
-          </td>
-        </tr>
-      </table>
+      @if($p->state || $p->state_code)
+      <table class="meta-row"><tr>
+        <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
+        <td class="meta-text"><b>State :</b> {{ $stateLine($p->state, $p->state_code) }}</td>
+      </tr></table>
+      @endif
     </td>
     <td class="col-spacer"></td>
     <td style="width:37%;" class="right">
-      <div class="doc-title">{{ $docTitle }}</div>
+      <div class="doc-title-wrap"><div class="doc-title">&#8212; {{ strtoupper($docTitle) }} &#8212;</div></div>
       <table class="inv-meta">
         <tr>
+          <td class="icon-cell">@if($docNumIcon)<img src="{{ $docNumIcon }}" alt="">@endif</td>
           <td class="lab">{{ $metaLabel }} No.</td>
           <td class="colon">:</td>
           <td class="val">{{ $doc->number }}</td>
         </tr>
         <tr>
+          <td class="icon-cell">@if($calendarIcon)<img src="{{ $calendarIcon }}" alt="">@endif</td>
           <td class="lab">{{ $metaLabel }} Date</td>
           <td class="colon">:</td>
           <td class="val-plain">{{ $doc->document_date?->format('d/m/Y') }}</td>
         </tr>
         <tr>
+          <td class="icon-cell">@if($chartIcon)<img src="{{ $chartIcon }}" alt="">@endif</td>
           <td class="lab">Financial Year</td>
           <td class="colon">:</td>
           <td class="val-plain">{{ $financialYear }}</td>
         </tr>
         <tr>
+          <td class="icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
           <td class="lab">Place of Supply</td>
           <td class="colon">:</td>
           <td class="val-plain">{{ $posLine }}</td>
         </tr>
         <tr>
+          <td class="icon-cell">@if($reverseIcon)<img src="{{ $reverseIcon }}" alt="">@endif</td>
           <td class="lab">Reverse Charge</td>
           <td class="colon">:</td>
           <td class="val-plain">{{ $isRcm ? 'Yes' : 'No' }}</td>
         </tr>
         @if($doc->referenceDocument)
         <tr>
+          <td class="icon-cell">@if($docNumIcon)<img src="{{ $docNumIcon }}" alt="">@endif</td>
           <td class="lab">Against</td>
           <td class="colon">:</td>
           <td class="val">{{ $doc->referenceDocument->number }}</td>
@@ -464,8 +493,7 @@ td, th { vertical-align: top; }
     </td>
   </tr>
 </table>
-
-<hr class="hdr-rule">
+</div>
 
 {{-- BILL TO / SHIP TO with navy header bars — both boxes always print side by side;
      Ship To falls back to the billing address/state when no distinct shipping address
@@ -478,9 +506,11 @@ td, th { vertical-align: top; }
   // visible gap at the bottom of the box.
   $pfValCharsPerLine = 47;
   $customerLabelLen = strlen($customerLabel);
-  $custNameLen = $c ? strlen($c->name) : 0;
 
-  $leftLines = ceil($customerLabelLen / 36) + ceil($custNameLen / $pfValCharsPerLine);
+  // The customer name only prints once now (the bold .party-name heading) — the
+  // "Name" row inside .party-fields was a duplicate and has been removed, so its
+  // line count no longer factors into box height here.
+  $leftLines = ceil($customerLabelLen / 36);
   if (!empty($billAddr)) {
       $leftLines += ceil(strlen($billAddr) / $pfValCharsPerLine);
   }
@@ -492,7 +522,7 @@ td, th { vertical-align: top; }
   }
   $leftLines += 1; // GSTIN line
 
-  $rightLines = ceil($customerLabelLen / 36) + ceil($custNameLen / $pfValCharsPerLine);
+  $rightLines = ceil($customerLabelLen / 36);
   if (!empty($shipAddr)) {
       $rightLines += ceil(strlen($shipAddr) / $pfValCharsPerLine);
   }
@@ -505,7 +535,7 @@ td, th { vertical-align: top; }
   $rightLines += 1; // GSTIN line
 
   $maxLines = max($leftLines, $rightLines);
-  $bodyHeight = 20 + ($maxLines * 16.5);
+  $bodyHeight = 13 + ($maxLines * 16.5);
 @endphp
 <table class="party-wrap">
   <tr>
@@ -515,7 +545,6 @@ td, th { vertical-align: top; }
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
-            <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->name ?: '—' }}</td></tr>
             @if($billAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $billAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($billStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $billStateLine }}</td></tr>@endif
@@ -533,7 +562,6 @@ td, th { vertical-align: top; }
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
-            <tr><td class="pf-lab">Name</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->name ?: '—' }}</td></tr>
             @if($shipAddr)<tr><td class="pf-lab">Address</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipAddr }}</td></tr>@endif
             <tr><td class="pf-lab">GSTIN</td><td class="pf-colon">:</td><td class="pf-val">{{ $c->gstin_display }}</td></tr>
             @if($shipStateLine)<tr><td class="pf-lab">State</td><td class="pf-colon">:</td><td class="pf-val">{{ $shipStateLine }}</td></tr>@endif
@@ -607,6 +635,17 @@ td, th { vertical-align: top; }
         <span class="words-value">{{ $wordsDisplay }}</span>
       </div>
 
+      @if($isDeliveryChallan)
+      <div class="card card-gap">
+        <div class="card-head">Transportation Details</div>
+        <div class="card-sep"></div>
+        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
+        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
+        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
+        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
+      </div>
+      @endif
+
       <div class="card card-gap">
         @if($hasBank)
           <div class="card-head">
@@ -636,6 +675,20 @@ td, th { vertical-align: top; }
           @endforeach
         </ol>
       </div>
+
+      @if($isDeliveryChallan)
+      <div class="card card-gap">
+        <div class="card-head">Receiver Acknowledgement</div>
+        <div class="card-sep"></div>
+        <div class="bank-line"><b>Receiver Name :</b> {{ $doc->receiver_name ?: '—' }}</div>
+        <div class="bank-line" style="margin-top: 16px;">
+          Receiver Signature : ______________________
+        </div>
+        <div class="bank-line" style="margin-top: 8px;">
+          Date &amp; Time : {{ $doc->receiver_signature_datetime ? $doc->receiver_signature_datetime->format('d-m-Y h:i A') : '______________________' }}
+        </div>
+      </div>
+      @endif
     </div>
     <div class="sum-right">
       <div class="totals-cell">

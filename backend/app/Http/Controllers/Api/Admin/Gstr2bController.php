@@ -47,6 +47,7 @@ class Gstr2bController extends Controller
 
         $attrs = [
             'financial_year' => $this->deriveFinancialYear($data['tax_period']),
+            'no_bills' => false,
             'file_path' => $path,
             'file_name' => $file->getClientOriginalName(),
             'file_type' => $file->getClientMimeType(),
@@ -55,7 +56,9 @@ class Gstr2bController extends Controller
         ];
 
         if ($existing) {
-            Storage::disk('public')->delete($existing->file_path);
+            if ($existing->file_path) {
+                Storage::disk('public')->delete($existing->file_path);
+            }
             $existing->update($attrs);
             $record = $existing;
         } else {
@@ -94,11 +97,58 @@ class Gstr2bController extends Controller
         return response()->json($response, $existing ? 200 : 201);
     }
 
+    /** GSTR-3B Filing Request reconciliation gate spec — lets an admin mark a period as
+     *  "No Bills in GSTR-2B" instead of uploading a file, so the client can raise the
+     *  GSTR-3B request directly for that period without a real GSTR-2B statement to
+     *  reconcile against. Period-wise, same upsert-by-(client, tax_period) shape as
+     *  upload() above; wipes any invoices/file the period previously had. */
+    public function markNoBills(Request $request, int $clientId)
+    {
+        ClientProfile::findOrFail($clientId);
+
+        $data = $request->validate([
+            'tax_period' => 'required|regex:/^\d{4}-(0[1-9]|1[0-2]|Q[1-4])$/',
+        ]);
+
+        $existing = ClientGstr2bRecord::where('client_profile_id', $clientId)
+            ->where('tax_period', $data['tax_period'])
+            ->first();
+
+        $attrs = [
+            'financial_year' => $this->deriveFinancialYear($data['tax_period']),
+            'no_bills' => true,
+            'file_path' => null,
+            'file_name' => null,
+            'file_type' => null,
+            'file_size' => null,
+            'uploaded_by' => $request->user()->id,
+        ];
+
+        if ($existing) {
+            if ($existing->file_path) {
+                Storage::disk('public')->delete($existing->file_path);
+            }
+            ClientGstr2bInvoice::where('gstr2b_record_id', $existing->id)->delete();
+            $existing->update($attrs);
+            $record = $existing;
+        } else {
+            $record = ClientGstr2bRecord::create([
+                'client_profile_id' => $clientId,
+                'tax_period' => $data['tax_period'],
+                ...$attrs,
+            ]);
+        }
+
+        return response()->json($record->fresh(['uploader:id,name']), $existing ? 200 : 201);
+    }
+
     public function destroy(int $clientId, int $recordId)
     {
         $record = ClientGstr2bRecord::where('client_profile_id', $clientId)->findOrFail($recordId);
 
-        Storage::disk('public')->delete($record->file_path);
+        if ($record->file_path) {
+            Storage::disk('public')->delete($record->file_path);
+        }
         $record->delete();
 
         return response()->json(['message' => 'Deleted']);

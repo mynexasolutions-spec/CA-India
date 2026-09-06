@@ -196,6 +196,10 @@ export default function App() {
             <Route path="bill-of-supply/new" element={<InvoiceForm docType="bill_of_supply" title="Create Bill of Supply" />} />
             <Route path="bill-of-supply/:id" element={<InvoiceDetail />} />
             <Route path="bill-of-supply/:id/edit" element={<InvoiceForm docType="bill_of_supply" title="Edit Bill of Supply" />} />
+            <Route path="delivery-challan" element={<InvoiceList type="delivery_challan" title="Delivery Challan" newPath="/portal/billing/delivery-challan/new" createLabel="+ Create Delivery Challan" />} />
+            <Route path="delivery-challan/new" element={<InvoiceForm docType="delivery_challan" title="Create Delivery Challan" />} />
+            <Route path="delivery-challan/:id" element={<InvoiceDetail />} />
+            <Route path="delivery-challan/:id/edit" element={<InvoiceForm docType="delivery_challan" title="Edit Delivery Challan" />} />
             <Route path="settings" element={<Navigate to="/portal/settings" replace />} />
             <Route path="reports" element={<Navigate to="/portal/reports" replace />} />
           </Route>

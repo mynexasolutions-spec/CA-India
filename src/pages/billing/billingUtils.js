@@ -1,5 +1,18 @@
 export const GST_RATES = [0, 1, 5, 6, 12, 18, 28, 40];
 
+/** Delivery Challan spec — Reason for Transportation dropdown options. */
+export const REASON_FOR_TRANSPORT_OPTIONS = [
+  { value: 'job_work', label: 'Job Work' },
+  { value: 'repair', label: 'Repair' },
+  { value: 'returnable_goods', label: 'Returnable Goods' },
+  { value: 'branch_transfer', label: 'Branch Transfer' },
+  { value: 'other', label: 'Other - Specify' },
+];
+
+export function reasonForTransportLabel(value) {
+  return REASON_FOR_TRANSPORT_OPTIONS.find((o) => o.value === value)?.label || value || '—';
+}
+
 export function normalizeGstRate(rate) {
   const n = Number(rate);
   return GST_RATES.includes(n) ? n : 18;
@@ -11,6 +24,7 @@ export function documentDateLabel(docType) {
   if (docType === 'credit_note') return 'Credit Note Date';
   if (docType === 'bill_of_supply') return 'Bill of Supply Date';
   if (docType === 'quotation') return 'Quotation Date';
+  if (docType === 'delivery_challan') return 'Delivery Challan Date';
   if (docType === 'amendment') return 'Amendment Date';
   return 'Document Date';
 }
@@ -156,6 +170,11 @@ export function monthLabel(period) {
  * 'YYYY-Qn' (a quarterly-cadence one) -> a human label. Lets a table that mixes clients
  * on different filing frequencies render whichever shape a given row actually has. */
 export function periodLabel(period) {
+  // Bare "YYYY" — GSTR-4's Annual period (the FY start year itself).
+  if (/^\d{4}$/.test(String(period || ''))) {
+    const y1 = parseInt(period, 10);
+    return `FY ${y1}-${String(y1 + 1).slice(-2)}`;
+  }
   const [year, rest] = String(period || '').split('-');
   if (!year || !rest) return period || '—';
   if (/^Q[1-4]$/.test(rest)) {
@@ -198,6 +217,7 @@ export function billingDocPath(type, id) {
     credit_note: '/portal/billing/credit-notes',
     bill_of_supply: '/portal/billing/bill-of-supply',
     quotation: '/portal/billing/quotation',
+    delivery_challan: '/portal/billing/delivery-challan',
     amendment: '/portal/amendments',
   }[type] || '/portal/billing/invoices';
   return `${base}/${id}`;
@@ -210,6 +230,7 @@ export function billingDocEditPath(type, id) {
     quotation: '/portal/billing/quotation',
     debit_note: '/portal/billing/debit-notes',
     credit_note: '/portal/billing/credit-notes',
+    delivery_challan: '/portal/billing/delivery-challan',
     amendment: '/portal/amendments',
   }[type];
   return base ? `${base}/${id}/edit` : null;
@@ -225,6 +246,7 @@ export function createButtonLabel(type, profile = null) {
     bill_of_supply: '+ Create Bill of Supply',
     debit_note: '+ Create Debit Note',
     credit_note: '+ Create Credit Note',
+    delivery_challan: '+ Create Delivery Challan',
     amendment: '+ Create Amendment',
   }[type] || '+ Create';
 }
@@ -237,6 +259,7 @@ export function docTypeLabel(type) {
     debit_note: 'Debit Note',
     credit_note: 'Credit Note',
     quotation: 'Quotation',
+    delivery_challan: 'Delivery Challan',
     amendment: 'Amendment',
     invoice: 'Invoice',
   }[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

@@ -144,6 +144,64 @@ class BillingMonitorController extends Controller
         return response()->json(['url' => '/storage/'.$doc->pdf_path, 'path' => $doc->pdf_path]);
     }
 
+    /** Admin-only hard delete — see InvoiceService::adminDelete() for the guard rails
+     * and cleanup. Logs an explicit ActivityLog entry (in addition to the AuditLog
+     * middleware's generic request log) because the document row itself won't exist
+     * afterward for anyone to look up. */
+    public function destroyDocument(Request $request, int $id)
+    {
+        $doc = CommercialDocument::findOrFail($id);
+        $snapshot = [
+            'number' => $doc->number,
+            'type' => $doc->type,
+            'client_profile_id' => $doc->client_profile_id,
+            'client_business_name' => $doc->clientProfile?->business_name,
+            'grand_total' => $doc->grand_total ?: $doc->total_amount,
+        ];
+
+        $this->invoices->adminDelete($doc);
+
+        ActivityLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'deleted_document',
+            'subject_type' => CommercialDocument::class,
+            'subject_id' => $id,
+            'properties' => $snapshot,
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['message' => 'Document deleted permanently.']);
+    }
+
+    /** Admin — Full Billing Access & Control spec: an admin can change any document's
+     *  Number, Date, or Status (including moving a cancelled/incorrect document back to
+     *  Draft so the client can access and recreate it) regardless of GST filing locks.
+     *  Line items/amounts are unchanged here — once the document is back in Draft, the
+     *  client edits it normally through the existing client-side update flow. */
+    public function updateDocument(Request $request, int $id)
+    {
+        $doc = CommercialDocument::findOrFail($id);
+        $data = $request->validate([
+            'number' => 'nullable|string|max:100',
+            'document_date' => 'nullable|date',
+            'status' => 'nullable|in:draft,issued,cancelled,paid,partial',
+        ]);
+
+        $before = $doc->only(['number', 'document_date', 'status']);
+        $doc = $this->invoices->adminUpdate($doc, $data);
+
+        ActivityLog::create([
+            'user_id' => $request->user()->id,
+            'action' => 'updated_document',
+            'subject_type' => CommercialDocument::class,
+            'subject_id' => $id,
+            'properties' => ['before' => $before, 'after' => $doc->only(['number', 'document_date', 'status'])],
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json($doc);
+    }
+
     public function report(Request $request)
     {
         $type = $request->input('type', 'gst_summary');

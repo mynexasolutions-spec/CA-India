@@ -44,7 +44,7 @@ const CARD_ICONS = {
  * screenshots in the client's spec PDF. Values are per-active-return-type (GSTR-1's
  * own last-filed/next-due differ from GSTR-3B's), fed by
  * GET /client/gst-filing/periods's `summary` block. */
-export default function GstReturnsSummaryCards({ summary, returnType }) {
+export default function GstReturnsSummaryCards({ summary }) {
   const s = summary || {};
 
   return (
@@ -89,7 +89,7 @@ export default function GstReturnsSummaryCards({ summary, returnType }) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', marginBottom: 2 }}>Last Filed Return</span>
           <span style={{ fontSize: 14, fontWeight: 800, color: '#1e40af' }}>
-            {s.last_filed ? `${periodLabel(s.last_filed.period)} (${returnType})` : 'None on record'}
+            {s.last_filed ? periodLabel(s.last_filed.period) : 'None on record'}
           </span>
         </div>
       </div>

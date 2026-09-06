@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { billingDocPath, CURRENCIES, docTypeLabel, documentDateLabel, formatDMY, money, normalizeGstRate } from './billingUtils';
+import { billingDocPath, CURRENCIES, docTypeLabel, documentDateLabel, formatDMY, money, normalizeGstRate, REASON_FOR_TRANSPORT_OPTIONS } from './billingUtils';
 import { useAuth } from '../../auth/AuthContext';
 import { docTypeLock, isDocTypeDisabled, showGstFields, showHsnFields, showRcmCheckbox } from './billingProfile';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -13,13 +13,23 @@ import PartySearchSelect from './PartySearchSelect';
 import ActionConfirmationModal from '../../components/ActionConfirmationModal';
 import DiscardChangesModal from '../../components/DiscardChangesModal';
 
-/** Digits-only, capped at maxDigits, clamped to [min, max] — used for Qty/Rate per the
- * Invoice Item Table spec ("whole numbers only", "maximum N digits", "reject extra digits"). */
-function sanitizeWholeNumber(raw, { maxDigits, min, max }) {
-  const digits = String(raw).replace(/[^0-9]/g, '').slice(0, maxDigits);
-  if (digits === '') return '';
-  const n = Math.min(max, Math.max(min, parseInt(digits, 10)));
-  return String(n);
+/** Digits + a single decimal point, capped at maxIntDigits before it and `decimals` after —
+ * used for Qty/Rate so values like 100.50 aren't stripped down to whole numbers while typing. */
+function sanitizeDecimal(raw, { maxIntDigits, decimals = 2, min, max }) {
+  let str = String(raw).replace(/[^0-9.]/g, '');
+  const firstDot = str.indexOf('.');
+  if (firstDot !== -1) str = str.slice(0, firstDot + 1) + str.slice(firstDot + 1).replace(/\./g, '');
+  let [intPart, decPart] = str.split('.');
+  intPart = intPart.slice(0, maxIntDigits);
+  if (decPart !== undefined) decPart = decPart.slice(0, decimals);
+  const result = decPart !== undefined ? `${intPart}.${decPart}` : intPart;
+  if (result === '' || result === '.') return result;
+  const n = Number(result);
+  if (!Number.isNaN(n)) {
+    if (n > max) return String(max);
+    if (n < min) return String(min);
+  }
+  return result;
 }
 
 // Disc.% removed from the item row entirely (Invoice Item Table spec) — new lines never
@@ -138,6 +148,13 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
   const [tdsTcsSectionId, setTdsTcsSectionId] = useState('');
   const [tdsSections, setTdsSections] = useState([]);
   const [tcsSections, setTcsSections] = useState([]);
+  const [reasonForTransport, setReasonForTransport] = useState('');
+  const [reasonForTransportOther, setReasonForTransportOther] = useState('');
+  const [vehicleNo, setVehicleNo] = useState('');
+  const [transporterName, setTransporterName] = useState('');
+  const [ewayBillNo, setEwayBillNo] = useState('');
+  const [receiverName, setReceiverName] = useState('');
+  const [receiverSignedAt, setReceiverSignedAt] = useState('');
 
   const tdsTcsApplicable = ['tax_invoice', 'bill_of_supply'].includes(docType);
   const activeSections = taxDeductionType === 'tds' ? tdsSections : taxDeductionType === 'tcs' ? tcsSections : [];
@@ -191,6 +208,13 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
       setRcm(!!d.is_reverse_charge);
       setTaxDeductionType(d.tax_deduction_type || '');
       setTdsTcsSectionId(d.tds_tcs_section_id ? String(d.tds_tcs_section_id) : '');
+      setReasonForTransport(d.reason_for_transportation || '');
+      setReasonForTransportOther(d.reason_for_transportation_other || '');
+      setVehicleNo(d.vehicle_no || '');
+      setTransporterName(d.transporter_name || '');
+      setEwayBillNo(d.eway_bill_no || '');
+      setReceiverName(d.receiver_name || '');
+      setReceiverSignedAt(d.receiver_signature_datetime ? d.receiver_signature_datetime.slice(0, 16) : '');
       const mapped = mapDocLines(d.line_items);
       setLines(mapped.length ? mapped : [emptyLine()]);
     });
@@ -235,6 +259,15 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     is_reverse_charge: rcm,
     tax_deduction_type: tdsTcsApplicable && taxDeductionType ? taxDeductionType : null,
     tds_tcs_section_id: tdsTcsApplicable && taxDeductionType && tdsTcsSectionId ? +tdsTcsSectionId : null,
+    ...(docType === 'delivery_challan' ? {
+      reason_for_transportation: reasonForTransport || null,
+      reason_for_transportation_other: reasonForTransport === 'other' ? reasonForTransportOther : null,
+      vehicle_no: vehicleNo || null,
+      transporter_name: transporterName || null,
+      eway_bill_no: ewayBillNo || null,
+      receiver_name: receiverName || null,
+      receiver_signature_datetime: receiverSignedAt || null,
+    } : {}),
     lines,
   });
 
@@ -264,6 +297,13 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
 
   const validateBeforeSave = () => {
     if (!partyId) return 'Please select a party.';
+
+    if (docType === 'delivery_challan') {
+      if (!reasonForTransport) return 'Please select a Reason for Transportation.';
+      if (reasonForTransport === 'other' && !reasonForTransportOther.trim()) {
+        return 'Please specify the Reason for Transportation.';
+      }
+    }
 
     for (let i = 0; i < lines.length; i += 1) {
       const line = lines[i];
@@ -498,6 +538,47 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
           </p>
         )}
       </div>
+
+      {docType === 'delivery_challan' && (
+        <div className="bp-card" style={{ marginBottom: 14 }}>
+          <SectionHeader n={++sectionNum} title="Transportation Details" subtitle="Details of the goods movement for this delivery challan." />
+          <form className="bp-form two">
+            <label>
+              <span>Reason for Transportation <span className="bp-required">*</span></span>
+              <select className="bp-select" value={reasonForTransport} onChange={(e) => setReasonForTransport(e.target.value)}>
+                <option value="">Select reason…</option>
+                {REASON_FOR_TRANSPORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </label>
+            {reasonForTransport === 'other' && (
+              <label>
+                <span>Specify Reason <span className="bp-required">*</span></span>
+                <input className="bp-input" value={reasonForTransportOther} onChange={(e) => setReasonForTransportOther(e.target.value)} placeholder="Enter reason for transportation" />
+              </label>
+            )}
+            <label>
+              Vehicle No.
+              <input className="bp-input" value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="E.g. MH12AB1234" />
+            </label>
+            <label>
+              Transporter Name
+              <input className="bp-input" value={transporterName} onChange={(e) => setTransporterName(e.target.value)} placeholder="Enter transporter name" />
+            </label>
+            <label>
+              E-Way Bill No.
+              <input className="bp-input" value={ewayBillNo} onChange={(e) => setEwayBillNo(e.target.value)} placeholder="Enter e-way bill number" />
+            </label>
+            <label>
+              Receiver Name
+              <input className="bp-input" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Enter receiver name" />
+            </label>
+            <label>
+              Receiver Signature — Date & Time
+              <input className="bp-input" type="datetime-local" value={receiverSignedAt} onChange={(e) => setReceiverSignedAt(e.target.value)} />
+            </label>
+          </form>
+        </div>
+      )}
 
       {['credit_note', 'debit_note', 'amendment'].includes(docType) && (
         <div className="bp-card" style={{ marginBottom: 14 }}>
@@ -743,14 +824,12 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
                       <input
                         className="bp-input bp-no-spinner"
-                        type="number"
-                        min="1"
-                        max="9999999"
-                        step="1"
+                        type="text"
+                        inputMode="decimal"
                         style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
                         required
                         value={l.qty}
-                        onChange={(e) => setLine(idx, 'qty', sanitizeWholeNumber(e.target.value, { maxDigits: 7, min: 1, max: 9999999 }))}
+                        onChange={(e) => setLine(idx, 'qty', sanitizeDecimal(e.target.value, { maxIntDigits: 7, decimals: 2, min: 0, max: 9999999 }))}
                       />
                     </td>
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
@@ -763,14 +842,12 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
                     <td style={{ borderRight: '1px solid var(--bp-border)' }}>
                       <input
                         className="bp-input bp-no-spinner"
-                        type="number"
-                        min="0"
-                        max="99999999"
-                        step="1"
+                        type="text"
+                        inputMode="decimal"
                         style={{ textAlign: 'center', border: '1px solid var(--bp-border)', borderRadius: 8 }}
                         required
                         value={l.rate}
-                        onChange={(e) => setLine(idx, 'rate', sanitizeWholeNumber(e.target.value, { maxDigits: 8, min: 0, max: 99999999 }))}
+                        onChange={(e) => setLine(idx, 'rate', sanitizeDecimal(e.target.value, { maxIntDigits: 8, decimals: 2, min: 0, max: 99999999 }))}
                       />
                     </td>
                     {taxesEnabled && (

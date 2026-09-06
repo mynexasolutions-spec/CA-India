@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { LoadingBlock } from '../../components/Spinner';
 import CancelDocumentModal from './CancelDocumentModal';
-import { billingDocEditPath, billingDocPath, docTypeLabel, formatDMY, formatDMYTime } from './billingUtils';
+import { billingDocEditPath, billingDocPath, docTypeLabel, formatDMY, formatDMYTime, reasonForTransportLabel } from './billingUtils';
 
 function money(n) {
   return `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
@@ -74,6 +74,7 @@ export default function InvoiceDetail() {
     credit_note: '/portal/billing/credit-notes',
     bill_of_supply: '/portal/billing/bill-of-supply',
     quotation: '/portal/billing/quotation',
+    delivery_challan: '/portal/billing/delivery-challan',
     amendment: '/portal/amendments',
   }[doc.type] || '/portal/billing';
   const editPath = billingDocEditPath(doc.type, doc.id);
@@ -433,6 +434,29 @@ export default function InvoiceDetail() {
             <strong>{doc.reference_document.number}</strong>
           </Link>
         </p>
+      )}
+
+      {doc.type === 'delivery_challan' && (
+        <div className="bp-split" style={{ marginTop: 14 }}>
+          <div>
+            <h3 style={{ marginTop: 0 }}>Transportation Details</h3>
+            <p style={{ margin: '4px 0', fontSize: 13 }}>
+              <strong>Reason for Transportation:</strong>{' '}
+              {doc.reason_for_transportation === 'other'
+                ? (doc.reason_for_transportation_other || '—')
+                : reasonForTransportLabel(doc.reason_for_transportation)}
+            </p>
+            <p style={{ margin: '4px 0', fontSize: 13 }}><strong>Vehicle No.:</strong> {doc.vehicle_no || '—'}</p>
+            <p style={{ margin: '4px 0', fontSize: 13 }}><strong>Transporter Name:</strong> {doc.transporter_name || '—'}</p>
+          </div>
+          <div>
+            <p style={{ margin: '4px 0', fontSize: 13 }}><strong>E-Way Bill No.:</strong> {doc.eway_bill_no || '—'}</p>
+            <p style={{ margin: '4px 0', fontSize: 13 }}><strong>Receiver Name:</strong> {doc.receiver_name || '—'}</p>
+            <p style={{ margin: '4px 0', fontSize: 13 }}>
+              <strong>Receiver Signature — Date &amp; Time:</strong> {doc.receiver_signature_datetime ? formatDMYTime(doc.receiver_signature_datetime) : '—'}
+            </p>
+          </div>
+        </div>
       )}
 
       {(doc.payment_terms || doc.notes || doc.terms) && (

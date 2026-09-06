@@ -336,7 +336,7 @@ class ClientProfileController extends Controller
             ->groupBy('li.hsn_sac')->orderByDesc('total')->get();
 
         $yearly = (clone $base)
-            ->selectRaw('YEAR(created_at) as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount) as cgst, SUM(sgst_amount) as sgst, SUM(igst_amount) as igst, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+            ->selectRaw(BillingPolicy::yearGroupExpr('created_at').' as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount) as cgst, SUM(sgst_amount) as sgst, SUM(igst_amount) as igst, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
             ->groupBy('year', 'type')->orderBy('year')->get();
 
         $typeDistribution = [
@@ -537,7 +537,7 @@ class ClientProfileController extends Controller
         if ($type === 'yearly_report') {
             $yearly = CommercialDocument::where('client_profile_id', $profile->id)
                 ->whereDate('created_at', '>=', $from)->whereDate('created_at', '<=', $to)->where('status', 'issued')
-                ->selectRaw('YEAR(created_at) as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
+                ->selectRaw(BillingPolicy::yearGroupExpr('created_at').' as year, type, COUNT(*) as count, SUM(taxable_amount) as taxable, SUM(COALESCE(NULLIF(grand_total,0), total_amount)) as total, SUM(cgst_amount+sgst_amount+igst_amount) as gst')
                 ->groupBy('year', 'type')->orderBy('year')->get();
             $rows = $this->yearlyTotals($yearly);
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, getAuthToken } from '../../api/client';
 import ReportTable from '../billing/ReportTable';
 import GstSummaryMatrix, { resolveGstMatrix } from '../billing/GstSummaryMatrix';
@@ -169,10 +169,111 @@ export function AdminBillingInvoices({ type = '', title = 'All Client Invoices' 
   );
 }
 
+/** Requires typing the exact document number before enabling the delete button — same
+ * "type to confirm" safety gate as the whole-company delete flow, scaled down for a
+ * single document. This is a permanent, unrecoverable delete (unlike client-side Cancel,
+ * which only changes status) — for cleaning up demo/test documents, not real filed ones. */
+function AdminDeleteDocumentModal({ doc, onCancel, onConfirm, busy, error }) {
+  const [typed, setTyped] = useState('');
+  const matches = typed.trim() === doc.number;
+
+  return (
+    <div className="bp-modal-backdrop" role="presentation" onClick={onCancel}>
+      <div className="bp-modal" role="dialog" aria-modal="true" aria-label="Delete Document" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="bp-modal-close" onClick={onCancel} disabled={busy} aria-label="Close">×</button>
+        <p className="bp-modal-title">Permanently delete {docTypeLabel(doc.type)} {doc.number}?</p>
+        <p className="bp-modal-text">
+          This cannot be undone — the document and its line items are removed entirely, not just
+          cancelled. Only possible when nothing else (Credit/Debit Note, Amendment, GST Filing
+          Request) references this document.
+        </p>
+        {error && <p className="bp-alert bp-alert-error">{error}</p>}
+        <label style={{ display: 'block', textAlign: 'left', marginTop: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bp-text)' }}>
+            Type <strong>{doc.number}</strong> to confirm
+          </span>
+          <input
+            className="bp-input"
+            style={{ width: '100%', marginTop: 6 }}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            disabled={busy}
+            autoFocus
+          />
+        </label>
+        <div className="bp-modal-actions">
+          <button type="button" className="bp-btn bp-btn-outline" onClick={onCancel} disabled={busy}>Keep Document</button>
+          <button type="button" className="bp-btn bp-btn-danger" disabled={busy || !matches} onClick={onConfirm}>
+            {busy ? 'Deleting…' : 'Delete Permanently'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const STATUS_OPTIONS = ['draft', 'issued', 'partial', 'paid', 'cancelled'];
+
+/** Admin — Full Billing Access & Control spec: lets an admin correct the Number, Date,
+ *  or Status of any client's document, regardless of GST filing locks. Choosing "draft"
+ *  is how a cancelled/incorrect document is handed back to the client to fix or recreate. */
+function AdminEditDocumentModal({ doc, onCancel, onConfirm, busy, error }) {
+  const [number, setNumber] = useState(doc.number);
+  const [documentDate, setDocumentDate] = useState(String(doc.document_date).slice(0, 10));
+  const [status, setStatus] = useState(doc.status);
+
+  return (
+    <div className="bp-modal-backdrop" role="presentation" onClick={onCancel}>
+      <div className="bp-modal" role="dialog" aria-modal="true" aria-label="Edit Document" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="bp-modal-close" onClick={onCancel} disabled={busy} aria-label="Close">×</button>
+        <p className="bp-modal-title">Edit {docTypeLabel(doc.type)} {doc.number}</p>
+        <p className="bp-modal-text">
+          Changes here apply immediately across Billing, GST Summary, HSN/SAC Summary, Party-wise
+          Details, Outstanding and other reports. Setting Status to Draft clears its cancellation/
+          issue markers so the client can access and fix or recreate it.
+        </p>
+        {error && <p className="bp-alert bp-alert-error">{error}</p>}
+        <label style={{ display: 'block', textAlign: 'left', marginTop: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bp-text)' }}>Document Number</span>
+          <input className="bp-input" style={{ width: '100%', marginTop: 6 }} value={number} onChange={(e) => setNumber(e.target.value)} disabled={busy} />
+        </label>
+        <label style={{ display: 'block', textAlign: 'left', marginTop: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bp-text)' }}>Document Date</span>
+          <input className="bp-input" type="date" style={{ width: '100%', marginTop: 6 }} value={documentDate} onChange={(e) => setDocumentDate(e.target.value)} disabled={busy} />
+        </label>
+        <label style={{ display: 'block', textAlign: 'left', marginTop: 12 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--bp-text)' }}>Status</span>
+          <select className="bp-select" style={{ width: '100%', marginTop: 6 }} value={status} onChange={(e) => setStatus(e.target.value)} disabled={busy}>
+            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+        <div className="bp-modal-actions">
+          <button type="button" className="bp-btn bp-btn-outline" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button
+            type="button"
+            className="bp-btn bp-btn-primary"
+            disabled={busy || !number.trim()}
+            onClick={() => onConfirm({ number: number.trim(), document_date: documentDate, status })}
+          >
+            {busy ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminInvoiceDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [doc, setDoc] = useState(null);
   const [err, setErr] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteErr, setDeleteErr] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editErr, setEditErr] = useState('');
 
   useEffect(() => {
     setDoc(null);
@@ -222,8 +323,65 @@ export function AdminInvoiceDetail() {
           >
             Download PDF
           </button>
+          <button
+            type="button"
+            className="bp-btn bp-btn-outline"
+            onClick={() => { setEditErr(''); setEditing(true); }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            className="bp-btn bp-btn-danger"
+            onClick={() => { setDeleteErr(''); setDeleting(true); }}
+          >
+            Delete
+          </button>
         </div>
       </div>
+
+      {editing && (
+        <AdminEditDocumentModal
+          doc={doc}
+          busy={editBusy}
+          error={editErr}
+          onCancel={() => setEditing(false)}
+          onConfirm={async (changes) => {
+            setEditBusy(true);
+            setEditErr('');
+            try {
+              const updated = await api(`/admin/billing/invoices/${doc.id}`, { method: 'PUT', body: changes });
+              setDoc((d) => ({ ...d, ...updated }));
+              setEditing(false);
+            } catch (e) {
+              setEditErr(e.message || 'Failed to update document.');
+            } finally {
+              setEditBusy(false);
+            }
+          }}
+        />
+      )}
+
+      {deleting && (
+        <AdminDeleteDocumentModal
+          doc={doc}
+          busy={deleteBusy}
+          error={deleteErr}
+          onCancel={() => setDeleting(false)}
+          onConfirm={async () => {
+            setDeleteBusy(true);
+            setDeleteErr('');
+            try {
+              await api(`/admin/billing/invoices/${doc.id}`, { method: 'DELETE' });
+              navigate(backPath);
+            } catch (e) {
+              setDeleteErr(e.message || 'Failed to delete document.');
+            } finally {
+              setDeleteBusy(false);
+            }
+          }}
+        />
+      )}
 
       <div className="bp-split" style={{ marginTop: 14 }}>
         <div>

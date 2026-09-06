@@ -36,7 +36,7 @@ export default function GstFilingRequestFlow({ returnType, financialYear, quarte
   const [successMessage, setSuccessMessage] = useState('');
 
   const periodOptions = quarterly ? fyQuarterPeriodOptions(financialYear) : fyMonthOptions(financialYear);
-  const label = returnType === 'GSTR-3B' ? 'GSTR-3B' : 'GSTR-1';
+  const label = returnType;
 
   const fetchPreview = async (p) => {
     if (!p) return;

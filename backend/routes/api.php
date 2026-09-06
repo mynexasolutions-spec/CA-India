@@ -172,6 +172,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/clients/{id}/login-history', [BillingMonitorController::class, 'loginHistory']);
         Route::get('/clients/{id}/gstr2b', [Gstr2bController::class, 'index']);
         Route::post('/clients/{id}/gstr2b', [Gstr2bController::class, 'upload']);
+        Route::post('/clients/{id}/gstr2b/no-bills', [Gstr2bController::class, 'markNoBills']);
         Route::delete('/clients/{id}/gstr2b/{recordId}', [Gstr2bController::class, 'destroy']);
         Route::get('/clients/{id}/gstr2b/{recordId}/invoices', [Gstr2bController::class, 'invoices']);
         Route::post('/clients/{id}/gstr2b/{recordId}/invoices/bulk', [Gstr2bController::class, 'bulkStoreInvoices']);
@@ -188,6 +189,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/billing/invoices', [BillingMonitorController::class, 'invoices']);
         Route::get('/billing/invoices/{id}', [BillingMonitorController::class, 'showInvoice']);
         Route::get('/billing/invoices/{id}/pdf', [BillingMonitorController::class, 'pdfInvoice']);
+        Route::put('/billing/invoices/{id}', [BillingMonitorController::class, 'updateDocument']);
+        Route::delete('/billing/invoices/{id}', [BillingMonitorController::class, 'destroyDocument']);
         Route::get('/billing/reports', [BillingMonitorController::class, 'report']);
 
         Route::get('/master-config/hsn-sac', [MasterConfigController::class, 'hsnSacList']);

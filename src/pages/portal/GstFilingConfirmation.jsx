@@ -15,12 +15,26 @@ function EyeIcon() {
 export default function GstFilingConfirmation() {
   const { user } = useAuth();
   const profile = user?.client_profile;
-  // QRMP (spec §5): GSTR-1's own cycle (gstr1_filing_frequency) falls back to GSTR-3B's
-  // (gst_filing_frequency) when not explicitly set — same resolution as the backend's
-  // BillingPolicy::gstr1Frequency() and the dashboard's Compliance Status widget, so a
-  // Regular Quarterly client on QRMP never sees a bare month picker where a quarter is
-  // actually required (and vice versa).
-  const gstr1Quarterly = (profile?.gstr1_filing_frequency ?? profile?.gst_filing_frequency ?? 'monthly') === 'quarterly';
+
+  // GST Filing Return Type & Period Logic spec: Regular dealers raise GSTR-1/GSTR-3B
+  // requests here; Composition dealers raise CMP-08/GSTR-4 instead — GSTR-2B has no
+  // applicability at all for Composition, so neither type ever hits the reconciliation
+  // gate below (that gate is a no-op for anything but GSTR-3B).
+  const isComposition = profile?.dealer_type === 'composition';
+  const returnTypeOptions = isComposition ? ['CMP-08', 'GSTR-4'] : ['GSTR-1', 'GSTR-3B'];
+
+  const [returnType, setReturnType] = useState('GSTR-1');
+  // GST Filing Return Type & Period Logic spec:
+  // - GSTR-1's Filing Period is always Monthly (even under QRMP it's tracked monthly via IFF).
+  // - GSTR-3B's Filing Period follows the client's GSTR-2B frequency — GSTR-2B Monthly ->
+  //   GSTR-3B Monthly, GSTR-2B Quarterly -> GSTR-3B Quarterly.
+  // - CMP-08 has no GSTR-2B applicability and is always Quarterly.
+  // - GSTR-4 is Annual — its "period" is the Financial Year itself, no separate picker.
+  // Matches the backend's BillingPolicy::gstr2bFrequency() /
+  // GstFilingController::assertPeriodMatchesFrequency().
+  const gstr2bQuarterly = (profile?.gstr2b_filing_frequency ?? profile?.gst_filing_frequency ?? 'monthly') === 'quarterly';
+  const isAnnual = returnType === 'GSTR-4';
+  const quarterly = returnType === 'CMP-08' || (returnType === 'GSTR-3B' && gstr2bQuarterly);
 
   const [financialYear, setFinancialYear] = useState('2026-2027');
   const [filingPeriod, setFilingPeriod] = useState('');
@@ -36,9 +50,27 @@ export default function GstFilingConfirmation() {
 
   const fyStartYear = financialYear.split('-')[0];
   const quarterOptions = fyQuarterOptions(`${fyStartYear}-${String((parseInt(fyStartYear, 10) + 1)).slice(-2)}`);
-  // The actual value sent to the API — "YYYY-MM" for a monthly filer, "YYYY-Qn" for a
-  // client on quarterly GSTR-1 (QRMP), matching what the backend now enforces.
-  const effectivePeriod = gstr1Quarterly ? (filingQuarter ? `${fyStartYear}-${filingQuarter}` : '') : filingPeriod;
+  // The actual value sent to the API — bare "YYYY" for GSTR-4 (Annual), "YYYY-MM" for a
+  // monthly filer, "YYYY-Qn" for a quarterly one (GSTR-3B on quarterly GSTR-2B, or CMP-08),
+  // matching what the backend enforces.
+  const effectivePeriod = isAnnual ? fyStartYear : quarterly ? (filingQuarter ? `${fyStartYear}-${filingQuarter}` : '') : filingPeriod;
+
+  const handleReturnTypeChange = (value) => {
+    setReturnType(value);
+    setFilingQuarter('');
+    setFilingPeriod('');
+    setPreviewData(null);
+  };
+
+  // Dealer type resolves asynchronously (profile loads via useAuth) — once known, make
+  // sure the selected Return Type is actually valid for this dealer (Regular vs Composition).
+  useEffect(() => {
+    if (!profile) return;
+    if (!returnTypeOptions.includes(returnType)) {
+      handleReturnTypeChange(returnTypeOptions[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, isComposition]);
 
   useEffect(() => {
     fetchPastRequests();
@@ -47,17 +79,18 @@ export default function GstFilingConfirmation() {
   const fetchPastRequests = async () => {
     try {
       const res = await api('/client/gst-filing/requests');
-      // Filter past requests to GSTR-1 only
-      const gstr1Reqs = (res || []).filter(r => r.return_type === 'GSTR-1' || r.return_type === 'Both');
-      setPastRequests(gstr1Reqs);
+      setPastRequests(res || []);
     } catch (err) {
       console.error(err);
     }
   };
 
+  // Past Requests table below is scoped to whichever Return Type is currently selected.
+  const visibleRequests = pastRequests.filter((r) => r.return_type === returnType);
+
   const handleFetchPreview = async () => {
     if (!effectivePeriod) {
-      alert(gstr1Quarterly ? 'Please select a filing quarter.' : 'Please select a filing period.');
+      alert(quarterly ? 'Please select a filing quarter.' : 'Please select a filing period.');
       return;
     }
 
@@ -69,13 +102,13 @@ export default function GstFilingConfirmation() {
       const params = new URLSearchParams({
         financial_year: financialYear,
         filing_period: effectivePeriod,
-        return_type: 'GSTR-1', // Force GSTR-1
+        return_type: returnType,
       });
       const res = await api(`/client/gst-filing/preview?${params.toString()}`);
       setPreviewData(res);
     } catch (err) {
       console.error(err);
-      alert('Failed to fetch billing data.');
+      alert(err.message || 'Failed to fetch billing data.');
     } finally {
       setLoading(false);
     }
@@ -89,7 +122,7 @@ export default function GstFilingConfirmation() {
         body: {
           financial_year: financialYear,
           filing_period: effectivePeriod,
-          return_type: 'GSTR-1',
+          return_type: returnType,
           client_declaration: clientDeclaration,
         }
       });
@@ -136,6 +169,11 @@ export default function GstFilingConfirmation() {
 
   const formatPeriod = (periodStr) => {
     if (!periodStr) return '—';
+    // Bare "YYYY" — GSTR-4's Annual period (the FY start year itself).
+    if (/^\d{4}$/.test(periodStr)) {
+      const y1 = parseInt(periodStr, 10);
+      return `FY ${y1}-${String(y1 + 1).slice(-2)}`;
+    }
     const parts = periodStr.split('-');
     if (parts.length < 2) return periodStr;
     const year = parts[0];
@@ -165,7 +203,7 @@ export default function GstFilingConfirmation() {
         <div>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--bp-navy)' }}>GST Filing</h2>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
-            Review your sales invoices and submit a GSTR-1 filing request to your CA.
+            Review your sales invoices and submit a {returnType} filing request to your CA.
           </p>
         </div>
       </div>
@@ -184,13 +222,30 @@ export default function GstFilingConfirmation() {
               value={financialYear}
               onChange={(e) => { setFinancialYear(e.target.value); setFilingQuarter(''); setFilingPeriod(''); }}
             >
-              <option value="2025-2026">2025-2026</option>
               <option value="2026-2027">2026-2027</option>
             </select>
           </div>
-          {gstr1Quarterly ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Return Type</span>
+            <select
+              className="bp-select"
+              style={{ height: 40, boxSizing: 'border-box', minWidth: 160 }}
+              value={returnType}
+              onChange={(e) => handleReturnTypeChange(e.target.value)}
+            >
+              {returnTypeOptions.map((rt) => <option key={rt} value={rt}>{rt}</option>)}
+            </select>
+          </div>
+          {isAnnual ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Quarter (QRMP) *</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Period</span>
+              <div className="bp-input" style={{ height: 40, boxSizing: 'border-box', minWidth: 160, display: 'flex', alignItems: 'center', color: 'var(--bp-muted)' }}>
+                Annual — FY {financialYear}
+              </div>
+            </div>
+          ) : quarterly ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Filing Quarter *</span>
               <select
                 className="bp-select"
                 style={{ height: 40, boxSizing: 'border-box', minWidth: 200 }}
@@ -215,17 +270,6 @@ export default function GstFilingConfirmation() {
               />
             </div>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--bp-navy)' }}>Return Type</span>
-            <select
-              className="bp-select"
-              style={{ height: 40, boxSizing: 'border-box', minWidth: 160 }}
-              value="GSTR-1"
-              onChange={() => {}}
-            >
-              <option value="GSTR-1">GSTR-1</option>
-            </select>
-          </div>
           <div>
             <button 
               onClick={handleFetchPreview}
@@ -239,7 +283,14 @@ export default function GstFilingConfirmation() {
         </div>
       </div>
 
-      {previewData && (
+      {previewData && previewData.reconciliation_status === 'pending' && (
+        <div className="bp-alert bp-alert-error" style={{ marginBottom: 20 }}>
+          GSTR-2B reconciliation is pending for this period. Complete reconciliation (or ask your CA to mark this
+          period "No Bills in GSTR-2B") before you can raise the {returnType} filing request.
+        </div>
+      )}
+
+      {previewData && previewData.reconciliation_status !== 'pending' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '20px' }}>
           {/* Bill Review */}
           <div className="bp-card" style={{ padding: 20 }}>
@@ -342,7 +393,7 @@ export default function GstFilingConfirmation() {
                   className="bp-btn bp-btn-green"
                   style={{ padding: '12px 24px', fontSize: 14, fontWeight: 700, borderRadius: 8 }}
                 >
-                  Send GSTR-1 Filing Request
+                  Send {returnType} Filing Request
                 </button>
               </div>
             </div>
@@ -353,7 +404,7 @@ export default function GstFilingConfirmation() {
       {/* Past Requests */}
       <div className="bp-card" style={{ padding: 20 }}>
         <h3 style={{ margin: '0 0 16px 0', fontSize: 15, fontWeight: 800, color: 'var(--bp-navy)', borderBottom: '1px solid var(--bp-border)', paddingBottom: 12 }}>
-          Past GSTR-1 Filing Requests
+          Filing Requests
         </h3>
         <div className="bp-table-wrapper" style={{ overflowX: 'auto' }}>
           <table className="bp-table bp-doc-table" style={{ width: '100%' }}>
@@ -370,14 +421,14 @@ export default function GstFilingConfirmation() {
               </tr>
             </thead>
             <tbody>
-              {pastRequests.length === 0 ? (
+              {visibleRequests.length === 0 ? (
                 <tr>
                   <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--bp-muted)' }}>
-                    No past filing requests found in database.
+                    No past {returnType} filing requests found.
                   </td>
                 </tr>
               ) : (
-                pastRequests.map((req) => (
+                visibleRequests.map((req) => (
                   <tr key={req.id}>
                     <td style={{ fontWeight: 700 }}>REQ-{String(req.id).padStart(4, '0')}</td>
                     <td style={{ fontWeight: 700, color: 'var(--bp-navy)' }}>{formatPeriod(req.filing_period)}</td>
@@ -426,7 +477,7 @@ export default function GstFilingConfirmation() {
             </div>
             <div style={{ padding: 20 }}>
               <p style={{ margin: '0 0 16px 0', color: 'var(--bp-text)', fontWeight: 600 }}>
-                Are you sure you want to send this GSTR-1 filing request to the CA?
+                Are you sure you want to send this {returnType} filing request to the CA?
               </p>
               
               <div style={{ background: '#f0f7ff', padding: 16, borderRadius: 8, display: 'grid', gap: 8, fontSize: 13 }}>

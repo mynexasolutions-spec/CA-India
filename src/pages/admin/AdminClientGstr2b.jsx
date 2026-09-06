@@ -378,6 +378,27 @@ export default function AdminClientGstr2b() {
     doUpload(taxPeriod, file);
   };
 
+  /** GSTR-3B Filing Request reconciliation gate spec — lets the admin tell the system
+   *  "there's nothing to reconcile" for a period instead of uploading a dummy file, so
+   *  the client can raise the GSTR-3B request directly for it. */
+  const handleMarkNoBills = async () => {
+    if (!taxPeriod) return;
+    setBusy(true);
+    setErr('');
+    setMsg('');
+    try {
+      await api(`/admin/clients/${id}/gstr2b/no-bills`, { method: 'POST', body: { tax_period: taxPeriod } });
+      setMsg(`Marked ${periodLabel(taxPeriod)} as "No Bills in GSTR-2B".`);
+      setFile(null);
+      setPreviewGrid(null);
+      loadRecords();
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const triggerReplace = (period) => {
     replacePeriodRef.current = period;
     replaceInputRef.current?.click();
@@ -571,7 +592,14 @@ export default function AdminClientGstr2b() {
           <button type="submit" className="bp-btn bp-btn-primary" disabled={busy}>
             {busy ? 'Saving…' : 'Upload & Save'}
           </button>
+          <button type="button" className="bp-btn bp-btn-outline" disabled={busy || !taxPeriod} onClick={handleMarkNoBills}>
+            Mark "No Bills in GSTR-2B"
+          </button>
         </form>
+        <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--bp-muted)' }}>
+          No purchases for {taxPeriod ? periodLabel(taxPeriod) : 'the selected period'}? Use "Mark No Bills" instead of
+          uploading a file — the client can then raise a GSTR-3B filing request for it directly, without reconciliation.
+        </p>
         {msg && <p className="bp-alert bp-alert-success" style={{ marginTop: 12 }}>{msg}</p>}
         {err && <p className="bp-alert bp-alert-error" style={{ marginTop: 12 }}>{err}</p>}
       </div>
@@ -704,30 +732,38 @@ export default function AdminClientGstr2b() {
                 <tr key={r.id}>
                   <td>{r.financial_year}</td>
                   <td>{periodLabel(r.tax_period)}</td>
-                  <td>{r.file_name || '—'}</td>
+                  <td>
+                    {r.no_bills ? (
+                      <span className="bp-badge" style={{ background: '#f1f5f9', color: '#475569', fontWeight: 700 }}>No Bills in GSTR-2B</span>
+                    ) : (r.file_name || '—')}
+                  </td>
                   <td>
                     {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}
                     {r.uploader?.name ? ` · ${r.uploader.name}` : ''}
                   </td>
                   <td style={{ whiteSpace: 'nowrap' }}>
-                    <button
-                      type="button"
-                      className="bp-btn bp-btn-outline"
-                      style={{ padding: '2px 8px', fontSize: 11 }}
-                      onClick={() => handleView(r)}
-                    >
-                      View
-                    </button>
-                    {' · '}
-                    <button
-                      type="button"
-                      className="bp-btn bp-btn-outline"
-                      style={{ padding: '2px 8px', fontSize: 11 }}
-                      onClick={() => handleViewInvoices(r)}
-                    >
-                      Invoices
-                    </button>
-                    {' · '}
+                    {!r.no_bills && (
+                      <>
+                        <button
+                          type="button"
+                          className="bp-btn bp-btn-outline"
+                          style={{ padding: '2px 8px', fontSize: 11 }}
+                          onClick={() => handleView(r)}
+                        >
+                          View
+                        </button>
+                        {' · '}
+                        <button
+                          type="button"
+                          className="bp-btn bp-btn-outline"
+                          style={{ padding: '2px 8px', fontSize: 11 }}
+                          onClick={() => handleViewInvoices(r)}
+                        >
+                          Invoices
+                        </button>
+                        {' · '}
+                      </>
+                    )}
                     <button
                       type="button"
                       className="bp-btn bp-btn-outline"
@@ -735,7 +771,7 @@ export default function AdminClientGstr2b() {
                       disabled={busy}
                       onClick={() => triggerReplace(r.tax_period)}
                     >
-                      Replace
+                      {r.no_bills ? 'Upload File Instead' : 'Replace'}
                     </button>
                     {' '}
                     <button

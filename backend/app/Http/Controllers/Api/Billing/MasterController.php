@@ -56,8 +56,9 @@ class MasterController extends Controller
             'gstin' => ['required_if:gst_status,registered', 'nullable', 'string', 'regex:'.self::GSTIN_REGEX],
             'state_code' => 'required|string|max:2',
             'state' => 'required|string|max:80',
-            'billing_address' => 'required|string',
-            'shipping_address' => 'nullable|string',
+            'billing_address' => 'required|string|max:100',
+            'shipping_address' => 'nullable|string|max:100',
+            'branch_name' => 'nullable|string|max:100',
         ];
     }
 

@@ -20,6 +20,7 @@ class ClientProfile extends Model
         'quotation_prefix', 'amendment_prefix',
         'invoice_next_number', 'bill_of_supply_next_number', 'credit_note_next_number',
         'debit_note_next_number', 'quotation_next_number', 'amendment_next_number',
+        'delivery_challan_next_number',
     ];
 
     protected function casts(): array

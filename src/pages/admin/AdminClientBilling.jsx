@@ -27,20 +27,32 @@ export default function AdminClientBilling() {
   const { id } = useParams();
   const fy = currentFyRange();
   const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
   const [tab, setTab] = useState('tax_invoices');
   const [from] = useState(fy.from);
   const [to] = useState(fy.to);
 
   const load = () => {
+    setErr('');
     const qs = new URLSearchParams({
       preset: 'custom',
       from,
       to,
     });
-    api(`/admin/clients/${id}/billing/dashboard?${qs}`).then(setData).catch(console.error);
+    api(`/admin/clients/${id}/billing/dashboard?${qs}`).then(setData).catch((e) => setErr(e.message || 'Failed to load client billing.'));
   };
 
   useEffect(() => { load(); }, [id]);
+
+  if (err) {
+    return (
+      <div className="bp-card">
+        <p style={{ color: 'var(--bp-danger, #b91c1c)' }}>{err}</p>
+        <button type="button" className="bp-btn bp-btn-outline" onClick={load}>Retry</button>
+        <Link className="bp-btn bp-btn-outline" style={{ marginLeft: 8 }} to="/admin/billing">All Clients</Link>
+      </div>
+    );
+  }
 
   const download = async (type, format) => {
     const token = getAuthToken();

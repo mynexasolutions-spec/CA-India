@@ -53,6 +53,12 @@ export default function GstReturnsWorkspace() {
   const { user } = useAuth();
   const profile = user?.client_profile;
 
+  // GST Filing Return Type & Period Logic spec: Regular dealers see GSTR-1/GSTR-3B
+  // tabs here; Composition dealers see CMP-08/GSTR-4 instead (GSTR-2B has no
+  // applicability for Composition, so those tabs never hit the reconciliation gate).
+  const isComposition = profile?.dealer_type === 'composition';
+  const returnTypeOptions = isComposition ? ['CMP-08', 'GSTR-4'] : ['GSTR-1', 'GSTR-3B'];
+
   const [returnType, setReturnType] = useState('GSTR-1');
   const [financialYear, setFinancialYear] = useState(buildFyOptions()[0]);
   const [data, setData] = useState(null);
@@ -64,6 +70,16 @@ export default function GstReturnsWorkspace() {
   const [detailLoading, setDetailLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  // Dealer type resolves asynchronously (profile loads via useAuth) — once known, make
+  // sure the selected tab is actually valid for this dealer (Regular vs Composition).
+  useEffect(() => {
+    if (!profile) return;
+    if (!returnTypeOptions.includes(returnType)) {
+      setReturnType(returnTypeOptions[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, isComposition]);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -101,32 +117,26 @@ export default function GstReturnsWorkspace() {
   };
 
   const isGstr3b = returnType === 'GSTR-3B';
+  const isAnnual = returnType === 'GSTR-4';
+  const fyStartYear = financialYear.split('-')[0];
   const bannerText = isGstr3b
     ? 'GSTR-3B can be requested only after GSTR-2B reconciliation is completed for the selected period.'
-    : 'You can raise a request for GSTR-1 filing for the selected period.';
+    : `You can raise a request for ${returnType} filing for the selected period.`;
 
   return (
     <div className="bp-content" style={{ maxWidth: '100%' }}>
       <div className="bp-toolbar" style={{ marginBottom: 16 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--bp-navy)' }}>GST Returns</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>File and track your GSTR-1 and GSTR-3B returns.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <select className="bp-select" style={{ height: 40, boxSizing: 'border-box' }} value={financialYear} onChange={(e) => setFinancialYear(e.target.value)}>
-            {buildFyOptions().map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-          {profile?.gstin && (
-            <span className="bp-badge" style={{ background: '#f0fdf4', color: '#166534', fontWeight: 700, padding: '6px 12px' }}>
-              GSTIN: {profile.gstin}
-            </span>
-          )}
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--bp-muted)' }}>
+            File and track your {returnTypeOptions.join(' and ')} returns.
+          </p>
         </div>
       </div>
 
       {/* Internal tab bar — GSTR-1 / GSTR-3B are never separate nav items, only tabs here */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 18, borderBottom: '1px solid var(--bp-border)' }}>
-        {['GSTR-1', 'GSTR-3B'].map((t) => (
+        {returnTypeOptions.map((t) => (
           <button
             key={t}
             type="button"
@@ -162,7 +172,7 @@ export default function GstReturnsWorkspace() {
               type="button"
               className="bp-btn bp-btn-primary"
               style={{ height: 38, borderRadius: 8, fontWeight: 700, background: '#0052cc', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              onClick={() => setRequestFlow({})}
+              onClick={() => setRequestFlow(isAnnual ? { period: fyStartYear } : {})}
             >
               <SendIcon /> Request {returnType} Filing
             </button>
@@ -180,7 +190,7 @@ export default function GstReturnsWorkspace() {
                     <th style={{ textAlign: 'center' }}>Due Date</th>
                     <th style={{ textAlign: 'center' }}>Status</th>
                     <th style={{ textAlign: 'center' }}>Filed On</th>
-                    <th style={{ textAlign: 'center' }}>Ack. No.</th>
+                    <th style={{ textAlign: 'center' }}>ARN</th>
                     <th style={{ textAlign: 'center' }}>Action</th>
                   </tr>
                 </thead>
@@ -248,7 +258,7 @@ export default function GstReturnsWorkspace() {
           quarterly={!!data?.quarterly}
           initialPeriod={requestFlow.period}
           onClose={() => setRequestFlow(null)}
-          onSubmitted={() => { setRequestFlow(null); load(); }}
+          onSubmitted={() => { setRequestFlow(null); navigate('/portal/gst-filing'); }}
         />
       )}
 

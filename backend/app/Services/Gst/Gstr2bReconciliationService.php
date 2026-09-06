@@ -107,20 +107,34 @@ class Gstr2bReconciliationService
     }
 
     /**
-     * FY period grid (quarterly or monthly) for either GSTR-1 or GSTR-3B, feeding the
-     * client GST Returns workspace's "Filing Periods" table. Intentionally a fresh,
-     * self-contained implementation — NOT extracted from
-     * GstReturnController::buildPeriods() — so this new feature carries zero risk of
-     * altering that controller's existing dashboard/compliance behavior.
+     * FY period grid for GSTR-1, GSTR-3B, CMP-08 (Composition, always quarterly) or
+     * GSTR-4 (Composition, always annual), feeding the client GST Returns workspace's
+     * "Filing Periods" table. Intentionally a fresh, self-contained implementation —
+     * NOT extracted from GstReturnController::buildPeriods() — so this new feature
+     * carries zero risk of altering that controller's existing dashboard/compliance
+     * behavior.
      *
-     * Due-date convention matches GstReturnController::buildPeriods() exactly: GSTR-1
-     * monthly = 11th of the next month (13th if $qrmpMonthlyGstr1, i.e. tracked monthly
-     * via IFF while the client's overall cadence is quarterly), GSTR-1 quarterly = 13th
-     * of the month after the quarter, GSTR-3B monthly = 20th, GSTR-3B quarterly = 22nd.
+     * Due-date convention matches GstReturnController::buildPeriods() for GSTR-1/GSTR-3B:
+     * GSTR-1 monthly = 11th of the next month (13th if $qrmpMonthlyGstr1, i.e. tracked
+     * monthly via IFF while the client's overall cadence is quarterly), GSTR-1 quarterly =
+     * 13th of the month after the quarter, GSTR-3B monthly = 20th, GSTR-3B quarterly = 22nd.
+     * CMP-08 = 18th of the month after the quarter. GSTR-4 = 30 June following the FY end
+     * (current rule since the 2019 due-date extension from the original 30 April).
      */
     public static function periodGrid(string $returnType, bool $quarterly, int $startYear, bool $qrmpMonthlyGstr1 = false): array
     {
         $periods = [];
+
+        // GSTR-4 is Annual — one single period per FY, not a month/quarter grid. The
+        // period key is just the FY start year ("2026"), matching periodBounds()'s
+        // bare-year branch (Apr 1 startYear -> Mar 31 startYear+1).
+        if ($returnType === 'GSTR-4') {
+            return [[
+                'period' => (string) $startYear,
+                'period_label' => "FY {$startYear}-".substr((string) ($startYear + 1), -2),
+                'due_date' => Carbon::createFromDate($startYear + 1, 6, 30)->toDateString(),
+            ]];
+        }
 
         if ($quarterly) {
             $quarters = [
@@ -131,7 +145,7 @@ class Gstr2bReconciliationService
             ];
             foreach ($quarters as $q => $info) {
                 $after = Carbon::createFromDate($info['endYear'], $info['endMonth'], 1)->addMonth();
-                $day = $returnType === 'GSTR-3B' ? 22 : 13;
+                $day = $returnType === 'GSTR-3B' ? 22 : ($returnType === 'CMP-08' ? 18 : 13);
                 $periods[] = [
                     'period' => "{$startYear}-Q{$q}",
                     'period_label' => "{$info['label']} {$startYear}",

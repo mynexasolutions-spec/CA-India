@@ -25,7 +25,7 @@ export function docTypeLock(profile, type) {
   const mode = billingMode(profile);
 
   if (mode === 'retail') {
-    if (type === 'tax_invoice' || type === 'amendment') return null;
+    if (type === 'tax_invoice' || type === 'amendment' || type === 'delivery_challan') return null;
     if (type === 'bill_of_supply') {
       return 'Bill of Supply is not available for non-GST clients.';
     }
@@ -86,12 +86,14 @@ export function partyDocumentSections(profile) {
       { type: 'credit_note', label: 'Credit Notes', mode: 'always' },
       { type: 'tax_invoice', label: 'Tax Invoices', mode: 'ifExists' },
       { type: 'debit_note', label: 'Debit Notes', mode: 'ifExists' },
+      { type: 'delivery_challan', label: 'Delivery Challans', mode: 'ifExists' },
     ];
   }
 
   if (mode === 'retail') {
     return [
       { type: 'tax_invoice', label: 'Invoices', mode: 'always' },
+      { type: 'delivery_challan', label: 'Delivery Challans', mode: 'ifExists' },
     ];
   }
 
@@ -101,6 +103,7 @@ export function partyDocumentSections(profile) {
     { type: 'debit_note', label: 'Debit Notes', mode: 'always' },
     { type: 'credit_note', label: 'Credit Notes', mode: 'always' },
     { type: 'bill_of_supply', label: 'Bill of Supply', mode: 'ifExists' },
+    { type: 'delivery_challan', label: 'Delivery Challans', mode: 'ifExists' },
   ];
 }
 

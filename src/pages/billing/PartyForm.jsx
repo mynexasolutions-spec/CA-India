@@ -11,7 +11,7 @@ const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const empty = {
   name: '', proprietor_name: '', contact_person: '', email: '', phone: '',
   gst_status: 'registered', gstin: '',
-  state: 'Maharashtra', state_code: '27', billing_address: '', shipping_address: '',
+  state: '', state_code: '', billing_address: '', shipping_address: '', branch_name: '',
 };
 
 const ICON_PROPS = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -48,11 +48,15 @@ export default function PartyForm() {
   const [gstinError, setGstinError] = useState('');
   const [confirmModal, setConfirmModal] = useState(null);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
+  // Shipping Address auto-fills from Billing Address until the user types into Shipping
+  // Address directly — after that, Billing Address edits no longer overwrite it.
+  const [shippingTouched, setShippingTouched] = useState(false);
 
   useEffect(() => {
     if (!editing) return;
     api(`/billing/parties/${id}`).then((p) => {
       setForm({ ...empty, ...p, gst_status: p.gst_status || (p.gstin ? 'registered' : 'unregistered'), gstin: p.gstin || '' });
+      setShippingTouched(Boolean(p.shipping_address) && p.shipping_address !== p.billing_address);
       setLoaded(true);
     }).catch((e) => setErr(e.message));
   }, [id, editing]);
@@ -162,25 +166,44 @@ export default function PartyForm() {
             <input className="bp-input" placeholder="Enter proprietor / authorised signatory name" value={form.proprietor_name} onChange={(e) => set('proprietor_name', e.target.value)} required />
           </Field>
 
-          <Field label="Contact Person" help="Primary contact person of the company">
+          <Field label="Contact Person" help="Contact Detail of Proprietor/Authorised Signatory">
             <input className="bp-input" placeholder="Enter contact person name" value={form.contact_person} onChange={(e) => set('contact_person', e.target.value)} />
           </Field>
-          <Field label="Phone" help="Contact phone number">
+          <Field label="Phone" help="Company Official Contact No.">
             <input className="bp-input" placeholder="Enter phone number" value={form.phone} onChange={(e) => set('phone', e.target.value)} />
           </Field>
 
-          <Field label="Email" help="Official email address">
+          <Field label="Email" help="Company Official Email ID">
             <input className="bp-input" type="email" placeholder="Enter email address" value={form.email} onChange={(e) => set('email', e.target.value)} />
           </Field>
           <Field label="State" required help="Select the state">
             <StateSelect value={form.state_code} onChange={(code, name) => setForm((f) => ({ ...f, state_code: code, state: name }))} required />
           </Field>
 
-          <Field label="Billing Address" required help="Registered / billing address of the company" style={{ gridColumn: '1 / -1' }}>
-            <input className="bp-input" placeholder="Enter complete billing address" value={form.billing_address} onChange={(e) => set('billing_address', e.target.value)} required />
+          <Field label="Billing Address" required help={`Registered / billing address of the company (${(form.billing_address || '').length}/100)`} style={{ gridColumn: '1 / -1' }}>
+            <input
+              className="bp-input"
+              placeholder="Enter complete billing address"
+              value={form.billing_address || ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((f) => ({ ...f, billing_address: v, shipping_address: shippingTouched ? f.shipping_address : v }));
+              }}
+              maxLength={100}
+              required
+            />
           </Field>
-          <Field label="Shipping Address (If any)" help="Shipping address if different from billing address" style={{ gridColumn: '1 / -1' }}>
-            <input className="bp-input" placeholder="Enter shipping address (if any)" value={form.shipping_address} onChange={(e) => set('shipping_address', e.target.value)} />
+          <Field label="Branch (If any)" help="Enter the branch name of the company (if applicable)">
+            <input className="bp-input" placeholder="Enter branch name (if any)" value={form.branch_name || ''} onChange={(e) => set('branch_name', e.target.value)} maxLength={100} />
+          </Field>
+          <Field label="Shipping Address (If any)" help={`Shipping address if different from billing address (${(form.shipping_address || '').length}/100)`}>
+            <input
+              className="bp-input"
+              placeholder="Enter shipping address (if any)"
+              value={form.shipping_address || ''}
+              onChange={(e) => { setShippingTouched(true); set('shipping_address', e.target.value); }}
+              maxLength={100}
+            />
           </Field>
         </div>
 

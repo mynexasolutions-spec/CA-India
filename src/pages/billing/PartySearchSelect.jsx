@@ -78,7 +78,10 @@ export default function PartySearchSelect({ parties, value, onSelect }) {
               onClick={() => { onSelect(String(p.id)); setOpen(false); setQuery(''); }}
             >
               <span className="bp-party-search-item-name">{p.name}</span>
-              <span className="bp-party-search-item-sub">{p.gstin_display || p.gstin || 'Unregistered'}</span>
+              <span className="bp-party-search-item-sub">
+                {p.gstin_display || p.gstin || 'Unregistered'}
+                {p.branch_name && ` (Branch Name - ${p.branch_name})`}
+              </span>
             </button>
           ))}
         </div>
