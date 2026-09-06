@@ -26,14 +26,15 @@ td, th { vertical-align: top; }
 
 /* ===== Header ===== */
 .hdr-logo-card { border: 1px solid #1e40af; border-radius: 10px; padding: 12px 18px; }
+.company-name-cell { vertical-align: middle; }
 .company-name {
   font-size: 18.5px;
   font-weight: bold;
   color: #1e40af;
-  margin: 0 0 5px;
+  margin: 0;
   line-height: 1.15;
 }
-.company-name-rule { border-top: 1.4px solid #1e40af; width: 240px; margin-top: 4px; }
+.company-name-text { display: inline-block; border-bottom: 1.4px solid #1e40af; padding-bottom: 4px; }
 .logo-cell {
   width: 100px;
   padding-right: 14px;
@@ -406,9 +407,8 @@ td, th { vertical-align: top; }
     </td>
     <td class="logo-divider-cell"></td>
     @endif
-    <td>
-      <div class="company-name">{{ strtoupper($business) }}</div>
-      <div class="company-name-rule"></div>
+    <td class="company-name-cell">
+      <div class="company-name"><span class="company-name-text">{{ strtoupper($business) }}</span></div>
     </td>
   </tr>
 </table>

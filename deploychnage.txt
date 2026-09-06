@@ -1,0 +1,17 @@
+# 1. सर्वर के प्रोजेक्ट फोल्डर में जाएं
+cd /var/www/caindia
+# 2. डेटाबेस बैकअप लें (सुरक्षित रहने के लिए)
+cp backend/database/database.sqlite backend/database/database.sqlite.bak
+# 3. नया कोड पुल करें
+git pull origin main
+# 4. Backend Dependencies और Migration (बिना db:seed या db fresh किए, डेटा सुरक्षित रहेगा)
+cd backend
+composer install --no-dev --optimize-autoloader --ignore-platform-req=ext-gd
+php artisan migrate --force
+php artisan config:clear && php artisan route:clear && php artisan cache:clear
+# 5. Frontend Build (नया पैजिनेशन अपडेट बिल्ड करने के लिए)
+cd ..
+npm ci
+npm run build
+# 6. PHP Service Restart
+sudo systemctl restart php8.4-fpm
