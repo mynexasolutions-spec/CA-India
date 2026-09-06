@@ -25,6 +25,7 @@ td, th { vertical-align: top; }
 .center { text-align: center; }
 
 /* ===== Header ===== */
+.hdr-logo-card { border: 1px solid #1e40af; border-radius: 10px; padding: 12px 18px; }
 .company-name {
   font-size: 18.5px;
   font-weight: bold;
@@ -32,14 +33,19 @@ td, th { vertical-align: top; }
   margin: 0 0 5px;
   line-height: 1.15;
 }
+.company-name-rule { border-top: 1.4px solid #1e40af; width: 240px; margin-top: 4px; }
 .logo-cell {
-  width: 112px;
-  padding-right: 10px;
-  padding-left: 2px;
+  width: 100px;
+  padding-right: 14px;
   vertical-align: middle;
 }
+.logo-divider-cell {
+  width: 1px;
+  border-left: 1.2px solid #1e40af;
+  padding-right: 14px;
+}
 .logo-img {
-  width: 100px;
+  width: 88px;
   height: auto;
   display: block;
 }
@@ -77,7 +83,7 @@ td, th { vertical-align: top; }
 .hdr-info-card { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; }
 
 /* ===== Receiver / Consignee ===== */
-.party-wrap { width: 100%; table-layout: fixed; margin-top: 0; }
+.party-wrap { width: 100%; table-layout: fixed; margin-top: 12px; }
 .col-spacer { width: 4%; }
 .party-cell {
   width: 48%;
@@ -388,20 +394,25 @@ td, th { vertical-align: top; }
 
 <div class="frame">
 
-{{-- HEADER: Logo + Company Name only — the seller/document details card sits below,
-     separately, so the two never carry doubled-up spacing between them. --}}
+{{-- HEADER: bordered card — Logo | vertical divider | Company Name (with its own short
+     underline) — the seller/document details card sits below, separately, so the two
+     never carry doubled-up spacing between them. --}}
+<div class="hdr-logo-card">
 <table>
   <tr>
     @if($logoPath)
     <td class="logo-cell">
       <img class="logo-img" src="{{ $logoPath }}" alt="logo">
     </td>
+    <td class="logo-divider-cell"></td>
     @endif
     <td>
       <div class="company-name">{{ strtoupper($business) }}</div>
+      <div class="company-name-rule"></div>
     </td>
   </tr>
 </table>
+</div>
 
 <hr class="hdr-rule">
 

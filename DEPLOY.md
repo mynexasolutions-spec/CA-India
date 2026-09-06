@@ -44,6 +44,11 @@ If you added any new database tables or columns, apply the changes:
 php artisan migrate --force
 ```
 
+**⚠️ Before you restart services, check `DATA_CHANGES.md`** (repo root) for any ⬜ (not yet
+deployed) entries — some changes need more than `migrate` alone (a one-off data
+import/backfill command, a manual admin action, etc.). Run each pending entry's own
+"Production checklist" in order, then flip it to ✅ with today's date once verified live.
+
 ---
 
 ### Step 6: Clear Cache
