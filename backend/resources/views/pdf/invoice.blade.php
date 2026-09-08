@@ -25,7 +25,7 @@ td, th { vertical-align: top; }
 .center { text-align: center; }
 
 /* ===== Header ===== */
-.hdr-logo-card { padding: 9px 18px; }
+.hdr-logo-card { padding: 9px 15px; }
 .company-name-cell { vertical-align: middle; }
 .company-name {
   font-size: 18.5px;
@@ -89,12 +89,15 @@ td, th { vertical-align: top; }
 .hdr-info-card { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; }
 
 /* ===== Receiver / Consignee ===== */
-.party-wrap { width: 100%; table-layout: fixed; margin-top: 12px; }
+.party-wrap { width: 100%; table-layout: fixed; margin-top: 12px; border-collapse: separate; }
 .col-spacer { width: 4%; }
 .party-cell {
   width: 48%;
   padding: 0;
   vertical-align: top;
+  background: #ffffff;
+  border: 1.2px solid #1e40af;
+  border-radius: 10px;
 }
 .party-head {
   background: #1e40af;
@@ -104,18 +107,10 @@ td, th { vertical-align: top; }
   letter-spacing: 0.35px;
   text-transform: uppercase;
   padding: 7px 12px;
-  border-top: 1.2px solid #1e40af;
-  border-left: 1.2px solid #1e40af;
-  border-right: 1.2px solid #1e40af;
-  border-radius: 10px 10px 0 0;
+  border-radius: 9px 9px 0 0;
 }
 .party-body {
   padding: 5px 12px 10px;
-  background: #ffffff;
-  border-bottom: 1.2px solid #1e40af;
-  border-left: 1.2px solid #1e40af;
-  border-right: 1.2px solid #1e40af;
-  border-radius: 0 0 10px 10px;
 }
 .party-name { font-weight: bold; font-size: 11.5px; color: #0f172a; margin-bottom: 3px; }
 .party-line { color: #334155; font-size: 9.8px; margin: 2px 0; }
@@ -126,7 +121,7 @@ td, th { vertical-align: top; }
 .pf-val { padding-left: 4px; color: #334155; }
 
 /* ===== Line items ===== */
-.items-wrap { margin-top: 14px; border: 1.5px solid #1e40af; border-radius: 10px; }
+.items-wrap { margin-top: 8px; border: 1.5px solid #1e40af; border-radius: 10px; }
 .items { width: 100%; }
 .items th {
   background: #1e40af;
@@ -166,7 +161,7 @@ td, th { vertical-align: top; }
 .sum-right { float: right; width: 48.5%; }
 .clear { clear: both; }
 
-.card { border: 1px solid #1e40af; border-radius: 10px; background: #ffffff; padding: 8px 12px; page-break-inside: avoid; }
+.card { border: 1px solid #1e40af; border-radius: 10px; background: #ffffff; padding: 8px 14px; page-break-inside: avoid; }
 .card-gap { margin-top: 8px; }
 .card-head { font-weight: bold; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #1e40af; }
 .card-head img { width: 14px; height: 14px; vertical-align: -2.5px; margin-right: 6px; }
@@ -646,18 +641,6 @@ td, th { vertical-align: top; }
         </ol>
       </div>
 
-      @if($isDeliveryChallan)
-      <div class="card card-gap">
-        <div class="card-head">Transportation Details</div>
-        <div class="card-sep"></div>
-        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
-        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
-        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
-        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
-        <div class="bank-line"><b>Receiver Name :</b> {{ $doc->receiver_name ?: '—' }}</div>
-        <div class="bank-line"><b>Receiver Signature :</b> ______________________</div>
-      </div>
-      @endif
     </div>
     <div class="sum-right">
       <div class="totals-cell">
@@ -731,6 +714,19 @@ td, th { vertical-align: top; }
           </tr>
         </table>
       </div>
+
+      @if($isDeliveryChallan)
+      <div class="card card-gap">
+        <div class="card-head">Transportation Details</div>
+        <div class="card-sep"></div>
+        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
+        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
+        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
+        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
+        <div class="bank-line"><b>Receiver Name :</b> {{ $doc->receiver_name ?: '—' }}</div>
+        <div class="bank-line"><b>Receiver Signature :</b> ______________________</div>
+      </div>
+      @endif
     </div>
     <div class="clear"></div>
 </div>
