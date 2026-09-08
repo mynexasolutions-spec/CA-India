@@ -81,8 +81,8 @@ td, th { vertical-align: top; }
 .inv-meta .icon-cell img { width: 20px; height: 20px; display: block; }
 .inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
 .inv-meta .colon { width: 10px; color: #334155; font-weight: bold; text-align: center; }
-.inv-meta .val { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
-.inv-meta .val-plain { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
+.inv-meta .val { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
+.inv-meta .val-plain { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
 
 .hdr-rule { border: 0; border-top: 1.4px solid #1e40af; margin: 6px 0 8px; }
 .hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
@@ -486,12 +486,14 @@ td, th { vertical-align: top; }
           <td class="colon">:</td>
           <td class="val-plain">{{ $doc->document_date?->format('d/m/Y') }}</td>
         </tr>
+        @unless(in_array($doc->type, ['debit_note', 'credit_note'], true))
         <tr>
           <td class="icon-cell">@if($chartIcon)<img src="{{ $chartIcon }}" alt="">@endif</td>
           <td class="lab">Financial Year</td>
           <td class="colon">:</td>
           <td class="val-plain">{{ $financialYear }}</td>
         </tr>
+        @endunless
         <tr>
           <td class="icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
           <td class="lab">Place of Supply</td>
