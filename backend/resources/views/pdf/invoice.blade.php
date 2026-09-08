@@ -84,7 +84,7 @@ td, th { vertical-align: top; }
 .inv-meta .val { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
 .inv-meta .val-plain { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
 
-.hdr-rule { border: 0; border-top: 1.4px solid #1e40af; margin: 6px 0 8px; }
+.hdr-rule { border: 0; margin: 8px 0; }
 .hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
 .hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
 
@@ -433,10 +433,10 @@ td, th { vertical-align: top; }
      icon treatment. --}}
 <table class="hdr-detail-wrap">
   <tr>
-    <td class="hdr-detail-cell" style="width:60%;">
+    <td class="hdr-detail-cell" style="width:54%;">
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
-        <td class="meta-text">{{ implode(', ', $addressParts) ?: '—' }}</td>
+        <td class="meta-text"><b>Address :</b> {{ implode(', ', $addressParts) ?: '—' }}</td>
       </tr></table>
 
       @if(($p->has_gst && $p->gstin) || $p->pan)
@@ -471,7 +471,7 @@ td, th { vertical-align: top; }
       @endif
     </td>
     <td class="col-spacer"></td>
-    <td class="hdr-detail-cell right" style="width:37%;">
+    <td class="hdr-detail-cell right" style="width:42%;">
       <div class="doc-title-wrap"><div class="doc-title">&#8212; {{ strtoupper($docTitle) }} &#8212;</div></div>
       <table class="inv-meta">
         <tr>
