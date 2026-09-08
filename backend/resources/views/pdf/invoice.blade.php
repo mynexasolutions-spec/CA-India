@@ -25,7 +25,7 @@ td, th { vertical-align: top; }
 .center { text-align: center; }
 
 /* ===== Header ===== */
-.hdr-logo-card { padding: 9px 15px; }
+.hdr-logo-card { padding: 9px 15px 9px 0; }
 .company-name-cell { vertical-align: middle; }
 .company-name {
   font-size: 18.5px;
