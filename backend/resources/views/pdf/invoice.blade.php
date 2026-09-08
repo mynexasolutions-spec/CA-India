@@ -54,11 +54,11 @@ td, th { vertical-align: top; }
   height: auto;
   display: block;
 }
-.meta-row { margin: 4px 0; }
+.meta-row { margin: 7px 0; }
 .meta-row td { padding: 0; vertical-align: middle; }
 .meta-icon-cell { width: 26px; padding-right: 6px; }
 .meta-icon-cell img { width: 20px; height: 20px; display: block; }
-.meta-text { color: #475569; font-size: 9.5px; line-height: 1.4; }
+.meta-text { color: #475569; font-size: 11px; line-height: 1.5; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
 .doc-title-wrap { text-align: center; margin: 0 0 8px; }
