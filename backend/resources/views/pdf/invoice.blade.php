@@ -25,7 +25,7 @@ td, th { vertical-align: top; }
 .center { text-align: center; }
 
 /* ===== Header ===== */
-.hdr-logo-card { border: 1px solid #1e40af; border-radius: 10px; padding: 12px 18px; }
+.hdr-logo-card { padding: 9px 18px; }
 .company-name-cell { vertical-align: middle; }
 .company-name {
   font-size: 18.5px;
@@ -55,7 +55,7 @@ td, th { vertical-align: top; }
   height: auto;
   display: block;
 }
-.meta-row { margin: 5px 0; }
+.meta-row { margin: 4px 0; }
 .meta-row td { padding: 0; vertical-align: middle; }
 .meta-icon-cell { width: 26px; padding-right: 6px; }
 .meta-icon-cell img { width: 20px; height: 20px; display: block; }
@@ -77,7 +77,7 @@ td, th { vertical-align: top; }
   border-radius: 999px;
 }
 .inv-meta { width: 100%; }
-.inv-meta td { padding: 3.5px 0; font-size: 10px; vertical-align: middle; }
+.inv-meta td { padding: 3px 0; font-size: 10px; vertical-align: middle; }
 .inv-meta .icon-cell { width: 26px; }
 .inv-meta .icon-cell img { width: 20px; height: 20px; display: block; }
 .inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
@@ -166,17 +166,17 @@ td, th { vertical-align: top; }
 .sum-right { float: right; width: 48.5%; }
 .clear { clear: both; }
 
-.card { border: 1px solid #1e40af; border-radius: 10px; background: #ffffff; padding: 9px 12px; page-break-inside: avoid; }
-.card-gap { margin-top: 12px; }
+.card { border: 1px solid #1e40af; border-radius: 10px; background: #ffffff; padding: 8px 12px; page-break-inside: avoid; }
+.card-gap { margin-top: 8px; }
 .card-head { font-weight: bold; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #1e40af; }
 .card-head img { width: 14px; height: 14px; vertical-align: -2.5px; margin-right: 6px; }
-.card-sep { border-top: 1px dashed #bcd0ee; margin: 6px 0; }
+.card-sep { border-top: 1px dashed #bcd0ee; margin: 5px 0; }
 
-.words-value { display: block; font-style: normal; font-size: 10.3px; color: #0f172a; font-weight: bold; line-height: 1.4; }
+.words-value { display: block; font-style: normal; font-size: 10.3px; color: #0f172a; font-weight: bold; line-height: 1.35; }
 
 .bank-name { display: inline; font-weight: bold; color: #0f172a; font-size: 9.3px; margin: 0; }
-.bank-line { color: #1e293b; font-size: 9.3px; line-height: 1.55; }
-.terms-list { margin: 0; padding-left: 15px; color: #1e293b; font-size: 9.3px; line-height: 1.55; }
+.bank-line { color: #1e293b; font-size: 9.3px; line-height: 1.4; }
+.terms-list { margin: 0; padding-left: 15px; color: #1e293b; font-size: 9.3px; line-height: 1.4; }
 .terms-list li { margin-bottom: 1px; }
 
 .totals-cell { border: 1.2px solid #1e40af; border-radius: 11px; padding: 0; vertical-align: top; page-break-inside: avoid; }
@@ -212,7 +212,7 @@ td, th { vertical-align: top; }
 }
 
 /* Seal + signature — unboxed, side by side, filling the caption width */
-.seal-sign-wrap { margin-top: 34px; page-break-inside: avoid; }
+.seal-sign-wrap { margin-top: 18px; page-break-inside: avoid; }
 .sign-block { width: auto; }
 .sign-for { font-size: 12.5px; font-weight: bold; color: #1e40af; text-align: right; padding-bottom: 7px; white-space: nowrap; }
 .seal-cell-plain { width: 70px; vertical-align: bottom; text-align: left; }
@@ -518,51 +518,11 @@ td, th { vertical-align: top; }
 {{-- BILL TO / SHIP TO with navy header bars — both boxes always print side by side;
      Ship To falls back to the billing address/state when no distinct shipping address
      is configured, rather than being hidden (spec: always show two sections). --}}
-@php
-  // Calibrated against the .pf-val column's actual rendered wrap width (9.8px font,
-  // 48%-wide cell minus the 60px+8px label/colon columns). Deliberately conservative
-  // (under, not over, the real chars-per-line) — the box height below is a CSS
-  // min-height, so underestimating just adds a little harmless whitespace, while
-  // overestimating cuts real content off below the box's border (real bug seen with a
-  // 3-line address that this used to count as 2).
-  $pfValCharsPerLine = 38;
-  $customerLabelLen = strlen($customerLabel);
-
-  // The customer name only prints once now (the bold .party-name heading) — the
-  // "Name" row inside .party-fields was a duplicate and has been removed, so its
-  // line count no longer factors into box height here.
-  $leftLines = ceil($customerLabelLen / 36);
-  if (!empty($billAddr)) {
-      $leftLines += ceil(strlen($billAddr) / $pfValCharsPerLine);
-  }
-  if ($billStateLine) {
-      $leftLines += 1;
-  }
-  if ($c && $c->phone) {
-      $leftLines += 1;
-  }
-  $leftLines += 1; // GSTIN line
-
-  $rightLines = ceil($customerLabelLen / 36);
-  if (!empty($shipAddr)) {
-      $rightLines += ceil(strlen($shipAddr) / $pfValCharsPerLine);
-  }
-  if ($shipStateLine) {
-      $rightLines += 1;
-  }
-  if ($c && $c->phone) {
-      $rightLines += 1;
-  }
-  $rightLines += 1; // GSTIN line
-
-  $maxLines = max($leftLines, $rightLines);
-  $bodyHeight = 13 + ($maxLines * 16.5);
-@endphp
 <table class="party-wrap">
   <tr>
     <td class="party-cell">
       <div class="party-head">Details of Receiver | Bill To</div>
-      <div class="party-body" style="min-height: {{ $bodyHeight }}px;">
+      <div class="party-body">
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
@@ -579,7 +539,7 @@ td, th { vertical-align: top; }
     <td class="col-spacer"></td>
     <td class="party-cell">
       <div class="party-head">Details of Consignee | Ship To</div>
-      <div class="party-body" style="min-height: {{ $bodyHeight }}px;">
+      <div class="party-body">
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
