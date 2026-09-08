@@ -25,10 +25,9 @@ td, th { vertical-align: top; }
 .center { text-align: center; }
 
 /* ===== Header ===== */
-.hdr-logo-card { padding: 9px 15px 9px 0; }
+.hdr-logo-card { border: 1px solid #1e40af; border-radius: 10px; padding: 9px 15px; }
 .company-name-cell { vertical-align: middle; }
 .company-name {
-  font-size: 18.5px;
   font-weight: bold;
   color: #1e40af;
   margin: 0;
@@ -86,7 +85,8 @@ td, th { vertical-align: top; }
 .inv-meta .val-plain { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
 
 .hdr-rule { border: 0; border-top: 1.4px solid #1e40af; margin: 6px 0 8px; }
-.hdr-info-card { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; }
+.hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
+.hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
 
 /* ===== Receiver / Consignee ===== */
 .party-wrap { width: 100%; table-layout: fixed; margin-top: 12px; border-collapse: separate; }
@@ -226,6 +226,15 @@ td, th { vertical-align: top; }
   $phone = $p->mobile ?: ($p->user?->phone ?? null);
   $email = $p->email ?: ($p->user?->email ?? null);
   $business = $p->business_name ?: ($p->client_name ?: 'Business');
+  // Short names print big and bold (reference spec); long names step down in size so
+  // they still fit the header card without wrapping awkwardly or overflowing.
+  $businessNameLen = strlen($business);
+  $companyNameSize = match (true) {
+    $businessNameLen <= 22 => 24,
+    $businessNameLen <= 32 => 20,
+    $businessNameLen <= 45 => 17,
+    default => 14,
+  };
   $docTitle = match ($doc->type) {
     'bill_of_supply' => 'BILL OF SUPPLY',
     'credit_note' => 'CREDIT NOTE',
@@ -327,8 +336,7 @@ td, th { vertical-align: top; }
   }
   if (! $termsLines) {
     $termsLines = [
-      'Payment is expected within 7 days from the invoice issuance date.',
-      'Interest @ 18% per annum will be charged on overdue payments.',
+      'Payment is expected within 7 days from the invoice issuance date; otherwise 18% interest will be charged on overdue payment.',
       'All disputes are subject to Mumbai Jurisdiction.',
     ];
   }
@@ -412,7 +420,7 @@ td, th { vertical-align: top; }
     <td class="logo-divider-cell"></td>
     @endif
     <td class="company-name-cell">
-      <div class="company-name">{{ strtoupper($business) }}</div>
+      <div class="company-name" style="font-size: {{ $companyNameSize }}px;">{{ strtoupper($business) }}</div>
     </td>
   </tr>
 </table>
@@ -420,12 +428,12 @@ td, th { vertical-align: top; }
 
 <hr class="hdr-rule">
 
-{{-- Single bordered card: seller details (left, icon-led) + document meta (right,
-     icon-led) — both sides share the exact same icon treatment. --}}
-<div class="hdr-info-card">
-<table>
+{{-- Two separate bordered cards with a gap between them: seller details (left,
+     icon-led) and document meta (right, icon-led) — both sides share the exact same
+     icon treatment. --}}
+<table class="hdr-detail-wrap">
   <tr>
-    <td style="width:60%;">
+    <td class="hdr-detail-cell" style="width:60%;">
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
         <td class="meta-text">{{ implode(', ', $addressParts) ?: '—' }}</td>
@@ -463,7 +471,7 @@ td, th { vertical-align: top; }
       @endif
     </td>
     <td class="col-spacer"></td>
-    <td style="width:37%;" class="right">
+    <td class="hdr-detail-cell right" style="width:37%;">
       <div class="doc-title-wrap"><div class="doc-title">&#8212; {{ strtoupper($docTitle) }} &#8212;</div></div>
       <table class="inv-meta">
         <tr>
@@ -508,7 +516,6 @@ td, th { vertical-align: top; }
     </td>
   </tr>
 </table>
-</div>
 
 {{-- BILL TO / SHIP TO with navy header bars — both boxes always print side by side;
      Ship To falls back to the billing address/state when no distinct shipping address
@@ -628,6 +635,18 @@ td, th { vertical-align: top; }
         @endif
       </div>
 
+      @if($isDeliveryChallan)
+      <div class="card card-gap">
+        <div class="card-head">Transportation Details</div>
+        <div class="card-sep"></div>
+        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
+        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
+        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
+        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
+        <div class="bank-line"><b>Receiver Name :</b> {{ $doc->receiver_name ?: '—' }}</div>
+        <div class="bank-line"><b>Receiver Signature :</b> ______________________</div>
+      </div>
+      @else
       <div class="card card-gap">
         <div class="card-head">
           @if($termsIcon)<img src="{{ $termsIcon }}" alt="">@endif
@@ -640,6 +659,7 @@ td, th { vertical-align: top; }
           @endforeach
         </ol>
       </div>
+      @endif
 
     </div>
     <div class="sum-right">
@@ -714,19 +734,6 @@ td, th { vertical-align: top; }
           </tr>
         </table>
       </div>
-
-      @if($isDeliveryChallan)
-      <div class="card card-gap">
-        <div class="card-head">Transportation Details</div>
-        <div class="card-sep"></div>
-        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
-        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
-        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
-        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
-        <div class="bank-line"><b>Receiver Name :</b> {{ $doc->receiver_name ?: '—' }}</div>
-        <div class="bank-line"><b>Receiver Signature :</b> ______________________</div>
-      </div>
-      @endif
     </div>
     <div class="clear"></div>
 </div>
