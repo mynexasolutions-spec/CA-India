@@ -133,7 +133,13 @@ export default function PartyDocumentDetailPage() {
   useEffect(() => {
     if (!partyId) return;
     setLoading(true); setErr('');
-    const qs = new URLSearchParams({ party_id: partyId, per_page: '500', status: 'issued' });
+    // No `status` filter here — the backend defaults to "not cancelled", and we then
+    // narrow to the exact "issued family" client-side below. Explicitly passing
+    // status=issued (the old behavior) silently excluded paid/partially-paid documents,
+    // making this page show 0 results for a party whose invoices had been marked Paid
+    // even though the Party-wise Summary total (which counts issued+partial+paid) still
+    // showed them.
+    const qs = new URLSearchParams({ party_id: partyId, per_page: '500' });
     if (from) qs.set('from', from);
     if (to)   qs.set('to', to);
     if (!from && !to && fy) qs.set('fy', fy);
@@ -146,7 +152,13 @@ export default function PartyDocumentDetailPage() {
 
   const periodDocs   = useMemo(() => filterDocsByPeriod(rows, { from, to }), [rows, from, to]);
   const allowedTypes = useMemo(() => new Set(partyDocumentSections(profile).map((s) => s.type)), [profile]);
-  const flatDocs     = useMemo(() => sortDocs(periodDocs.filter((d) => allowedTypes.has(d.type))), [periodDocs, allowedTypes]);
+  // Matches the Party-wise Summary total's own status set (issued/partial/paid) — a
+  // document's payment status must never change whether it counts here.
+  const ISSUED_STATUSES = useMemo(() => new Set(['issued', 'partial', 'paid']), []);
+  const flatDocs     = useMemo(
+    () => sortDocs(periodDocs.filter((d) => allowedTypes.has(d.type) && ISSUED_STATUSES.has(d.status))),
+    [periodDocs, allowedTypes, ISSUED_STATUSES]
+  );
 
   // Pagination
   const total     = flatDocs.length;

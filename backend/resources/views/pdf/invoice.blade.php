@@ -34,7 +34,6 @@ td, th { vertical-align: top; }
   margin: 0;
   line-height: 1.15;
 }
-.company-name-text { display: inline-block; border-bottom: 1.4px solid #1e40af; padding-bottom: 4px; }
 .logo-cell {
   width: 100px;
   padding-right: 14px;
@@ -45,15 +44,21 @@ td, th { vertical-align: top; }
   border-left: 1.2px solid #1e40af;
   padding-right: 14px;
 }
+.logo-frame {
+  border: 1px solid #1e40af;
+  border-radius: 8px;
+  padding: 8px;
+  display: inline-block;
+}
 .logo-img {
-  width: 88px;
+  width: 78px;
   height: auto;
   display: block;
 }
-.meta-row { margin: 3.5px 0; }
+.meta-row { margin: 5px 0; }
 .meta-row td { padding: 0; vertical-align: middle; }
-.meta-icon-cell { width: 16px; }
-.meta-icon-cell img { width: 11px; height: 11px; display: block; }
+.meta-icon-cell { width: 26px; padding-right: 6px; }
+.meta-icon-cell img { width: 20px; height: 20px; display: block; }
 .meta-text { color: #475569; font-size: 9.5px; line-height: 1.4; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
@@ -72,10 +77,10 @@ td, th { vertical-align: top; }
   border-radius: 999px;
 }
 .inv-meta { width: 100%; }
-.inv-meta td { padding: 2.5px 0; font-size: 10px; vertical-align: middle; }
-.inv-meta .icon-cell { width: 16px; }
-.inv-meta .icon-cell img { width: 11px; height: 11px; display: block; }
-.inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 4px; }
+.inv-meta td { padding: 3.5px 0; font-size: 10px; vertical-align: middle; }
+.inv-meta .icon-cell { width: 26px; }
+.inv-meta .icon-cell img { width: 20px; height: 20px; display: block; }
+.inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
 .inv-meta .colon { width: 10px; color: #334155; font-weight: bold; text-align: center; }
 .inv-meta .val { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
 .inv-meta .val-plain { color: #0f172a; text-align: left; white-space: nowrap; font-weight: bold; padding-left: 4px; }
@@ -303,14 +308,16 @@ td, th { vertical-align: top; }
   $bankIcon = file_exists($asset('icon-bank.png')) ? $asset('icon-bank.png') : null;
   $termsIcon = file_exists($asset('icon-terms.png')) ? $asset('icon-terms.png') : null;
   $rupeeIcon = file_exists($asset('icon-rupee.png')) ? $asset('icon-rupee.png') : null;
-  $pinIcon = file_exists($asset('icon-pin.png')) ? $asset('icon-pin.png') : null;
-  $gstinIcon = file_exists($asset('icon-gstin.png')) ? $asset('icon-gstin.png') : null;
-  $emailIcon = file_exists($asset('icon-email.png')) ? $asset('icon-email.png') : null;
-  $phoneIcon = file_exists($asset('icon-phone.png')) ? $asset('icon-phone.png') : null;
-  $docNumIcon = file_exists($asset('icon-doc-number.png')) ? $asset('icon-doc-number.png') : null;
-  $calendarIcon = file_exists($asset('icon-calendar.png')) ? $asset('icon-calendar.png') : null;
-  $chartIcon = file_exists($asset('icon-chart-fy.png')) ? $asset('icon-chart-fy.png') : null;
-  $reverseIcon = file_exists($asset('icon-reverse.png')) ? $asset('icon-reverse.png') : null;
+  // Header info card icons — filled blue-square/white-glyph style (icon2-*), distinct from
+  // the plain navy silhouette icons (icon-*) used elsewhere (Bank Details, Terms, etc.).
+  $pinIcon = file_exists($asset('icon2-pin.png')) ? $asset('icon2-pin.png') : null;
+  $gstinIcon = file_exists($asset('icon2-gear.png')) ? $asset('icon2-gear.png') : null;
+  $emailIcon = file_exists($asset('icon2-email.png')) ? $asset('icon2-email.png') : null;
+  $phoneIcon = file_exists($asset('icon2-phone.png')) ? $asset('icon2-phone.png') : null;
+  $docNumIcon = file_exists($asset('icon2-doc.png')) ? $asset('icon2-doc.png') : null;
+  $calendarIcon = file_exists($asset('icon2-calendar.png')) ? $asset('icon2-calendar.png') : null;
+  $chartIcon = file_exists($asset('icon2-chart.png')) ? $asset('icon2-chart.png') : null;
+  $reverseIcon = file_exists($asset('icon2-reverse.png')) ? $asset('icon2-reverse.png') : null;
 
   $termsSource = $doc->terms ?: ($p->terms_conditions ?: '');
   $termsLines = [];
@@ -403,12 +410,14 @@ td, th { vertical-align: top; }
   <tr>
     @if($logoPath)
     <td class="logo-cell">
-      <img class="logo-img" src="{{ $logoPath }}" alt="logo">
+      <div class="logo-frame">
+        <img class="logo-img" src="{{ $logoPath }}" alt="logo">
+      </div>
     </td>
     <td class="logo-divider-cell"></td>
     @endif
     <td class="company-name-cell">
-      <div class="company-name"><span class="company-name-text">{{ strtoupper($business) }}</span></div>
+      <div class="company-name">{{ strtoupper($business) }}</div>
     </td>
   </tr>
 </table>
@@ -511,11 +520,12 @@ td, th { vertical-align: top; }
      is configured, rather than being hidden (spec: always show two sections). --}}
 @php
   // Calibrated against the .pf-val column's actual rendered wrap width (9.8px font,
-  // 48%-wide cell minus the 60px+8px label/colon columns) — a plain name/address string
-  // wraps at ~46-48 chars there (verified against two different real addresses), not the
-  // narrower 25/38 this used to assume, which overestimated the line count and left a
-  // visible gap at the bottom of the box.
-  $pfValCharsPerLine = 47;
+  // 48%-wide cell minus the 60px+8px label/colon columns). Deliberately conservative
+  // (under, not over, the real chars-per-line) — the box height below is a CSS
+  // min-height, so underestimating just adds a little harmless whitespace, while
+  // overestimating cuts real content off below the box's border (real bug seen with a
+  // 3-line address that this used to count as 2).
+  $pfValCharsPerLine = 38;
   $customerLabelLen = strlen($customerLabel);
 
   // The customer name only prints once now (the bold .party-name heading) — the
@@ -552,7 +562,7 @@ td, th { vertical-align: top; }
   <tr>
     <td class="party-cell">
       <div class="party-head">Details of Receiver | Bill To</div>
-      <div class="party-body" style="height: {{ $bodyHeight }}px;">
+      <div class="party-body" style="min-height: {{ $bodyHeight }}px;">
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
@@ -569,7 +579,7 @@ td, th { vertical-align: top; }
     <td class="col-spacer"></td>
     <td class="party-cell">
       <div class="party-head">Details of Consignee | Ship To</div>
-      <div class="party-body" style="height: {{ $bodyHeight }}px;">
+      <div class="party-body" style="min-height: {{ $bodyHeight }}px;">
         @if($c)
           <div class="party-name">{{ $customerLabel ?: '—' }}</div>
           <table class="party-fields">
@@ -646,17 +656,6 @@ td, th { vertical-align: top; }
         <span class="words-value">{{ $wordsDisplay }}</span>
       </div>
 
-      @if($isDeliveryChallan)
-      <div class="card card-gap">
-        <div class="card-head">Transportation Details</div>
-        <div class="card-sep"></div>
-        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
-        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
-        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
-        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
-      </div>
-      @endif
-
       <div class="card card-gap">
         @if($hasBank)
           <div class="card-head">
@@ -689,15 +688,14 @@ td, th { vertical-align: top; }
 
       @if($isDeliveryChallan)
       <div class="card card-gap">
-        <div class="card-head">Receiver Acknowledgement</div>
+        <div class="card-head">Transportation Details</div>
         <div class="card-sep"></div>
+        <div class="bank-line"><b>Reason for Transportation :</b> {{ $reasonForTransportLabel }}</div>
+        <div class="bank-line"><b>Vehicle No. :</b> {{ $doc->vehicle_no ?: '—' }}</div>
+        <div class="bank-line"><b>Transporter Name :</b> {{ $doc->transporter_name ?: '—' }}</div>
+        <div class="bank-line"><b>E-Way Bill No. :</b> {{ $doc->eway_bill_no ?: '—' }}</div>
         <div class="bank-line"><b>Receiver Name :</b> {{ $doc->receiver_name ?: '—' }}</div>
-        <div class="bank-line" style="margin-top: 16px;">
-          Receiver Signature : ______________________
-        </div>
-        <div class="bank-line" style="margin-top: 8px;">
-          Date &amp; Time : {{ $doc->receiver_signature_datetime ? $doc->receiver_signature_datetime->format('d-m-Y h:i A') : '______________________' }}
-        </div>
+        <div class="bank-line"><b>Receiver Signature :</b> ______________________</div>
       </div>
       @endif
     </div>
