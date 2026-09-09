@@ -58,9 +58,9 @@ td, th { vertical-align: top; }
 .meta-row { margin: 7px 0; }
 .meta-row:first-child { margin-top: 0; }
 .meta-row td { padding: 0; vertical-align: top; }
-.meta-icon-cell { width: 26px; padding-right: 6px; padding-top: 6px; }
-.meta-icon-cell img { width: 20px; height: 20px; display: block; }
-.meta-icon-address { padding-top: 8px; }
+.meta-icon-cell { width: 26px; padding-right: 6px; }
+.meta-icon-cell img { width: 20px; height: 20px; display: block; margin-top: 4px; }
+.meta-icon-address img { margin-top: 8px; }
 .meta-lab { width: 57px; font-weight: bold; color: #334155; font-size: 10.5px; line-height: 1.5; white-space: nowrap; }
 .meta-colon { width: 10px; font-weight: bold; color: #334155; font-size: 10.5px; line-height: 1.5; text-align: center; }
 .meta-text { color: #0f172a; font-weight: bold; font-size: 10.5px; line-height: 1.5; padding-left: 4px; }
