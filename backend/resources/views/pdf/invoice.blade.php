@@ -60,8 +60,10 @@ td, th { vertical-align: top; }
 .meta-row td { padding: 0; vertical-align: top; }
 .meta-icon-cell { width: 26px; padding-right: 6px; }
 .meta-icon-cell img { width: 20px; height: 20px; display: block; }
-.meta-lab { width: 57px; font-weight: bold; color: #1e293b; font-size: 10.5px; white-space: nowrap; }
-.meta-colon { width: 10px; font-weight: bold; color: #1e293b; font-size: 10.5px; text-align: center; }
+.meta-lead { width: 89px; padding: 0; vertical-align: top; }
+.meta-lead-row td { padding: 0; vertical-align: middle; }
+.meta-lab { width: 57px; font-weight: bold; color: #334155; font-size: 10.5px; white-space: nowrap; }
+.meta-colon { width: 10px; font-weight: bold; color: #334155; font-size: 10.5px; text-align: center; }
 .meta-text { color: #475569; font-size: 10.5px; line-height: 1.5; padding-left: 4px; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
@@ -436,8 +438,12 @@ td, th { vertical-align: top; }
   <tr>
     <td class="hdr-detail-cell" style="width:55%;">
       <table class="meta-row"><tr>
-        <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
-        <td class="meta-lab">Address</td>
+        <td class="meta-lead">
+          <table class="meta-lead-row"><tr>
+            <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
+            <td class="meta-lab" style="padding:0;">Address</td>
+          </tr></table>
+        </td>
         <td class="meta-colon">:</td>
         <td class="meta-text">{{ implode(', ', $addressParts) ?: '—' }}</td>
       </tr></table>
