@@ -25,34 +25,33 @@ td, th { vertical-align: top; }
 .center { text-align: center; }
 
 /* ===== Header ===== */
-.hdr-logo-card { border: 1px solid #1e40af; border-radius: 10px; padding: 9px 15px; }
-.company-name-cell { vertical-align: middle; }
+.hdr-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
+.hdr-logo-cell {
+  width: 100px;
+  border: 1px solid #1e40af;
+  border-radius: 10px;
+  padding: 10px;
+  vertical-align: middle;
+  text-align: center;
+}
+.hdr-spacer-cell { width: 14px; }
+.hdr-name-cell {
+  border: 1px solid #1e40af;
+  border-radius: 10px;
+  padding: 14px 20px;
+  vertical-align: middle;
+}
 .company-name {
   font-weight: bold;
   color: #1e40af;
   margin: 0;
   line-height: 1.15;
 }
-.logo-cell {
-  width: 100px;
-  padding-right: 14px;
-  vertical-align: middle;
-}
-.logo-divider-cell {
-  width: 1px;
-  border-left: 1.2px solid #1e40af;
-  padding-right: 14px;
-}
-.logo-frame {
-  border: 1px solid #1e40af;
-  border-radius: 8px;
-  padding: 8px;
-  display: inline-block;
-}
 .logo-img {
   width: 78px;
   height: auto;
   display: block;
+  margin: 0 auto;
 }
 .meta-row { margin: 7px 0; }
 .meta-row td { padding: 0; vertical-align: middle; }
@@ -89,7 +88,7 @@ td, th { vertical-align: top; }
 .hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
 
 /* ===== Receiver / Consignee ===== */
-.party-wrap { width: 100%; table-layout: fixed; margin-top: 12px; border-collapse: separate; }
+.party-wrap { width: 100%; table-layout: fixed; margin-top: 8px; border-collapse: separate; }
 .col-spacer { width: 4%; }
 .party-cell {
   width: 48%;
@@ -121,7 +120,7 @@ td, th { vertical-align: top; }
 .pf-val { padding-left: 4px; color: #334155; }
 
 /* ===== Line items ===== */
-.items-wrap { margin-top: 8px; border: 1.5px solid #1e40af; border-radius: 10px; }
+.items-wrap { margin-top: 6px; border: 1.5px solid #1e40af; border-radius: 10px; }
 .items { width: 100%; }
 .items th {
   background: #1e40af;
@@ -408,23 +407,19 @@ td, th { vertical-align: top; }
 {{-- HEADER: bordered card — Logo | vertical divider | Company Name (with its own short
      underline) — the seller/document details card sits below, separately, so the two
      never carry doubled-up spacing between them. --}}
-<div class="hdr-logo-card">
-<table>
+<table class="hdr-wrap">
   <tr>
     @if($logoPath)
-    <td class="logo-cell">
-      <div class="logo-frame">
-        <img class="logo-img" src="{{ $logoPath }}" alt="logo">
-      </div>
+    <td class="hdr-logo-cell">
+      <img class="logo-img" src="{{ $logoPath }}" alt="logo">
     </td>
-    <td class="logo-divider-cell"></td>
+    <td class="hdr-spacer-cell"></td>
     @endif
-    <td class="company-name-cell">
+    <td class="hdr-name-cell">
       <div class="company-name" style="font-size: {{ $companyNameSize }}px;">{{ strtoupper($business) }}</div>
     </td>
   </tr>
 </table>
-</div>
 
 <hr class="hdr-rule">
 
