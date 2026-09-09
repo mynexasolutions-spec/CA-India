@@ -81,7 +81,7 @@ td, th { vertical-align: top; }
   border-radius: 999px;
 }
 .inv-meta { width: 100%; }
-.inv-meta td { padding: 5px 0; font-size: 10px; vertical-align: middle; }
+.inv-meta td { padding: 3.3px 0; font-size: 10px; vertical-align: middle; }
 .inv-meta .icon-cell { width: 26px; }
 .inv-meta .icon-cell img { width: 20px; height: 20px; display: block; margin-top: 2px; }
 .inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
