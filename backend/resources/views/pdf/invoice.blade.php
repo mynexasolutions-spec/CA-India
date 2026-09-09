@@ -47,6 +47,7 @@ td, th { vertical-align: top; }
   color: #1e40af;
   margin: 0;
   line-height: 1.15;
+  text-align: center;
 }
 .logo-img {
   width: 78px;
@@ -90,10 +91,10 @@ td, th { vertical-align: top; }
 .hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
 
 /* ===== Receiver / Consignee ===== */
-.party-wrap { width: 100%; table-layout: fixed; margin-top: 8px; border-collapse: separate; }
-.col-spacer { width: 4%; }
+.party-wrap { width: 100%; table-layout: fixed; margin-top: 5px; border-collapse: separate; }
+.col-spacer { width: 2%; }
 .party-cell {
-  width: 48%;
+  width: 49%;
   padding: 0;
   vertical-align: top;
   background: #ffffff;
@@ -158,8 +159,8 @@ td, th { vertical-align: top; }
 
 /* ===== Summary: floated columns so cards can flow page by page ===== */
 .summary-flow { margin-top: 14px; }
-.sum-left { float: left; width: 48.5%; }
-.sum-right { float: right; width: 48.5%; }
+.sum-left { float: left; width: 49%; }
+.sum-right { float: right; width: 49%; }
 .clear { clear: both; }
 
 .card { border: 1px solid #1e40af; border-radius: 10px; background: #ffffff; padding: 8px 14px; page-break-inside: avoid; }
