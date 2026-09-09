@@ -59,9 +59,9 @@ td, th { vertical-align: top; }
 .meta-row td { padding: 0; vertical-align: top; }
 .meta-icon-cell { width: 26px; padding-right: 6px; }
 .meta-icon-cell img { width: 20px; height: 20px; display: block; }
-.meta-lab { width: 56px; font-weight: bold; color: #1e293b; font-size: 10px; white-space: nowrap; }
-.meta-colon { width: 10px; font-weight: bold; color: #1e293b; font-size: 10px; text-align: center; }
-.meta-text { color: #475569; font-size: 10px; line-height: 1.5; padding-left: 4px; }
+.meta-lab { width: 57px; font-weight: bold; color: #1e293b; font-size: 10.5px; white-space: nowrap; }
+.meta-colon { width: 10px; font-weight: bold; color: #1e293b; font-size: 10.5px; text-align: center; }
+.meta-text { color: #475569; font-size: 10.5px; line-height: 1.5; padding-left: 4px; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
 .doc-title-wrap { text-align: center; margin: 0 0 8px; }
