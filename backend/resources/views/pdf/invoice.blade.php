@@ -57,9 +57,11 @@ td, th { vertical-align: top; }
 }
 .meta-row { margin: 7px 0; }
 .meta-row td { padding: 0; vertical-align: middle; }
-.meta-icon-cell { width: 26px; padding-right: 6px; }
-.meta-icon-cell img { width: 20px; height: 20px; display: block; }
-.meta-text { color: #475569; font-size: 11px; line-height: 1.5; }
+.meta-icon-cell { width: 32px; padding-right: 8px; }
+.meta-icon-cell img { width: 26px; height: 26px; display: block; }
+.meta-lab { width: 58px; font-weight: bold; color: #1e293b; font-size: 11px; white-space: nowrap; }
+.meta-colon { width: 10px; font-weight: bold; color: #1e293b; font-size: 11px; text-align: center; }
+.meta-text { color: #475569; font-size: 11px; line-height: 1.5; padding-left: 4px; }
 .meta-text b { color: #1e293b; font-weight: bold; }
 
 .doc-title-wrap { text-align: center; margin: 0 0 8px; }
@@ -78,8 +80,8 @@ td, th { vertical-align: top; }
 }
 .inv-meta { width: 100%; }
 .inv-meta td { padding: 3px 0; font-size: 10px; vertical-align: middle; }
-.inv-meta .icon-cell { width: 26px; }
-.inv-meta .icon-cell img { width: 20px; height: 20px; display: block; }
+.inv-meta .icon-cell { width: 32px; }
+.inv-meta .icon-cell img { width: 26px; height: 26px; display: block; }
 .inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
 .inv-meta .colon { width: 10px; color: #334155; font-weight: bold; text-align: center; }
 .inv-meta .val { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
@@ -434,14 +436,18 @@ td, th { vertical-align: top; }
     <td class="hdr-detail-cell" style="width:55%;">
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
-        <td class="meta-text"><b>Address :</b> {{ implode(', ', $addressParts) ?: '—' }}</td>
+        <td class="meta-lab">Address</td>
+        <td class="meta-colon">:</td>
+        <td class="meta-text">{{ implode(', ', $addressParts) ?: '—' }}</td>
       </tr></table>
 
       @if(($p->has_gst && $p->gstin) || $p->pan)
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($gstinIcon)<img src="{{ $gstinIcon }}" alt="">@endif</td>
+        <td class="meta-lab">GSTIN</td>
+        <td class="meta-colon">:</td>
         <td class="meta-text">
-          @if($p->has_gst && $p->gstin)<b>GSTIN :</b> {{ $p->gstin }}@endif
+          @if($p->has_gst && $p->gstin){{ $p->gstin }}@endif
           @if($p->pan){{ ($p->has_gst && $p->gstin) ? '  |  ' : '' }}<b>PAN :</b> {{ $p->pan }}@endif
         </td>
       </tr></table>
@@ -450,21 +456,27 @@ td, th { vertical-align: top; }
       @if($email)
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($emailIcon)<img src="{{ $emailIcon }}" alt="">@endif</td>
-        <td class="meta-text"><b>Email :</b> {{ $email }}</td>
+        <td class="meta-lab">Email</td>
+        <td class="meta-colon">:</td>
+        <td class="meta-text">{{ $email }}</td>
       </tr></table>
       @endif
 
       @if($phone)
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($phoneIcon)<img src="{{ $phoneIcon }}" alt="">@endif</td>
-        <td class="meta-text"><b>Phone :</b> {{ $phone }}</td>
+        <td class="meta-lab">Phone</td>
+        <td class="meta-colon">:</td>
+        <td class="meta-text">{{ $phone }}</td>
       </tr></table>
       @endif
 
       @if($p->state || $p->state_code)
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
-        <td class="meta-text"><b>State :</b> {{ $stateLine($p->state, $p->state_code) }}</td>
+        <td class="meta-lab">State</td>
+        <td class="meta-colon">:</td>
+        <td class="meta-text">{{ $stateLine($p->state, $p->state_code) }}</td>
       </tr></table>
       @endif
     </td>
