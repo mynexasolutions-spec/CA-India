@@ -27,15 +27,16 @@ td, th { vertical-align: top; }
 /* ===== Header ===== */
 .hdr-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
 .hdr-logo-cell {
-  width: 100px;
+  width: 15%;
   border: 1px solid #1e40af;
   border-radius: 10px;
   padding: 10px;
   vertical-align: middle;
   text-align: center;
 }
-.hdr-spacer-cell { width: 14px; }
+.hdr-spacer-cell { width: 2%; }
 .hdr-name-cell {
+  width: 83%;
   border: 1px solid #1e40af;
   border-radius: 10px;
   padding: 14px 20px;
