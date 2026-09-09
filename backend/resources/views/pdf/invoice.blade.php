@@ -87,14 +87,14 @@ td, th { vertical-align: top; }
 
 .hdr-rule { border: 0; margin: 4px 0; }
 .hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
-.hdr-col-spacer { width: 2%; }
+.hdr-col-spacer { width: 1%; }
 .hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
 
 /* ===== Receiver / Consignee ===== */
 .party-wrap { width: 100%; table-layout: fixed; margin-top: 5px; border-collapse: separate; }
-.col-spacer { width: 2%; }
+.col-spacer { width: 1%; }
 .party-cell {
-  width: 49%;
+  width: 49.5%;
   padding: 0;
   vertical-align: top;
   background: #ffffff;
@@ -159,8 +159,8 @@ td, th { vertical-align: top; }
 
 /* ===== Summary: floated columns so cards can flow page by page ===== */
 .summary-flow { margin-top: 14px; }
-.sum-left { float: left; width: 49%; }
-.sum-right { float: right; width: 49%; }
+.sum-left { float: left; width: 49.5%; }
+.sum-right { float: right; width: 49.5%; }
 .clear { clear: both; }
 
 .card { border: 1px solid #1e40af; border-radius: 10px; background: #ffffff; padding: 8px 14px; page-break-inside: avoid; }
@@ -232,10 +232,10 @@ td, th { vertical-align: top; }
   // they still fit the header card without wrapping awkwardly or overflowing.
   $businessNameLen = strlen($business);
   $companyNameSize = match (true) {
-    $businessNameLen <= 22 => 30,
-    $businessNameLen <= 32 => 25,
-    $businessNameLen <= 45 => 20,
-    default => 16,
+    $businessNameLen <= 22 => 33,
+    $businessNameLen <= 32 => 28,
+    $businessNameLen <= 45 => 22,
+    default => 18,
   };
   $docTitle = match ($doc->type) {
     'bill_of_supply' => 'BILL OF SUPPLY',
