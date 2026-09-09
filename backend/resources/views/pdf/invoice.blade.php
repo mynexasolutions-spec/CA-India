@@ -86,6 +86,7 @@ td, th { vertical-align: top; }
 
 .hdr-rule { border: 0; margin: 8px 0; }
 .hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
+.hdr-col-spacer { width: 2%; }
 .hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
 
 /* ===== Receiver / Consignee ===== */
@@ -429,7 +430,7 @@ td, th { vertical-align: top; }
      icon treatment. --}}
 <table class="hdr-detail-wrap">
   <tr>
-    <td class="hdr-detail-cell" style="width:54%;">
+    <td class="hdr-detail-cell" style="width:55%;">
       <table class="meta-row"><tr>
         <td class="meta-icon-cell">@if($pinIcon)<img src="{{ $pinIcon }}" alt="">@endif</td>
         <td class="meta-text"><b>Address :</b> {{ implode(', ', $addressParts) ?: '—' }}</td>
@@ -466,8 +467,8 @@ td, th { vertical-align: top; }
       </tr></table>
       @endif
     </td>
-    <td class="col-spacer"></td>
-    <td class="hdr-detail-cell right" style="width:42%;">
+    <td class="hdr-col-spacer"></td>
+    <td class="hdr-detail-cell right" style="width:43%;">
       <div class="doc-title-wrap"><div class="doc-title">&#8212; {{ strtoupper($docTitle) }} &#8212;</div></div>
       <table class="inv-meta">
         <tr>
