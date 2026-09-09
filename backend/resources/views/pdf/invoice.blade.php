@@ -90,7 +90,7 @@ td, th { vertical-align: top; }
 .hdr-rule { border: 0; margin: 4px 0; }
 .hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
 .hdr-col-spacer { width: 1%; }
-.hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
+.hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 7px 14px 4px; vertical-align: top; background: #ffffff; }
 
 /* ===== Receiver / Consignee ===== */
 .party-wrap { width: 100%; table-layout: fixed; margin-top: 5px; border-collapse: separate; }
