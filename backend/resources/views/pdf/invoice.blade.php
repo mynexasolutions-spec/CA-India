@@ -34,7 +34,7 @@ td, th { vertical-align: top; }
   vertical-align: middle;
   text-align: center;
 }
-.hdr-spacer-cell { width: 2%; }
+.hdr-spacer-cell { width: 1%; }
 .hdr-name-cell {
   width: 83%;
   border: 1px solid #1e40af;
