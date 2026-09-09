@@ -57,8 +57,8 @@ td, th { vertical-align: top; }
 }
 .meta-row { margin: 7px 0; }
 .meta-row td { padding: 0; vertical-align: top; }
-.meta-icon-cell { width: 32px; padding-right: 8px; }
-.meta-icon-cell img { width: 26px; height: 26px; display: block; }
+.meta-icon-cell { width: 26px; padding-right: 6px; }
+.meta-icon-cell img { width: 20px; height: 20px; display: block; }
 .meta-lab { width: 58px; font-weight: bold; color: #1e293b; font-size: 11px; white-space: nowrap; }
 .meta-colon { width: 10px; font-weight: bold; color: #1e293b; font-size: 11px; text-align: center; }
 .meta-text { color: #475569; font-size: 11px; line-height: 1.5; padding-left: 4px; }
@@ -80,8 +80,8 @@ td, th { vertical-align: top; }
 }
 .inv-meta { width: 100%; }
 .inv-meta td { padding: 3px 0; font-size: 10px; vertical-align: middle; }
-.inv-meta .icon-cell { width: 32px; }
-.inv-meta .icon-cell img { width: 26px; height: 26px; display: block; }
+.inv-meta .icon-cell { width: 26px; }
+.inv-meta .icon-cell img { width: 20px; height: 20px; display: block; }
 .inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
 .inv-meta .colon { width: 10px; color: #334155; font-weight: bold; text-align: center; }
 .inv-meta .val { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
