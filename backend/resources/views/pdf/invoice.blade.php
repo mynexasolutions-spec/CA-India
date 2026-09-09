@@ -59,8 +59,8 @@ td, th { vertical-align: top; }
 .meta-row:first-child { margin-top: 0; }
 .meta-row td { padding: 0; vertical-align: top; }
 .meta-icon-cell { width: 26px; padding-right: 6px; }
-.meta-icon-cell img { width: 20px; height: 20px; display: block; margin-top: 4px; }
-.meta-icon-address img { margin-top: 8px; }
+.meta-icon-cell img { width: 20px; height: 20px; display: block; margin-top: 2px; }
+.meta-icon-address img { margin-top: 5px; }
 .meta-lab { width: 57px; font-weight: bold; color: #334155; font-size: 10.5px; line-height: 1.5; white-space: nowrap; }
 .meta-colon { width: 10px; font-weight: bold; color: #334155; font-size: 10.5px; line-height: 1.5; text-align: center; }
 .meta-text { color: #0f172a; font-weight: bold; font-size: 10.5px; line-height: 1.5; padding-left: 4px; }
@@ -83,7 +83,7 @@ td, th { vertical-align: top; }
 .inv-meta { width: 100%; }
 .inv-meta td { padding: 3px 0; font-size: 10px; vertical-align: middle; }
 .inv-meta .icon-cell { width: 26px; }
-.inv-meta .icon-cell img { width: 20px; height: 20px; display: block; }
+.inv-meta .icon-cell img { width: 20px; height: 20px; display: block; margin-top: 2px; }
 .inv-meta .lab { width: 92px; color: #334155; font-weight: bold; text-align: left; white-space: nowrap; padding-left: 6px; }
 .inv-meta .colon { width: 10px; color: #334155; font-weight: bold; text-align: center; }
 .inv-meta .val { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
