@@ -58,7 +58,7 @@ td, th { vertical-align: top; }
 .meta-row { margin: 7px 0; }
 .meta-row:first-child { margin-top: 0; }
 .meta-row td { padding: 0; vertical-align: top; }
-.meta-icon-cell { width: 26px; padding-right: 6px; }
+.meta-icon-cell { width: 26px; padding-right: 6px; padding-top: 3px; }
 .meta-icon-cell img { width: 20px; height: 20px; display: block; }
 .meta-icon-address { padding-top: 8px; }
 .meta-lab { width: 57px; font-weight: bold; color: #334155; font-size: 10.5px; line-height: 1.5; white-space: nowrap; }
