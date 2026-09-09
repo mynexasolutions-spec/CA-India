@@ -56,7 +56,7 @@ td, th { vertical-align: top; }
   margin: 0 auto;
 }
 .meta-row { margin: 7px 0; }
-.meta-row td { padding: 0; vertical-align: middle; }
+.meta-row td { padding: 0; vertical-align: top; }
 .meta-icon-cell { width: 32px; padding-right: 8px; }
 .meta-icon-cell img { width: 26px; height: 26px; display: block; }
 .meta-lab { width: 58px; font-weight: bold; color: #1e293b; font-size: 11px; white-space: nowrap; }
