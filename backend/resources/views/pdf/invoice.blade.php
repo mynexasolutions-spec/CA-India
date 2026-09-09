@@ -56,6 +56,7 @@ td, th { vertical-align: top; }
   margin: 0 auto;
 }
 .meta-row { margin: 7px 0; }
+.meta-row:first-child { margin-top: 0; }
 .meta-row td { padding: 0; vertical-align: top; }
 .meta-icon-cell { width: 26px; padding-right: 6px; }
 .meta-icon-cell img { width: 20px; height: 20px; display: block; }
