@@ -85,7 +85,7 @@ td, th { vertical-align: top; }
 .inv-meta .val { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
 .inv-meta .val-plain { color: #0f172a; text-align: left; word-break: break-word; font-weight: bold; padding-left: 4px; }
 
-.hdr-rule { border: 0; margin: 8px 0; }
+.hdr-rule { border: 0; margin: 4px 0; }
 .hdr-detail-wrap { width: 100%; table-layout: fixed; border-collapse: separate; }
 .hdr-col-spacer { width: 2%; }
 .hdr-detail-cell { border: 1px solid #1e40af; border-radius: 10px; padding: 10px 14px 4px; vertical-align: top; background: #ffffff; }
@@ -232,10 +232,10 @@ td, th { vertical-align: top; }
   // they still fit the header card without wrapping awkwardly or overflowing.
   $businessNameLen = strlen($business);
   $companyNameSize = match (true) {
-    $businessNameLen <= 22 => 24,
-    $businessNameLen <= 32 => 20,
-    $businessNameLen <= 45 => 17,
-    default => 14,
+    $businessNameLen <= 22 => 30,
+    $businessNameLen <= 32 => 25,
+    $businessNameLen <= 45 => 20,
+    default => 16,
   };
   $docTitle = match ($doc->type) {
     'bill_of_supply' => 'BILL OF SUPPLY',
