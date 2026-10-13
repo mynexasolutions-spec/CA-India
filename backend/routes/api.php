@@ -103,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/parties', [MasterController::class, 'storeParty']);
             Route::get('/parties/{id}', [MasterController::class, 'showParty']);
             Route::put('/parties/{id}', [MasterController::class, 'updateParty']);
+            Route::delete('/parties/{id}', [MasterController::class, 'destroyParty']);
 
             Route::get('/customers', [MasterController::class, 'customers']);
             Route::post('/customers', [MasterController::class, 'storeCustomer']);

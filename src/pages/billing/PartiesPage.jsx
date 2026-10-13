@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../api/client';
 import { INDIAN_STATES } from '../../data/indianStates';
+import ActionConfirmationModal from '../../components/ActionConfirmationModal';
 
 const AVATAR_COLORS = [
   { bg: '#e3ecfb', fg: '#1c4b9c' },
@@ -35,6 +36,10 @@ export default function PartiesPage() {
   const [gstFilter, setGstFilter] = useState('');
   const [perPage, setPerPage] = useState(10);
   const [page, setPage] = useState(1);
+  const [partyToDelete, setPartyToDelete] = useState(null);
+  const [busyDelete, setBusyDelete] = useState(false);
+  const [err, setErr] = useState('');
+  const [msg, setMsg] = useState('');
 
   const load = (targetPage = page) => {
     const qs = new URLSearchParams();
@@ -43,10 +48,33 @@ export default function PartiesPage() {
     if (gstFilter) qs.set('gst_status', gstFilter);
     qs.set('per_page', perPage);
     qs.set('page', targetPage);
-    api(`/billing/parties?${qs}`).then((d) => {
+    return api(`/billing/parties?${qs}`).then((d) => {
       setItems(d.data || []);
       setMeta({ current_page: d.current_page || 1, last_page: d.last_page || 1, total: d.total || 0, per_page: d.per_page || perPage });
     });
+  };
+
+  const confirmDelete = async () => {
+    if (!partyToDelete) return;
+    setBusyDelete(true);
+    setErr('');
+    setMsg('');
+    try {
+      const res = await api(`/billing/parties/${partyToDelete.id}`, { method: 'DELETE' });
+      setMsg(res.message || 'Party deleted successfully.');
+      setPartyToDelete(null);
+      const targetPage = (items.length === 1 && page > 1) ? page - 1 : page;
+      if (targetPage !== page) {
+        setPage(targetPage);
+      } else {
+        load(targetPage);
+      }
+    } catch (e) {
+      setErr(e.message || 'Failed to delete party.');
+      setPartyToDelete(null);
+    } finally {
+      setBusyDelete(false);
+    }
   };
 
   useEffect(() => { load(page); }, [page, perPage]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -105,6 +133,8 @@ export default function PartiesPage() {
       </div>
 
       <div className="bp-card">
+        {msg && <p className="bp-alert bp-alert-success" style={{ marginBottom: 16 }}>{msg}</p>}
+        {err && <p className="bp-alert bp-alert-error" style={{ marginBottom: 16 }}>{err}</p>}
         <div className="bp-parties-filters">
           <div className="bp-parties-search">
             <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -172,7 +202,18 @@ export default function PartiesPage() {
                     </span>
                   </td>
                   <td>
-                    <Link to={`/portal/billing/parties/${p.id}/edit`} className="bp-btn bp-btn-outline" style={{ padding: '4px 8px' }}>Edit</Link>
+                    <div style={{ display: 'inline-flex', gap: 6 }}>
+                      <Link to={`/portal/billing/parties/${p.id}/edit`} className="bp-btn bp-btn-outline" style={{ padding: '4px 8px' }}>Edit</Link>
+                      <button
+                        type="button"
+                        className="bp-btn bp-btn-danger"
+                        style={{ padding: '4px 8px' }}
+                        disabled={busyDelete}
+                        onClick={() => { setErr(''); setMsg(''); setPartyToDelete(p); }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -206,6 +247,19 @@ export default function PartiesPage() {
           </div>
         )}
       </div>
+
+      {partyToDelete && (
+        <ActionConfirmationModal
+          title="Delete Party"
+          message="Are you sure you want to delete this party? This action cannot be undone."
+          onClose={() => !busyDelete && setPartyToDelete(null)}
+          onConfirm={confirmDelete}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          danger
+          busy={busyDelete}
+        />
+      )}
     </div>
   );
 }

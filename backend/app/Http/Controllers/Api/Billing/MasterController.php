@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Billing;
 
 use App\Http\Controllers\Controller;
+use App\Models\CommercialDocument;
 use App\Models\Customer;
 use App\Models\HsnSacCode;
 use App\Models\Product;
@@ -99,6 +100,26 @@ class MasterController extends Controller
         return response()->json(
             Customer::where('client_profile_id', $this->profileId($request))->findOrFail($id)
         );
+    }
+
+    public function destroyParty(Request $request, int $id)
+    {
+        $profileId = $this->profileId($request);
+        $party = Customer::where('client_profile_id', $profileId)->findOrFail($id);
+
+        $hasDocuments = CommercialDocument::where('client_profile_id', $profileId)
+            ->where('customer_id', $id)
+            ->exists();
+
+        if ($hasDocuments) {
+            return response()->json([
+                'message' => 'This party cannot be deleted because invoices or documents are already created for it.',
+            ], 422);
+        }
+
+        $party->delete();
+
+        return response()->json(['message' => 'Party deleted successfully.']);
     }
 
     /** @deprecated alias */
