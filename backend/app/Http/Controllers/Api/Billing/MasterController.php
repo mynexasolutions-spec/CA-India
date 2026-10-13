@@ -41,7 +41,13 @@ class MasterController extends Controller
             $q->where('gst_status', $request->gst_status);
         }
 
-        return response()->json($q->paginate((int) $request->input('per_page', 10)));
+        if ($request->boolean('all')) {
+            return response()->json(['data' => $q->reorder('name')->get()]);
+        }
+
+        $perPage = min(1000, max(1, (int) $request->input('per_page', 10)));
+
+        return response()->json($q->paginate($perPage));
     }
 
     private function partyRules(): array

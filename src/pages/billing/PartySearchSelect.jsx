@@ -25,10 +25,14 @@ export default function PartySearchSelect({ parties, value, onSelect }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  const matches = query.trim()
+  const q = query.trim().toLowerCase();
+  const matches = q
     ? parties.filter((p) => (
-      p.name.toLowerCase().includes(query.trim().toLowerCase())
-      || (p.gstin || '').toLowerCase().includes(query.trim().toLowerCase())
+      (p.name || '').toLowerCase().includes(q)
+      || (p.gstin || '').toLowerCase().includes(q)
+      || (p.proprietor_name || '').toLowerCase().includes(q)
+      || (p.branch_name || '').toLowerCase().includes(q)
+      || (p.phone || '').toLowerCase().includes(q)
     )).slice(0, 30)
     : parties.slice(0, 30);
 

@@ -176,8 +176,17 @@ export default function InvoiceForm({ docType = 'tax_invoice', title }) {
     api('/billing/tds-tcs-sections?type=tcs').then((d) => setTcsSections(d.data || []));
   }, []);
 
+  const reloadParties = () => {
+    api('/billing/parties?all=1').then((d) => setParties(d.data || []));
+  };
+
   useEffect(() => {
-    api('/billing/parties').then((d) => setParties(d.data || []));
+    window.addEventListener('focus', reloadParties);
+    return () => window.removeEventListener('focus', reloadParties);
+  }, []);
+
+  useEffect(() => {
+    reloadParties();
     if (docType === 'credit_note' || docType === 'debit_note') {
       api('/billing/documents?type=tax_invoice&status=issued').then((d) => setInvoices(d.data || []));
     }
