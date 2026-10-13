@@ -456,7 +456,7 @@ export default function HsnSummaryPage({
                         </td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.qty, 2)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, color: '#64748b', verticalAlign: 'middle', lineHeight: 1.4 }}>{r.unit || r.uqc || 'NOS'}</td>
-                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.taxable || r.taxable_value, 0)}</td>
+                        <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.taxable || r.taxable_value, 2)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.igst, 2)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.cgst, 2)}</td>
                         <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, verticalAlign: 'middle', lineHeight: 1.4 }}>{numFmt(r.sgst, 2)}</td>
@@ -470,7 +470,7 @@ export default function HsnSummaryPage({
                     <td colSpan={3} style={{ padding: '14px', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>Total</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totQty, 2)}</td>
                     <td />
-                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totTaxable, 0)}</td>
+                    <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totTaxable, 2)}</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totIgst, 2)}</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totCgst, 2)}</td>
                     <td style={{ padding: '14px', textAlign: 'center', fontSize: 13, fontWeight: 800, color: '#2563eb', verticalAlign: 'middle' }}>{numFmt(totSgst, 2)}</td>
